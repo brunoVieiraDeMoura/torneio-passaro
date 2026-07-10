@@ -1,0 +1,273 @@
+Motivos pelos quais necessita ter a página
+ 
+
+Mobile & Desktop
+Landing page
+CTA PARA Cadastrar usuário  
+Cadastrar Clube
+
+tela de login
+tela de cadastro
+tela de perdeu
+
+ 
+Mobile USER
+ 
+
+Torneios ( aonde estará o torneio de regiões mais próximos e o buscar por nome [região, clube, estado])
+Liga ( mostrar o ranking de passarinhos , da cidade com o local, estado referente ao local, e do Brasil [por padrão], podendo buscar por outras regiões.)
+passarinhos, cadastro de passarinhos por raça, estilo de canto.
+Contato
+
+ 
+
+Mobiledesktop CLUB
+
+Dashboard
+criardeletar torneios
+gerenciar torneios,
+adicionarremover pessoas
+histórico dos torneios
+
+
+ 
+
+Desktop USER
+
+ 
+
+Torneios ( aonde estará o torneio de regiões mais próximos e o buscar por nome [região, clube, estado])
+Liga ( mostrar o ranking de passarinhos , da cidade com o local, estado referente ao local, e do Brasil [por padrão], podendo buscar por outras regiões.)
+passarinhos, cadastro de passarinhos por raça, estilo de canto.
+Marketing  parceiros  (deixa stand)
+Contato
+1. Arquitetura usando apenas Next.js
+
+Você pode usar o próprio Next como:
+
+frontend (React)
+backend (API routes ou Server Actions)
+realtime (via WebSocket ou serviços externos)
+Stack mínima
+Next.js (App Router)
+Banco: PostgreSQL (ou Supabase)
+Realtime: Pusher / Ably / Supabase Realtime
+Auth: simples (JWT ou magic link)
+2. Estrutura de páginas
+Mestre de roda
+ /mestre
+ /mestre/torneio/[id]
+
+Funções:
+
+criar torneio
+gerar QR code
+iniciar/parar rodada
+ver ranking ao vivo
+Participante
+ /entrar/[token]
+
+Fluxo:
+
+entra pelo QR code
+preenche nome + pássaro
+aguarda aprovação
+vai para tela de contagem
+Tela principal do participante
+/torneio/[id]/participante
+
+Interface simples (muito importante):
+
+botão grande
+contador
+tempo
+3. Como gerar o QR Code
+
+No Next:
+
+import QRCode from "qrcode";
+
+const url = `https://seusite.com/entrar/${token}`;
+const qr = await QRCode.toDataURL(url);
+
+Token representa:
+
+torneio + validade
+4. Controle de tempo (parte crítica)
+
+O controle não pode ficar só no cliente.
+
+Solução correta:
+
+Tempo controlado no servidor.
+
+Exemplo:
+
+tournament = {
+  startAt: Date,
+  duration: 15 * 60 // segundos
+}
+
+No frontend:
+
+tempoRestante = startAt + duration - now()
+5. Contagem de canto (botão)
+Endpoint no Next (API route)
+// app/api/score/route.ts
+
+export async function POST(req: Request) {
+  const { participantId } = await req.json();
+
+  // valida tempo
+  // valida intervalo mínimo
+  // incrementa score
+
+  return Response.json({ ok: true });
+}
+Anti-spam básico
+
+No servidor:
+
+último clique por usuário
+
+Regra:
+
+mínimo 1–2 segundos entre cliques
+6. Ranking em tempo real
+
+Você tem 3 opções:
+
+opção 1 (mais simples)
+
+Polling
+
+Frontend:
+
+setInterval(() => {
+  fetch("/api/ranking")
+}, 2000);
+
+✔ simples
+✖ menos elegante
+
+opção 2 (melhor custo/benefício)
+
+Pusher
+
+backend envia evento
+frontend escuta
+opção 3
+
+Supabase realtime
+
+7. Estrutura de banco (simplificada)
+users
+- id
+- name
+
+clubs
+- id
+- name
+
+tournaments
+- id
+- club_id
+- start_at
+- duration
+
+participants
+- id
+- user_name
+- bird_name
+- tournament_id
+- cage_number
+
+scores
+- id
+- participant_id
+- count
+8. Fluxo completo
+1. Mestre cria torneio
+
+→ gera QR
+
+2. Participante entra
+
+→ cria registro
+
+3. Mestre aprova
+
+→ define gaiola
+
+4. Mestre inicia
+
+→ startAt definido
+
+5. Participante clica botão
+
+→ envia POST /score
+
+6. Ranking atualiza
+
+→ realtime ou polling
+
+9. Fazer parecer “app” (importante para adoção)
+
+Mesmo sendo web, você pode transformar em quase-app usando:
+
+PWA (Progressive Web App)
+instalar no celular
+abrir em tela cheia
+funciona como app
+
+No Next:
+
+npm install next-pwa
+10. Limitações de usar só Next
+
+Você precisa estar ciente:
+
+❌ offline fraco
+
+Se cair internet → perde contagem
+
+❌ latência
+
+delay de rede pode afetar clique
+
+❌ menos controle de hardware
+
+(microfone, sensores)
+
+11. Vantagens
+✔ mais rápido de desenvolver
+✔ mais fácil de atualizar
+✔ não precisa publicar em loja
+✔ ideal para validar ideia
+12. Estratégia recomendada
+
+Começar com Next faz sentido.
+
+Ordem:
+
+Next.js (web app)
+validar com 1–2 clubes
+gerar receita inicial
+depois (se crescer):
+→ migrar para app com Expo
+13. Insight importante
+
+Para esse tipo de público, isso ajuda muito:
+
+link direto (QR)
+sem login complicado
+botão grande
+sem navegação
+
+Se ficar simples, a barreira de idade praticamente desaparece.
+
+Se quiser, posso montar para você:
+
+estrutura de pastas completa no Next
+schema do banco pronto (SQL)
+ou até um protótipo de tela já desenhado para esse fluxo específico

@@ -1,0 +1,27 @@
+m=root,base:231 
+ GET https://googleads.g.doubleclick.net/pagead/id net::ERR_BLOCKED_BY_CLIENT
+yj	@	m=root,base:231
+_.Aj	@	m=root,base:235
+(anonymous)	@	m=root,base:785
+_.yf	@	m=root,base:145
+F2	@	m=root,base:785
+b0	@	m=root,base:788
+ata	@	m=root,base:789
+T2	@	m=root,base:793
+vua	@	m=root,base:861
+(anonymous)	@	7AqiZHuBhDA?autoplay=1:11
+
+
+
+esta mostrnado console no 
+
+parts 
+[{…}]
+VM10109:1 parts 
+(2) [{…}, {…}]
+VM10109:1 parts 
+[{…}]
+VM10109:1 parts 
+(6) [{…}, {…}, {…}, {…}, {…}, {…}]
+VM10109:1 parts 
+(6) [{…}, {…}, {…}, {…}, {…}, {…}]

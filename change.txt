@@ -1,0 +1,35 @@
+modificações ui
+
+http://localhost:3000/ :
+	-menu hamburguer padronizar o botão de entrar, com border radius igual ao botao de criar, só que com o bg transparente e a borda verde
+
+
+http://localhost:3000/login:
+	-o header parece estar sem diplayflex, e o menu n está no lado direito
+	-remover o card de fundo de login e centralizar os textos e inputs
+	-criar um botão para voltar para home, não só pelo logo
+
+http://localhost:3000/cadastro
+	-fazer as mesmas alterações do login
+
+
+http://localhost:3000/clube/dashboard:
+	-logo e menu no mobile estão invertidos
+	-o menu esta abrindo da esquerda para direita, deveria ser ao contrario
+
+
+http://localhost:3000/mestre/torneio/5ae1b863-650c-4d8f-ab80-d724bbe565d6
+
+	-criar um botão para "eliminar" um candidato do torneio
+	-adicionar o canto do passarinho para seu respectivo histórico após cada rodada de marcação, e não apenas a ultima ou após a eliminação. (verifique para não marcar duas vezes a mesma marcação)
+
+http://localhost:3000/meus-passarinhos
+	-ordenar passaros por numero de cantos
+
+
+http://localhost:3000/meus-passarinhos/ab6d709e-cfc6-405a-a236-1775be623927
+	- Histórico de campeonatos deixar mais responsivo para mobile, está tudo quebrado
+
+
+http://localhost:3000/clube/*
+	-passe por todos os paths de /clube/* e refaça de maneira responsiva para a parte mobile
