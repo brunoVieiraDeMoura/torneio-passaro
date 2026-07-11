@@ -79,7 +79,8 @@ export default function CadastroForm() {
             estado: estado || null,
           })
         }
-        router.push(tipo === 'club' ? '/clube/dashboard' : '/torneios')
+        // clube novo entra pendente de aprovação do admin
+        router.push(tipo === 'club' ? '/aprovacao-pendente' : '/torneios')
         router.refresh()
       } else {
         setEmailSent(true)

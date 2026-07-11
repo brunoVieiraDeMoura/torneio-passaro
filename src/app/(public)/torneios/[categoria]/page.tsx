@@ -30,7 +30,12 @@ const CAT_CONFIG = {
     label: 'Encerrados',
     eyebrow: 'Histórico',
     eyebrowColor: '#9CA3AF',
-    filter: (all: Item[]) => all.filter(t => t.status === 'finished'),
+    // do finalizado mais recente para o mais antigo
+    filter: (all: Item[]) => all.filter(t => t.status === 'finished').sort((a, b) => {
+      const da = a.start_at ? new Date(a.start_at).getTime() : -Infinity
+      const db = b.start_at ? new Date(b.start_at).getTime() : -Infinity
+      return db - da
+    }),
   },
 } as const
 

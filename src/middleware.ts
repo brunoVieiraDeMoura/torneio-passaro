@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAdmin } from '@/lib/admin'
 
 const AUTH_PATHS  = ['/login', '/cadastro', '/perdeu']
 const CLUB_PATHS  = ['/clube', '/mestre']
@@ -37,16 +38,66 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // logged in: fetch role
+  // logged in: fetch role + ban
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, banned')
     .eq('id', user.id)
     .single()
+
+  const admin = isAdmin(user.email)
+
+  // Admin Central: só o admin acessa /admin
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    if (!admin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
+  // usuário banido → trava tudo (exceto a própria tela de banido)
+  if (profile?.banned && !admin) {
+    if (pathname !== '/banido') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/banido'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
 
   const isClub   = profile?.role === 'club'
   const isClubPath   = CLUB_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isAuthPath   = AUTH_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
+
+  // clube: precisa estar aprovado (e não banido) para usar o painel
+  if (isClub && !admin) {
+    const { data: clube } = await supabase
+      .from('clubs')
+      .select('status, banned')
+      .eq('user_id', user.id)
+      .single()
+
+    if (clube?.banned) {
+      if (pathname !== '/banido') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/banido'
+        return NextResponse.redirect(url)
+      }
+      return supabaseResponse
+    }
+
+    if (clube && clube.status !== 'approved') {
+      // pendente/recusado: só a tela de aprovação + páginas de auth
+      if (pathname !== '/aprovacao-pendente' && !isAuthPath) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/aprovacao-pendente'
+        return NextResponse.redirect(url)
+      }
+      return supabaseResponse
+    }
+  }
 
   // club user trying to access non-club pages → dashboard
   if (isClub && !isClubPath && !isAuthPath) {

@@ -40,7 +40,7 @@ export default async function ClubeParticipantes() {
       </div>
 
       {/* stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+      <div className="club-stats-4" style={{ marginBottom: 24 }}>
         {[
           { label: 'Total',     value: total,     color: '#374151', bg: '#F9FAFB', border: '#E5E7EB' },
           { label: 'Aprovados', value: aprovados, color: '#0D8F41', bg: '#F0FDF4', border: '#D1FAE5' },
@@ -57,7 +57,7 @@ export default async function ClubeParticipantes() {
       {/* list */}
       <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
         {/* header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 140px 90px', gap: 12, padding: '10px 18px', background: '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
+        <div className="club-phead" style={{ padding: '10px 18px', background: '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
           {['Pássaro / Dono', 'Torneio', 'Status', ''].map(h => (
             <p key={h} style={{ margin: 0, fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</p>
           ))}
@@ -79,24 +79,25 @@ export default async function ClubeParticipantes() {
           const statusLabel = p.status === 'approved' ? 'Aprovado' : p.status === 'pending' ? 'Pendente' : 'Recusado'
 
           return (
-            <div key={p.id} style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr 140px 90px',
-              gap: 12, padding: '13px 18px', alignItems: 'center',
+            <div key={p.id} className="club-prow" style={{
+              padding: '13px 18px', alignItems: 'center',
               borderBottom: i < participantes.length - 1 ? '1px solid #F9FAFB' : 'none',
             }}>
-              <div>
+              <div className="cell-bird">
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', color: '#111827' }}>{p.bird_name}</p>
                 <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>{p.user_name}</p>
               </div>
-              <div>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#6B7280' }}>{torneio?.name ?? '—'}</p>
+              <div className="cell-torneio">
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#6B7280' }}>
+                  <span className="club-plabel">Torneio:</span>{torneio?.name ?? '—'}
+                </p>
                 {p.cage_number && <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: '#9CA3AF' }}>Gaiola {p.cage_number}</p>}
               </div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: statusStyle.color, background: statusStyle.bg, borderRadius: 20, padding: '4px 10px', display: 'inline-block', width: 'fit-content' }}>
+              <span className="cell-status" style={{ fontSize: '0.72rem', fontWeight: 600, color: statusStyle.color, background: statusStyle.bg, borderRadius: 20, padding: '4px 10px', display: 'inline-block', width: 'fit-content' }}>
                 {statusLabel}
               </span>
               {isManual && (
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 20, padding: '3px 8px', display: 'inline-block' }}>
+                <span className="cell-manual" style={{ fontSize: '0.65rem', fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 20, padding: '3px 8px', display: 'inline-block', width: 'fit-content' }}>
                   Fora do app
                 </span>
               )}

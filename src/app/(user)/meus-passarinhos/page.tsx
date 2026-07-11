@@ -33,6 +33,14 @@ export default async function MeusPassarinhos() {
     .in('status', ['approved', 'pending'])
     .order('created_at', { ascending: false })
 
+  // soma de todas as marcações (round_scores) por participação — scores.count é só o último ciclo
+  const participantIds = (participations ?? []).map(p => p.id)
+  const { data: roundRows } = participantIds.length > 0
+    ? await supabase.from('round_scores').select('participant_id, count').in('participant_id', participantIds)
+    : { data: [] }
+  const roundSum: Record<string, number> = {}
+  ;(roundRows ?? []).forEach(r => { roundSum[r.participant_id] = (roundSum[r.participant_id] ?? 0) + (r.count ?? 0) })
+
   type TRow = { id: string; name: string; status: string; start_at: string | null } | null
   type SRow = { count: number }[] | null
 
@@ -43,12 +51,13 @@ export default async function MeusPassarinhos() {
       .map(p => {
         const t = p.tournaments as unknown as TRow
         const scores = p.scores as unknown as SRow
+        const total = roundSum[p.id] ?? 0
         return {
           participant_id: p.id,
           tournament_name: t?.name ?? '—',
           tournament_status: t?.status ?? '',
           tournament_start_at: t?.start_at ?? null,
-          score_count: scores?.[0]?.count ?? 0,
+          score_count: total > 0 ? total : (scores?.[0]?.count ?? 0),
           joined_at: p.created_at,
         }
       })

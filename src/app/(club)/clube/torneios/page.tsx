@@ -45,8 +45,8 @@ export default async function ClubeTorneios() {
         {torneios?.map(t => {
           const s = STATUS_LABEL[t.status] ?? STATUS_LABEL.draft
           return (
-            <div key={t.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{ flex: 1 }}>
+            <div key={t.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: '#111827' }}>{t.name}</p>
                   <span style={{ fontSize: '0.65rem', fontWeight: 700, color: s.color, background: s.bg, borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>{s.label}</span>

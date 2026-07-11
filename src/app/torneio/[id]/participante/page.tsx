@@ -23,7 +23,7 @@ export default async function ParticipantePage({
 
   const { data: participante } = await supabase
     .from('participants')
-    .select('id, user_name, bird_name, cage_number, status, round_group')
+    .select('id, user_name, bird_name, cage_number, status, round_group, elimination_reason')
     .eq('id', pid)
     .single()
 

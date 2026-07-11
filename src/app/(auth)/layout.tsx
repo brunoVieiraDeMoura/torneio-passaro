@@ -124,7 +124,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       <style>{`
         @media (max-width: 639px) {
           .auth-left          { display: none !important; }
-          .auth-mobile-header { display: flex !important; }
+          .auth-mobile-header { display: block !important; }
         }
         @media (min-width: 640px) {
           .auth-left          { display: flex !important; }

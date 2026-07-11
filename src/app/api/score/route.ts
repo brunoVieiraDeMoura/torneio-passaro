@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 const MAX_INCREMENT = 30 // teto anti-abuso por envio (client agrupa cliques a cada 1s)
 
 export async function POST(req: Request) {
-  const { participantId, tournamentId, increment } = await req.json()
+  const { participantId, tournamentId, increment, suspicious } = await req.json()
 
   if (!participantId || !tournamentId) {
     return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
@@ -12,6 +12,8 @@ export async function POST(req: Request) {
 
   // quantidade de cantos deste envio (padrão 1); limitada p/ evitar abuso
   const inc = Math.min(MAX_INCREMENT, Math.max(1, Math.floor(Number(increment) || 1)))
+  // suspeitas de fraude deste envio (cliques < 1s) — anti-abuso
+  const susp = Math.min(MAX_INCREMENT, Math.max(0, Math.floor(Number(suspicious) || 0)))
 
   const supabase = await createClient()
 
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
 
   const { data: existing } = await supabase
     .from('scores')
-    .select('id, count')
+    .select('id, count, suspicious_count')
     .eq('participant_id', participantId)
     .eq('tournament_id', tournamentId)
     .single()
@@ -64,7 +66,11 @@ export async function POST(req: Request) {
   if (existing) {
     const { data: updated } = await supabase
       .from('scores')
-      .update({ count: existing.count + inc, last_click_at: now })
+      .update({
+        count: existing.count + inc,
+        suspicious_count: (existing.suspicious_count ?? 0) + susp,
+        last_click_at: now,
+      })
       .eq('id', existing.id)
       .select('count')
       .single()
@@ -78,6 +84,7 @@ export async function POST(req: Request) {
       participant_id: participantId,
       tournament_id: tournamentId,
       count: inc,
+      suspicious_count: susp,
       last_click_at: now,
     })
     .select('count')

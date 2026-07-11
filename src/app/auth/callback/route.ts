@@ -24,7 +24,8 @@ export async function GET(request: Request) {
           await supabase.from('clubs').insert({ user_id: user.id, name: clubName, cidade, estado })
         }
       }
-      return NextResponse.redirect(`${origin}/clube/dashboard`)
+      // clube novo entra pendente de aprovação do admin
+      return NextResponse.redirect(`${origin}/aprovacao-pendente`)
     }
   }
 

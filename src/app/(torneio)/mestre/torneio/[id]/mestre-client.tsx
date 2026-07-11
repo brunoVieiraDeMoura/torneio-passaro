@@ -12,12 +12,14 @@ interface Participante {
   status: string
   user_id: string | null
   round_group: number | null
+  elimination_reason?: string | null
 }
 
 interface Score { participant_id: string; count: number }
 interface Torneio {
   id: string; status: string; duration_secs: number; start_at: string | null
   round: number; divisions: number; active_group: number
+  finished_at: string | null
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
@@ -25,6 +27,13 @@ const MINS = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')
 const ELIM_OPTS = [25, 40, 50, 60, 75]
 
 function pad(n: number) { return String(n).padStart(2, '0') }
+
+// cor do alerta de fraude: verde até 5, amarelo 6–10, vermelho acima de 10
+function fraudColor(n: number): { color: string; bg: string; border: string } {
+  if (n > 10) return { color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' }
+  if (n > 5)  return { color: '#B45309', bg: '#FFFBEB', border: '#FDE68A' }
+  return { color: '#0D8F41', bg: '#F0FDF4', border: '#D1FAE5' }
+}
 
 function formatMs(ms: number): string {
   const totalSecs = Math.max(0, Math.floor(ms / 1000))
@@ -84,7 +93,10 @@ export default function MestreClient({
   const [scores, setScores] = useState<Record<string, number>>(
     Object.fromEntries(scoresInitial.map(s => [s.participant_id, s.count]))
   )
+  // suspeitas de fraude por participante (scores.suspicious_count)
+  const [suspicious, setSuspicious] = useState<Record<string, number>>({})
   const [status, setStatus] = useState(torneio.status)
+  const [finishedAt, setFinishedAt] = useState<string | null>(torneio.finished_at)
   const [startAt, setStartAt] = useState<string | null>(torneio.start_at)
   const [currentDurationSecs, setCurrentDurationSecs] = useState(torneio.duration_secs)
   const [loading, setLoading] = useState(false)
@@ -126,6 +138,8 @@ export default function MestreClient({
   const [showVassoura, setShowVassoura] = useState(false)
   const [vsPercent, setVsPercent] = useState<number | null>(null)
   const [vsLoading, setVsLoading] = useState(false)
+  // vassourada já aplicada neste ciclo → só volta a aparecer no próximo ciclo
+  const [vassouradaDone, setVassouradaDone] = useState(false)
 
   // modal: cantos dos participantes sem app
   const [cantosOpen, setCantosOpen] = useState(false)
@@ -149,6 +163,18 @@ export default function MestreClient({
     }
   }, [now, status, startAt])
 
+  // 1h após finalizar: fecha a live automaticamente e redireciona o mestre.
+  const cleanupDoneRef = useRef(false)
+  useEffect(() => {
+    if (status !== 'finished' || !finishedAt || !now || cleanupDoneRef.current) return
+    if (now.getTime() >= new Date(finishedAt).getTime() + 3600_000) {
+      cleanupDoneRef.current = true
+      const supabase = createClient()
+      supabase.from('tournaments').update({ stream_url: null }).eq('id', torneio.id)
+        .then(() => router.push('/clube/dashboard'))
+    }
+  }, [now, status, finishedAt, torneio.id, router])
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -158,7 +184,11 @@ export default function MestreClient({
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'participants', filter: `tournament_id=eq.${torneio.id}` },
         payload => setParticipantes(prev => prev.map(p => p.id === payload.new.id ? payload.new as Participante : p)))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `tournament_id=eq.${torneio.id}` },
-        payload => { const s = payload.new as Score; setScores(prev => ({ ...prev, [s.participant_id]: s.count })) })
+        payload => {
+          const s = payload.new as Score & { suspicious_count?: number }
+          setScores(prev => ({ ...prev, [s.participant_id]: s.count }))
+          if (s.suspicious_count !== undefined) setSuspicious(prev => ({ ...prev, [s.participant_id]: s.suspicious_count as number }))
+        })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${torneio.id}` },
         payload => {
           if (payload.new.start_at !== undefined) setStartAt(payload.new.start_at)
@@ -167,6 +197,8 @@ export default function MestreClient({
           if (payload.new.round !== undefined) setRound(payload.new.round)
           if (payload.new.divisions !== undefined) setDivisions(payload.new.divisions)
           if (payload.new.active_group !== undefined) setActiveGroup(payload.new.active_group)
+          if (payload.new.status !== undefined) setStatus(payload.new.status)
+          if (payload.new.finished_at !== undefined) setFinishedAt(payload.new.finished_at)
         })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -192,10 +224,14 @@ export default function MestreClient({
     const poll = setInterval(async () => {
       const [{ data: parts }, { data: scs }] = await Promise.all([
         supabase.from('participants').select('id, user_name, bird_name, cage_number, status, user_id, round_group').eq('tournament_id', torneio.id).order('created_at', { ascending: true }),
-        supabase.from('scores').select('participant_id, count').eq('tournament_id', torneio.id),
+        supabase.from('scores').select('participant_id, count, suspicious_count').eq('tournament_id', torneio.id),
       ])
       if (parts) setParticipantes(parts as Participante[])
-      if (scs) setScores(Object.fromEntries((scs as Score[]).map(s => [s.participant_id, s.count])))
+      if (scs) {
+        const rows = scs as (Score & { suspicious_count?: number })[]
+        setScores(Object.fromEntries(rows.map(s => [s.participant_id, s.count])))
+        setSuspicious(Object.fromEntries(rows.map(s => [s.participant_id, s.suspicious_count ?? 0])))
+      }
     }, 5000)
     return () => clearInterval(poll)
   }, [status, torneio.id])
@@ -212,6 +248,49 @@ export default function MestreClient({
     setParticipantes(prev => prev.map(p => p.id === id ? { ...p, ...update } : p))
     const supabase = createClient()
     await supabase.from('participants').update(update).eq('id', id)
+  }
+
+  // Envia os cantos de `parts` ao histórico (round_scores) do ciclo `roundNum`.
+  // De-dup por (tournament, round, participant) — nunca conta a mesma marcação 2x.
+  async function insertHistory(
+    supabase: ReturnType<typeof createClient>,
+    parts: Participante[],
+    roundNum: number,
+  ) {
+    if (!parts.length) return
+    const ids = parts.map(p => p.id)
+    const { data: existing } = await supabase
+      .from('round_scores').select('participant_id')
+      .eq('tournament_id', torneio.id).eq('round', roundNum)
+      .in('participant_id', ids)
+    const done = new Set((existing ?? []).map(r => r.participant_id))
+    const rows = parts.filter(p => !done.has(p.id)).map(p => ({
+      tournament_id: torneio.id, participant_id: p.id, user_id: p.user_id ?? null,
+      bird_name: p.bird_name, round: roundNum, round_group: p.round_group ?? null,
+      count: scores[p.id] ?? 0,
+    }))
+    if (rows.length) await supabase.from('round_scores').insert(rows)
+  }
+
+  // Eliminar participante: grava os cantos no histórico e registra o motivo.
+  // reason: 'fraud' (botão da área de fraudes) | 'manual' (lista de participantes)
+  async function eliminarParticipante(p: Participante, reason: 'fraud' | 'manual' = 'manual') {
+    const supabase = createClient()
+    await insertHistory(supabase, [p], round)
+    await updateParticipante(p.id, { status: 'eliminated', elimination_reason: reason })
+  }
+
+  // Finalizar torneio: grava os cantos da marcação final no histórico e marca a hora
+  // do encerramento (usada p/ auto-fechar a live + redirecionar o mestre 1h depois).
+  async function finalizeTorneio() {
+    const supabase = createClient()
+    const approved = participantes.filter(p => p.status === 'approved')
+    await insertHistory(supabase, approved, round)
+    const nowIso = new Date().toISOString()
+    setLoading(true)
+    await supabase.from('tournaments').update({ status: 'finished', finished_at: nowIso }).eq('id', torneio.id)
+    setStatus('finished'); setFinishedAt(nowIso); setLoading(false)
+    router.refresh()
   }
 
   async function addSemApp(e: React.FormEvent) {
@@ -252,11 +331,7 @@ export default function MestreClient({
 
     // início de novo ciclo: histórico + zera contagem dos sobreviventes
     if (mcNewCycle) {
-      const snapshot = survivors.map(p => ({
-        tournament_id: torneio.id, participant_id: p.id, user_id: p.user_id ?? null,
-        bird_name: p.bird_name, round, round_group: p.round_group ?? null, count: scores[p.id] ?? 0,
-      }))
-      if (snapshot.length) await supabase.from('round_scores').insert(snapshot)
+      await insertHistory(supabase, survivors, round)
       if (survivors.length) {
         await supabase.from('scores').update({ count: 0, last_click_at: null })
           .in('participant_id', survivors.map(p => p.id)).eq('tournament_id', torneio.id)
@@ -279,7 +354,17 @@ export default function MestreClient({
     }).eq('id', torneio.id)
     setDivisions(mcDivisions); setActiveGroup(1); setRound(newRound); setStartAt(null); setStatus('open')
     autoStartedRef.current = false
+    if (mcNewCycle) setVassouradaDone(false) // novo ciclo → vassourada disponível de novo
     setShowMarcConfig(false); setMcLoading(false)
+    router.refresh()
+  }
+
+  // Aborta a marcação agendada (limpa o horário) → volta a permitir redefinir o início.
+  async function abortarMarcacao() {
+    const supabase = createClient()
+    await supabase.from('tournaments').update({ start_at: null, status: 'open' }).eq('id', torneio.id)
+    setStartAt(null); setStatus('open')
+    autoStartedRef.current = false
     router.refresh()
   }
 
@@ -295,6 +380,16 @@ export default function MestreClient({
     if (!mtHour) return
     setMtLoading(true)
     const supabase = createClient()
+    // avançando para a próxima marcação do ciclo → grava o histórico da que acabou
+    if (mtTarget > activeGroup) {
+      const finishing = participantes.filter(p =>
+        p.status === 'approved' && (divisions <= 1 || p.round_group === activeGroup))
+      await insertHistory(supabase, finishing, round)
+    }
+    // nova marcação começando → zera as possíveis fraudes de todos os participantes
+    await supabase.from('scores').update({ suspicious_count: 0 }).eq('tournament_id', torneio.id)
+    setSuspicious({})
+
     const newDuration = mtDurationMin * 60
     const d = new Date()
     const newStartAt = new Date(d.getFullYear(), d.getMonth(), d.getDate(), parseInt(mtHour), parseInt(mtMin)).toISOString()
@@ -320,18 +415,15 @@ export default function MestreClient({
     const byScore = [...participantes].filter(p => p.status === 'approved').sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0))
     const keep = Math.ceil(byScore.length * (1 - vsPercent / 100))
     const eliminate = byScore.slice(keep)
+    // histórico da marcação que acabou (de-dup evita contar a mesma marcação 2x)
+    await insertHistory(supabase, byScore, round)
     if (eliminate.length) {
-      // histórico: envia os cantos de cada eliminado pro histórico do pássaro (user_id vincula ao usuário cadastrado)
-      const snapshot = eliminate.map(p => ({
-        tournament_id: torneio.id, participant_id: p.id, user_id: p.user_id ?? null,
-        bird_name: p.bird_name, round, round_group: p.round_group ?? null, count: scores[p.id] ?? 0,
-      }))
-      await supabase.from('round_scores').insert(snapshot)
-      await supabase.from('participants').update({ status: 'eliminated' }).in('id', eliminate.map(p => p.id))
-      setParticipantes(prev => prev.map(p => eliminate.find(e => e.id === p.id) ? { ...p, status: 'eliminated' } : p))
+      await supabase.from('participants').update({ status: 'eliminated', elimination_reason: 'vassourada' }).in('id', eliminate.map(p => p.id))
+      setParticipantes(prev => prev.map(p => eliminate.find(e => e.id === p.id) ? { ...p, status: 'eliminated', elimination_reason: 'vassourada' } : p))
     }
+    setVassouradaDone(true) // esconde o botão até o próximo ciclo terminar
     setShowVassoura(false); setVsLoading(false)
-    router.refresh()
+    // sem router.refresh(): recarregar reiniciaria vassouradaDone e reexibiria o botão
   }
 
   // Salva os cantos dos participantes sem app (contagem atribuída ao fim da marcação).
@@ -388,8 +480,18 @@ export default function MestreClient({
     (status === 'open' && (msUntilStart === null || msUntilStart >= 600_000))
   )
 
-  // ranking — only approved (not eliminated)
+  // ranking — só aprovados da marcação (grupo) ATUAL em andamento
   const ranking = [...participantes]
+    .filter(p => p.status === 'approved' && (divisions <= 1 || p.round_group === activeGroup))
+    .sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0))
+
+  // possíveis fraudes da marcação atual, do maior p/ o menor nº de suspeitas
+  const fraudList = ranking
+    .filter(p => (suspicious[p.id] ?? 0) > 0)
+    .sort((a, b) => (suspicious[b.id] ?? 0) - (suspicious[a.id] ?? 0))
+
+  // ranking geral — todos os aprovados (todas as marcações do ciclo)
+  const rankingGeral = [...participantes]
     .filter(p => p.status === 'approved')
     .sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0))
 
@@ -400,6 +502,9 @@ export default function MestreClient({
   const groupsAssigned = participantes.some(p => p.status === 'approved' && p.round_group != null)
   // configurou as marcações mas ainda falta agendar o horário da marcação atual
   const awaitingTiming = (status === 'open' || status === 'running') && !startAt && groupsAssigned
+  // marcação agendada mas ainda não começou (contagem regressiva rolando) → pode abortar
+  const awaitingStart = startAt !== null && msUntilStart !== null && msUntilStart > 0 &&
+    (status === 'open' || roundPhase === 'waiting')
   // rótulo "Marcação {ciclo}-{grupo}"
   const marcLabel = divisions > 1 ? `${round}-${activeGroup}` : `${round}`
 
@@ -428,10 +533,31 @@ export default function MestreClient({
     marginBottom: 5, letterSpacing: '0.06em', textTransform: 'uppercase',
   }
 
+  // tempo restante p/ auto-fechar a live e sair (1h após finalizar)
+  const finishedCloseMsLeft = (status === 'finished' && finishedAt && now)
+    ? new Date(finishedAt).getTime() + 3600_000 - now.getTime()
+    : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
+
+      {/* ── Torneio finalizado ── */}
+      {status === 'finished' && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 12, padding: '16px 18px' }}>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: '0.95rem', color: '#065F46', display: 'flex', alignItems: 'center', gap: 8 }}>
+            🏁 Torneio finalizado
+          </p>
+          <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#047857', lineHeight: 1.5 }}>
+            {streamUrl ? 'Você ainda pode encerrar a live. ' : ''}
+            A live é encerrada e você é redirecionado automaticamente
+            {finishedCloseMsLeft !== null && finishedCloseMsLeft > 0
+              ? <> em <strong>{formatMs(finishedCloseMsLeft)}</strong>.</>
+              : ' em breve.'}
+          </p>
+        </div>
+      )}
 
       {/* ── Relógio ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -571,6 +697,14 @@ export default function MestreClient({
           </button>
         )}
 
+        {/* Marcação agendada, contagem regressiva rolando → abortar e redefinir horário */}
+        {awaitingStart && (
+          <button onClick={() => ask(`Abortar a marcação ${marcLabel} e redefinir o horário de início?`, abortarMarcacao)}
+            style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ✕ Abortar marcação {marcLabel}
+          </button>
+        )}
+
         {/* Fim de uma marcação, mas ainda há marcações no ciclo → cantos sem app + configurar a próxima */}
         {roundPhase === 'done' && !allGroupsDone && (
           <>
@@ -599,25 +733,28 @@ export default function MestreClient({
             {/* mais marcações/vassourada só quando o ciclo teve +1 marcação; 1 marcação = rodada final */}
             {divisions > 1 && (
               <>
-                <button onClick={openVassoura}
-                  style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  🧹 Vassourada
-                </button>
+                {/* vassourada some após usada; volta só no fim do próximo ciclo */}
+                {!vassouradaDone && (
+                  <button onClick={openVassoura}
+                    style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    🧹 Vassourada
+                  </button>
+                )}
                 <button onClick={() => openMarcConfig(true)}
                   style={{ background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Configuração da Marcação
                 </button>
               </>
             )}
-            <button onClick={() => ask('Tem certeza que deseja finalizar o torneio?', () => updateStatus('finished'))} disabled={loading}
+            <button onClick={() => ask('Tem certeza que deseja finalizar o torneio?', finalizeTorneio)} disabled={loading}
               style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
               ■ Finalizar torneio
             </button>
           </>
         )}
 
-        {/* Iniciar/Encerrar live — disponível desde a criação do torneio */}
-        {status !== 'finished' && (
+        {/* Iniciar/Encerrar live — após finalizar, só resta encerrar a live */}
+        {(status !== 'finished' || streamUrl) && (
           <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
             style={{
               background: streamUrl ? '#FEF2F2' : '#111827', color: streamUrl ? '#DC2626' : '#fff',
@@ -906,6 +1043,48 @@ export default function MestreClient({
         </div>
       )}
 
+      {/* ── Possíveis fraudes da marcação atual ── */}
+      {fraudList.length > 0 && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ margin: 0, fontWeight: 800, fontSize: '0.9rem', color: '#92400E', display: 'flex', alignItems: 'center', gap: 8 }}>
+            ⚠ Possíveis fraudes · Marcação {marcLabel}
+          </p>
+          <p style={{ margin: 0, fontSize: '0.72rem', color: '#B45309' }}>
+            Participantes marcando rápido demais (cliques &lt; 1s). Verifique quem pode estar burlando.
+          </p>
+          {fraudList.map(p => {
+            const n = suspicious[p.id] ?? 0
+            const fc = fraudColor(n)
+            return (
+              <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: '#fff', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {p.cage_number != null && (
+                    <span title="Número da gaiola" style={{ flexShrink: 0, background: '#111827', color: '#fff', borderRadius: 8, padding: '4px 10px', fontSize: '1.05rem', fontWeight: 900, letterSpacing: '-0.02em', minWidth: 38, textAlign: 'center' }}>
+                      G{p.cage_number}
+                    </span>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.bird_name}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.user_name} · {scores[p.id] ?? 0} cantos
+                    </p>
+                  </div>
+                  <span title={`${n} marcações suspeitas`} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '4px 10px', fontSize: '0.78rem', fontWeight: 800 }}>
+                    ⚠ {n}
+                  </span>
+                </div>
+                {status !== 'finished' && (
+                  <button onClick={() => ask(`Eliminar ${p.bird_name} por fraude?`, () => eliminarParticipante(p, 'fraud'))}
+                    style={{ width: '100%', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 8, padding: '9px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Eliminar por fraude
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── Ranking ao vivo ── */}
       {ranking.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -914,10 +1093,54 @@ export default function MestreClient({
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
               <span style={{ fontSize: '1.1rem', fontWeight: 800, color: i < 3 ? ['#B45309','#6B7280','#92400E'][i] : '#D1D5DB', width: 28, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827' }}>{p.bird_name}</p>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {p.bird_name}
+                  {(suspicious[p.id] ?? 0) > 0 && (() => {
+                    const fc = fraudColor(suspicious[p.id])
+                    return (
+                      <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800 }}>
+                        ⚠ {suspicious[p.id]}
+                      </span>
+                    )
+                  })()}
+                </p>
                 <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                   {p.user_name}
                   {p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
+                  {!p.user_id && <span style={{ marginLeft: 6, color: '#7C3AED', fontWeight: 700 }}>· fora do app</span>}
+                </p>
+              </div>
+              <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0D8F41', letterSpacing: '-0.02em' }}>{scores[p.id] ?? 0}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Ranking geral (todos os participantes) ── */}
+      {divisions > 1 && rankingGeral.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>Ranking geral</p>
+          {rankingGeral.map((p, i) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: i < 3 ? ['#B45309','#6B7280','#92400E'][i] : '#D1D5DB', width: 28, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {p.bird_name}
+                  {(suspicious[p.id] ?? 0) > 0 && (() => {
+                    const fc = fraudColor(suspicious[p.id])
+                    return (
+                      <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800 }}>
+                        ⚠ {suspicious[p.id]}
+                      </span>
+                    )
+                  })()}
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                  {p.user_name}
+                  {p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
+                  {divisions > 1 && p.round_group ? ` · marcação ${round}-${p.round_group}` : ''}
                   {!p.user_id && <span style={{ marginLeft: 6, color: '#7C3AED', fontWeight: 700 }}>· fora do app</span>}
                 </p>
               </div>
@@ -934,8 +1157,8 @@ export default function MestreClient({
           <p style={{ fontSize: '0.85rem', color: '#9CA3AF', margin: 0 }}>Nenhum ainda. Compartilhe o QR code.</p>
         )}
         {participantes.map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: p.status === 'eliminated' ? '#FAFAFA' : '#fff', opacity: p.status === 'eliminated' ? 0.5 : 1 }}>
-            <div style={{ flex: 1 }}>
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: p.status === 'eliminated' ? '#FAFAFA' : '#fff', opacity: p.status === 'eliminated' ? 0.5 : 1, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 150px', minWidth: 150 }}>
               <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827' }}>{p.bird_name}</p>
               <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                 {p.user_name}
@@ -958,9 +1181,17 @@ export default function MestreClient({
               </div>
             )}
             {p.status === 'approved' && (
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0D8F41', background: '#F0FDF4', borderRadius: 20, padding: '4px 10px', flexShrink: 0 }}>
-                Aprovado{p.cage_number ? ` · G${p.cage_number}` : ''}
-              </span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0D8F41', background: '#F0FDF4', borderRadius: 20, padding: '4px 10px' }}>
+                  Aprovado{p.cage_number ? ` · G${p.cage_number}` : ''}
+                </span>
+                {status !== 'finished' && (
+                  <button onClick={() => ask(`Eliminar ${p.bird_name} do torneio?`, () => eliminarParticipante(p, 'manual'))}
+                    style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 7, padding: '5px 10px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Eliminar
+                  </button>
+                )}
+              </div>
             )}
             {p.status === 'rejected' && <span style={{ fontSize: '0.72rem', color: '#EF4444', flexShrink: 0 }}>Recusado</span>}
             {p.status === 'eliminated' && <span style={{ fontSize: '0.72rem', color: '#DC2626', flexShrink: 0 }}>Eliminado</span>}

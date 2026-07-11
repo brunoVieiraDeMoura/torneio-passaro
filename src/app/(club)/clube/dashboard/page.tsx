@@ -44,7 +44,7 @@ export default async function ClubeDashboard() {
       </div>
 
       {/* stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}>
+      <div className="club-stats-4" style={{ marginBottom: 28 }}>
         {[
           { label: 'Total',      value: total,      color: '#374151', bg: '#F9FAFB', border: '#E5E7EB' },
           { label: 'Abertos',    value: abertos,    color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
@@ -59,7 +59,7 @@ export default async function ClubeDashboard() {
       </div>
 
       {/* quick actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 28 }}>
+      <div className="club-actions-2" style={{ marginBottom: 28 }}>
         <Link href="/clube/torneios" style={{ textDecoration: 'none', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '20px', display: 'flex', alignItems: 'center', gap: 14, transition: 'border-color 0.12s' }}>
           <div style={{ width: 40, height: 40, background: '#F0FDF4', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D8F41" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -167,7 +167,7 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
 
   return (
     <>
-      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fff', borderBottom: '1px solid #F3F4F6' }}>
+      <header className="site-header" style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fff', borderBottom: '1px solid #F3F4F6' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', gap: 8 }}>
 
           {/* logo */}

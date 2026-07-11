@@ -76,7 +76,12 @@ export default function GeoList({ all }: { all: Item[] }) {
       live:     sorted.filter(t => t.status === 'running'),
       open:     sorted.filter(t => t.status === 'open' && !isFutureDay(t.start_at)),
       upcoming: sorted.filter(t => t.status !== 'finished' && t.status !== 'running' && isFutureDay(t.start_at)),
-      finished: sorted.filter(t => t.status === 'finished'),
+      // encerrados: do finalizado mais recente para o mais antigo
+      finished: sorted.filter(t => t.status === 'finished').sort((a, b) => {
+        const da = a.start_at ? new Date(a.start_at).getTime() : -Infinity
+        const db = b.start_at ? new Date(b.start_at).getTime() : -Infinity
+        return db - da
+      }),
     }
   }, [all, cidade, estado])
 

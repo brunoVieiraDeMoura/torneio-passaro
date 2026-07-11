@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 interface Torneio {
@@ -20,6 +21,7 @@ interface Participante {
   cage_number: number | null
   status: string
   round_group: number | null
+  elimination_reason?: string | null
 }
 
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -77,9 +79,35 @@ export default function ParticipanteClient({
   const [divisions, setDivisions] = useState(torneio.divisions ?? 1)
   const [roundGroup, setRoundGroup] = useState<number | null>(participante.round_group)
   const [participanteStatus, setParticipanteStatus] = useState(participante.status)
+  const [eliminationReason, setEliminationReason] = useState<string | null>(participante.elimination_reason ?? null)
+  const router = useRouter()
   const [clicking, setClicking] = useState(false)
   const pendingRef = useRef(0)     // cliques ainda não enviados ao servidor
   const flushingRef = useRef(false)
+  // anti-fraude: detecta cliques em < 1s
+  const lastClickRef = useRef(0)
+  const suspiciousPendingRef = useRef(0)   // suspeitas ainda não enviadas
+  const fraudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [fraudWarning, setFraudWarning] = useState(false)
+  const [fraudFlash, setFraudFlash] = useState(false)   // troca o nº do botão por ⚠ por 0.5s
+
+  // O número do botão é PURAMENTE LOCAL. O participante é a única fonte dos próprios
+  // cliques, então cada toque incrementa o contador na hora e NADA externo (realtime/
+  // poll/flush) o move pra cima — isso elimina os glitches (ex.: 1 2 3 4 3 4), que vinham
+  // de reconciliar `servidor + pendentes` em janelas onde esse valor ficava menor que os
+  // cliques já mostrados. O servidor é só persistência (write-only) + valor inicial no load.
+  // Reset só acontece quando começa uma NOVA marcação (novo start_at).
+  const marcacaoKeyRef = useRef<string | null>(torneio.start_at)
+  useEffect(() => {
+    if (startAt !== marcacaoKeyRef.current) {
+      marcacaoKeyRef.current = startAt
+      if (startAt) {
+        pendingRef.current = 0
+        setCount(0)
+      }
+    }
+  }, [startAt])
 
   // ranking ao vivo + total do pássaro (soma das marcações) p/ telas de espera e final
   const [ranking, setRanking] = useState<{ id: string; bird_name: string; user_name: string; cage_number: number | null; score: number; round_group: number | null }[]>([])
@@ -91,6 +119,19 @@ export default function ParticipanteClient({
     const id = setInterval(() => setNow(new Date()), 500)
     return () => clearInterval(id)
   }, [])
+
+  // limpa os timers de fraude ao desmontar
+  useEffect(() => () => {
+    if (fraudTimerRef.current) clearTimeout(fraudTimerRef.current)
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+  }, [])
+
+  // eliminado → redireciona pro torneio em modo telespectador após 5s (tempo de ler o motivo)
+  useEffect(() => {
+    if (participanteStatus !== 'eliminated') return
+    const id = setTimeout(() => router.push(`/torneio/${torneio.id}`), 5000)
+    return () => clearTimeout(id)
+  }, [participanteStatus, torneio.id, router])
 
   // Realtime
   useEffect(() => {
@@ -109,9 +150,8 @@ export default function ParticipanteClient({
         payload => {
           if (payload.new.status !== undefined) setParticipanteStatus(payload.new.status)
           if (payload.new.round_group !== undefined) setRoundGroup(payload.new.round_group)
+          if (payload.new.elimination_reason !== undefined) setEliminationReason(payload.new.elimination_reason)
         })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `participant_id=eq.${participante.id}` },
-        payload => { if ('count' in payload.new) setCount((payload.new.count as number) + pendingRef.current) })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [torneio.id, participante.id])
@@ -124,20 +164,17 @@ export default function ParticipanteClient({
     const supabase = createClient()
     let active = true
     const load = async () => {
-      const [{ data: p }, { data: t }, { data: sc }] = await Promise.all([
-        supabase.from('participants').select('status, round_group').eq('id', participante.id).single(),
+      const [{ data: p }, { data: t }] = await Promise.all([
+        supabase.from('participants').select('status, round_group, elimination_reason').eq('id', participante.id).single(),
         supabase.from('tournaments').select('status, start_at, duration_secs, active_group, divisions').eq('id', torneio.id).single(),
-        supabase.from('scores').select('count').eq('participant_id', participante.id).eq('tournament_id', torneio.id).maybeSingle(),
       ])
       if (!active) return
-      if (p) { setParticipanteStatus(p.status); setRoundGroup(p.round_group) }
+      if (p) { setParticipanteStatus(p.status); setRoundGroup(p.round_group); setEliminationReason((p as { elimination_reason?: string | null }).elimination_reason ?? null) }
       if (t) {
         setTorneioStatus(t.status); setStartAt(t.start_at); setDurationSecs(t.duration_secs)
         setActiveGroup(t.active_group ?? 1); setDivisions(t.divisions ?? 1)
       }
-      // sincroniza o contador com o servidor (reseta quando o mestre zera no novo ciclo)
-      // verdade do servidor + cliques ainda não enviados
-      setCount((sc?.count ?? 0) + pendingRef.current)
+      // o contador NÃO é sincronizado aqui — é local; o reset vem da troca de start_at
     }
     load()
     const id = setInterval(load, 2000)
@@ -184,22 +221,27 @@ export default function ParticipanteClient({
     if (delta <= 0) return
     flushingRef.current = true
     pendingRef.current = 0
+    const susp = suspiciousPendingRef.current
+    suspiciousPendingRef.current = 0
     try {
       const res = await fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: participante.id, tournamentId: torneio.id, increment: delta }),
+        body: JSON.stringify({ participantId: participante.id, tournamentId: torneio.id, increment: delta, suspicious: susp }),
       })
       if (res.ok) {
-        const data = await res.json()
-        // verdade do servidor + cliques que chegaram durante a requisição
-        setCount(data.count + pendingRef.current)
-      } else {
-        // falhou: devolve o delta pra reenviar no próximo ciclo (não perde contagem)
+        // sucesso: servidor persistiu. NÃO mexemos no contador (é local) — evita glitch.
+      } else if (res.status >= 500) {
+        // erro do servidor: devolve delta + suspeitas pra reenviar no próximo ciclo
         pendingRef.current += delta
+        suspiciousPendingRef.current += susp
       }
+      // 4xx (tempo esgotado / não é sua vez): descarta — reenviar nunca vai passar,
+      // evita loop infinito de POST no fim da marcação (spam + ERR_CONNECTION_REFUSED)
     } catch {
+      // falha de rede: devolve pra tentar de novo
       pendingRef.current += delta
+      suspiciousPendingRef.current += susp
     } finally {
       flushingRef.current = false
     }
@@ -235,10 +277,35 @@ export default function ParticipanteClient({
     return () => { active = false; clearInterval(id) }
   }, [participanteStatus, torneioStatus, torneio.id, participante.id])
 
+  // Esconde o header/menu enquanto o participante está no torneio.
+  // Volta a aparecer quando o torneio é concluído OU 2h após o início.
+  const twoHoursAfterStart =
+    startAtMs !== null && nowMs !== null && nowMs >= startAtMs + 2 * 3600 * 1000
+  const hideHeader = participanteStatus === 'approved' && !isFinished && !twoHoursAfterStart
+  useEffect(() => {
+    document.body.classList.toggle('hide-site-header', hideHeader)
+    return () => document.body.classList.remove('hide-site-header')
+  }, [hideHeader])
+
   const handleClick = useCallback(() => {
     if (!isRunning || !isCountingDown) return
     if (participanteStatus !== 'approved') return
     if (!isMyTurn) return
+
+    // Anti-fraude: 2 cliques em menos de 1s → suspeita. Avisa o participante e
+    // contabiliza pro Chefe de Roda (scores.suspicious_count).
+    const t = Date.now()
+    if (t - lastClickRef.current < 1000) {
+      suspiciousPendingRef.current += 1
+      setFraudWarning(true)
+      if (fraudTimerRef.current) clearTimeout(fraudTimerRef.current)
+      fraudTimerRef.current = setTimeout(() => setFraudWarning(false), 5000)
+      // troca o número do botão pelo ícone de alerta por 0.5s
+      setFraudFlash(true)
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      flashTimerRef.current = setTimeout(() => setFraudFlash(false), 500)
+    }
+    lastClickRef.current = t
 
     // sem debounce por clique — cada toque conta; o envio é agrupado a cada 1s
     pendingRef.current += 1
@@ -269,11 +336,24 @@ export default function ParticipanteClient({
   }
 
   if (participanteStatus === 'eliminated') {
+    const elim =
+      eliminationReason === 'fraud'
+        ? { emoji: '🚫', title: 'Eliminado por fraude', msg: 'Você foi eliminado por violar as diretrizes do torneio.' }
+      : eliminationReason === 'manual'
+        ? { emoji: '🏳️', title: 'Você foi eliminado', msg: 'Peça mais informações ao Chefe de Roda sobre a sua eliminação.' }
+        : { emoji: '🏳️', title: 'Não classificado', msg: 'Você não se classificou para a próxima fase. Obrigado por participar!' }
     return (
       <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 24px', textAlign: 'center', background: '#fff' }}>
-        <span style={{ fontSize: '3rem' }}>🏳️</span>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Eliminado</h1>
-        <p style={{ color: '#9CA3AF', fontSize: '0.85rem', margin: 0 }}>Você não passou na vassourada. Obrigado por participar!</p>
+        <span style={{ fontSize: '3rem' }}>{elim.emoji}</span>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{elim.title}</h1>
+        <p style={{ color: '#6B7280', fontSize: '0.88rem', margin: 0, maxWidth: 340, lineHeight: 1.55 }}>{elim.msg}</p>
+        <p style={{ color: '#9CA3AF', fontSize: '0.78rem', margin: '4px 0 0' }}>
+          Redirecionando para o torneio em modo telespectador…
+        </p>
+        <button onClick={() => router.push(`/torneio/${torneio.id}`)}
+          style={{ marginTop: 4, padding: '11px 22px', background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Assistir agora
+        </button>
       </main>
     )
   }
@@ -302,7 +382,27 @@ export default function ParticipanteClient({
   }
 
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: showRankingScreen ? 'flex-start' : 'center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '32px 20px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '32px 20px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+
+      {/* ── Aviso de fraude (toast fixo no topo — NÃO afeta o layout/botão) ── */}
+      {fraudWarning && (
+        <div style={{
+          position: 'fixed', top: 12, left: 12, right: 12, zIndex: 9998,
+          display: 'flex', justifyContent: 'center', pointerEvents: 'none',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12,
+            padding: '12px 14px', maxWidth: 380, width: '100%',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+          }}>
+            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>⚠️</span>
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#B91C1C', lineHeight: 1.45, fontWeight: 600 }}>
+              Cuidado com a velocidade que está marcando. Isso pode comprometer a integridade e violar as regras.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Aviso modo avião ── */}
       {showAirplane && (
@@ -411,19 +511,27 @@ export default function ParticipanteClient({
             onPointerDown={handleClick}
             style={{
               width: 256, height: 256, borderRadius: '50%',
-              background: clicking ? '#16A34A' : '#0D8F41',
+              background: fraudFlash ? '#DC2626' : (clicking ? '#16A34A' : '#0D8F41'),
               color: '#fff', fontWeight: 800, fontSize: '3rem',
               border: 'none', cursor: 'pointer',
-              boxShadow: clicking
-                ? '0 4px 20px rgba(13,143,65,0.4)'
-                : '0 12px 40px rgba(13,143,65,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: fraudFlash
+                ? '0 12px 40px rgba(220,38,38,0.45)'
+                : clicking
+                  ? '0 4px 20px rgba(13,143,65,0.4)'
+                  : '0 12px 40px rgba(13,143,65,0.35)',
               transform: clicking ? 'scale(0.94)' : 'scale(1)',
               transition: 'transform 0.1s, box-shadow 0.1s, background 0.1s',
               userSelect: 'none', WebkitUserSelect: 'none',
               touchAction: 'manipulation',
             }}
           >
-            {count}
+            {fraudFlash ? (
+              <svg width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Alerta de fraude">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            ) : count}
           </button>
 
           <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>Toque para contar o canto</p>

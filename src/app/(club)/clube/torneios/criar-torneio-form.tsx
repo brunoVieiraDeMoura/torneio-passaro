@@ -104,8 +104,8 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
             <input style={inp} placeholder="Ex: Copa Primavera 2025" value={name} onChange={e => setName(e.target.value)} required autoFocus />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            <div>
+          <div className="tform-datetime">
+            <div className="tf-date">
               <label style={lbl}>Data</label>
               <input style={inp} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
             </div>
@@ -123,11 +123,6 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
                 {MINS.map(m => <option key={m} value={m} style={{ color: '#111827' }}>{m}min</option>)}
               </select>
             </div>
-          </div>
-
-          <div>
-            <label style={lbl}>Duração (minutos)</label>
-            <input style={inp} type="number" min={1} max={120} value={duration} onChange={e => setDuration(Number(e.target.value))} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

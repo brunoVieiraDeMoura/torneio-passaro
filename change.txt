@@ -1,35 +1,8 @@
-modificações ui
+http://localhost:3000/mestre/torneio/ca7155fc-2da6-4272-85dc-142e08aa7ebb
+após torneio ser finalizado, some o botão "Eliminar", o torneio se fecha, e o usuário mestre do torneio só tem a posibilidade de fechar a live, após finalizado, o torneio redireciona o mestre do torneio e fecha a live automáticamente em 1 hora.
 
-http://localhost:3000/ :
-	-menu hamburguer padronizar o botão de entrar, com border radius igual ao botao de criar, só que com o bg transparente e a borda verde
+O numero de cantos do passáro deve ser contabilizado para o mesmo a cada marcação que ele participar,
+caso no mesmo torneio ele participe de 1 ou mais marcações, todas elas vão para o histórico dele.
 
-
-http://localhost:3000/login:
-	-o header parece estar sem diplayflex, e o menu n está no lado direito
-	-remover o card de fundo de login e centralizar os textos e inputs
-	-criar um botão para voltar para home, não só pelo logo
-
-http://localhost:3000/cadastro
-	-fazer as mesmas alterações do login
-
-
-http://localhost:3000/clube/dashboard:
-	-logo e menu no mobile estão invertidos
-	-o menu esta abrindo da esquerda para direita, deveria ser ao contrario
-
-
-http://localhost:3000/mestre/torneio/5ae1b863-650c-4d8f-ab80-d724bbe565d6
-
-	-criar um botão para "eliminar" um candidato do torneio
-	-adicionar o canto do passarinho para seu respectivo histórico após cada rodada de marcação, e não apenas a ultima ou após a eliminação. (verifique para não marcar duas vezes a mesma marcação)
-
-http://localhost:3000/meus-passarinhos
-	-ordenar passaros por numero de cantos
-
-
-http://localhost:3000/meus-passarinhos/ab6d709e-cfc6-405a-a236-1775be623927
-	- Histórico de campeonatos deixar mais responsivo para mobile, está tudo quebrado
-
-
-http://localhost:3000/clube/*
-	-passe por todos os paths de /clube/* e refaça de maneira responsiva para a parte mobile
+A mensagem de fraude gerada para o Usuário que está marcando, deve cer acima do botão, não pode interferir no botão de maneira algum, sem nem mover o botão.
+ainda está dando alguns bugs visais na quantidade de clique no inicio, talvez seja por conta do cache ao marcar o botão,"glitch" clicar 4 vezes mostra algo ao contar ex: 1 2 3 4 3 4

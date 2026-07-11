@@ -1,15 +1,21 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { sortByProximityAndStatus, type Item } from '@/app/(public)/torneios/_utils'
 
+type ClubRel = { name: string; cidade: string; estado: string } | null
+
 export default function TorneiosPreview({ torneios }: { torneios: Item[] }) {
+  const [items, setItems] = useState<Item[]>(torneios)
   const [cidade, setCidade] = useState('')
   const [estado, setEstado] = useState('')
   const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => { setItems(torneios) }, [torneios])
 
   useEffect(() => {
     setCidade(localStorage.getItem('liga_cidade') ?? '')
@@ -17,9 +23,42 @@ export default function TorneiosPreview({ torneios }: { torneios: Item[] }) {
     setHydrated(true)
   }, [])
 
+  // recarrega a lista de torneios abertos/ao vivo (mesmo shape do server)
+  const refetch = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('tournaments')
+      .select('id, name, status, tipo_ave, estilo_canto, start_at, qr_token, clubs(name, cidade, estado), participants(count)')
+      .in('status', ['open', 'running'])
+      .order('status', { ascending: false })
+    if (!data) return
+    setItems(data.map(t => {
+      const c = t.clubs as unknown as ClubRel
+      return {
+        id: t.id, name: t.name, status: t.status,
+        qr_token: (t as Record<string, unknown>).qr_token as string | null ?? null,
+        clube: c?.name ?? null, cidade: c?.cidade ?? null, estado: c?.estado ?? null,
+        n: (t.participants as unknown as { count: number }[] | null)?.[0]?.count ?? null,
+        start_at: (t as Record<string, unknown>).start_at as string | null ?? null,
+        tipo_ave: (t as Record<string, unknown>).tipo_ave as string | null ?? null,
+        estilo_canto: (t as Record<string, unknown>).estilo_canto as string | null ?? null,
+      } as Item
+    }))
+  }, [])
+
+  // realtime: qualquer torneio criado/alterado aparece sem refresh
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('home:torneios')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' }, () => { void refetch() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [refetch])
+
   const sorted = useMemo(
-    () => sortByProximityAndStatus(torneios, cidade, estado).slice(0, 3),
-    [torneios, cidade, estado],
+    () => sortByProximityAndStatus(items, cidade, estado).slice(0, 3),
+    [items, cidade, estado],
   )
 
   const locationLabel = hydrated && cidade
