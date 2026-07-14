@@ -27,6 +27,13 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
+  // Rotas de API validam as próprias regras (ex.: /api/score confere janela de tempo
+  // e participante aprovado). Redirecionar pra /login devolvia HTML com status 200 ao
+  // fetch — o participante com sessão expirada "enviava" cantos que nunca eram gravados.
+  if (pathname.startsWith('/api/')) {
+    return supabaseResponse
+  }
+
   // not logged in: allow auth + public paths, redirect rest to login
   if (!user) {
     const allowed = [...AUTH_PATHS, ...PUBLIC_PATHS].some(p => pathname === p || pathname.startsWith(p + '/'))

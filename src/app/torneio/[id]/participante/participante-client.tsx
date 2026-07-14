@@ -101,15 +101,51 @@ export default function ParticipanteClient({
   // cliques já mostrados. O servidor é só persistência (write-only) + valor inicial no load.
   // Reset só acontece quando começa uma NOVA marcação (novo start_at).
   const marcacaoKeyRef = useRef<string | null>(torneio.start_at)
+
+  // ── Cache offline: cliques ainda não enviados sobrevivem a queda de internet,
+  // crash ou reload do webapp. Salvos por marcação (start_at) e reenviados ao voltar.
+  const storageKey = `aveum_pending_${participante.id}`
+  const persistPending = useCallback(() => {
+    try {
+      if (pendingRef.current > 0 || suspiciousPendingRef.current > 0) {
+        localStorage.setItem(storageKey, JSON.stringify({
+          startAt: marcacaoKeyRef.current,
+          pending: pendingRef.current,
+          suspicious: suspiciousPendingRef.current,
+        }))
+      } else {
+        localStorage.removeItem(storageKey)
+      }
+    } catch { /* storage indisponível: segue só em memória */ }
+  }, [storageKey])
+
+  // restaura cliques pendentes de um crash/reload DA MESMA marcação
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey)
+      if (!raw) return
+      const saved = JSON.parse(raw) as { startAt: string | null; pending: number; suspicious: number }
+      if (saved.startAt === torneio.start_at && saved.pending > 0) {
+        pendingRef.current += saved.pending
+        suspiciousPendingRef.current += saved.suspicious ?? 0
+        setCount(c => c + saved.pending) // initialCount (servidor) + o que ainda não foi enviado
+      } else if (saved.startAt !== torneio.start_at) {
+        localStorage.removeItem(storageKey) // marcação antiga: descarta
+      }
+    } catch { /* JSON corrompido: ignora */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (startAt !== marcacaoKeyRef.current) {
       marcacaoKeyRef.current = startAt
       if (startAt) {
         pendingRef.current = 0
         setCount(0)
+        try { localStorage.removeItem(storageKey) } catch {}
       }
     }
-  }, [startAt])
+  }, [startAt, storageKey])
 
   // ranking ao vivo + total do pássaro (soma das marcações) p/ telas de espera e final
   const [ranking, setRanking] = useState<{ id: string; bird_name: string; user_name: string; cage_number: number | null; score: number; round_group: number | null }[]>([])
@@ -216,15 +252,17 @@ export default function ParticipanteClient({
     (torneioStatus === 'open' || (isRunning && msUntilStart !== null && msUntilStart > 0)) &&
     msUntilStart !== null && msUntilStart <= 300_000 && msUntilStart > 120_000
 
-  // Envia ao servidor o total de cliques acumulados (delta). Chamado no máx 1x/seg.
+  // Envia ao servidor os cliques acumulados. Chamado no máx 1x/seg. Envia no máximo
+  // 30 por vez (teto anti-abuso do servidor) — um backlog offline grande é drenado
+  // em lotes de 30/s até esvaziar.
   const flush = useCallback(async () => {
     if (flushingRef.current) return
-    const delta = pendingRef.current
+    const delta = Math.min(30, pendingRef.current)
     if (delta <= 0) return
     flushingRef.current = true
-    pendingRef.current = 0
-    const susp = suspiciousPendingRef.current
-    suspiciousPendingRef.current = 0
+    pendingRef.current -= delta
+    const susp = Math.min(30, suspiciousPendingRef.current)
+    suspiciousPendingRef.current -= susp
     try {
       const res = await fetch('/api/score', {
         method: 'POST',
@@ -237,17 +275,21 @@ export default function ParticipanteClient({
         // erro do servidor: devolve delta + suspeitas pra reenviar no próximo ciclo
         pendingRef.current += delta
         suspiciousPendingRef.current += susp
+      } else {
+        // 4xx (tempo esgotado / não é sua vez): descarta — reenviar nunca vai passar,
+        // evita loop infinito de POST no fim da marcação. Limpa o cache offline junto.
+        pendingRef.current = 0
+        suspiciousPendingRef.current = 0
       }
-      // 4xx (tempo esgotado / não é sua vez): descarta — reenviar nunca vai passar,
-      // evita loop infinito de POST no fim da marcação (spam + ERR_CONNECTION_REFUSED)
     } catch {
-      // falha de rede: devolve pra tentar de novo
+      // falha de rede: devolve pra tentar de novo (e fica salvo no localStorage)
       pendingRef.current += delta
       suspiciousPendingRef.current += susp
     } finally {
       flushingRef.current = false
+      persistPending()
     }
-  }, [participante.id, torneio.id])
+  }, [participante.id, torneio.id, persistPending])
 
   // Limitador: envia acumulado a cada 1s (conta todos os cliques, mesmo os rápidos)
   useEffect(() => {
@@ -318,9 +360,10 @@ export default function ParticipanteClient({
     // sem debounce por clique — cada toque conta; o envio é agrupado a cada 1s
     pendingRef.current += 1
     setCount(prev => prev + 1)
+    persistPending() // backup offline a cada clique (sobrevive a queda/reload)
     setClicking(true)
     setTimeout(() => setClicking(false), 100)
-  }, [isRunning, isCountingDown, participanteStatus, isMyTurn])
+  }, [isRunning, isCountingDown, participanteStatus, isMyTurn, persistPending])
 
   // ── Telas de estado ──
 
@@ -412,60 +455,62 @@ export default function ParticipanteClient({
         </div>
       )}
 
-      {/* ── Aviso modo avião ── */}
+      {/* ── Dica: modo avião (tom leve, sem bloquear com cor pesada) ── */}
       {showAirplane && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.88)',
+          background: 'rgba(17,24,39,0.45)', backdropFilter: 'blur(2px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 24,
         }}>
           <div style={{
-            background: '#0A1F0E', borderRadius: 20,
-            border: '1px solid rgba(13,143,65,0.3)',
-            padding: '36px 32px', width: '100%', maxWidth: 420,
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
-            display: 'flex', flexDirection: 'column', gap: 20, textAlign: 'center',
+            background: '#fff', borderRadius: 20,
+            border: '1px solid #E5E7EB',
+            padding: '28px 26px', width: '100%', maxWidth: 420,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+            display: 'flex', flexDirection: 'column', gap: 18, textAlign: 'center',
           }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
                 <div style={{
-                  width: 72, height: 72, borderRadius: '50%',
-                  background: '#0D8F41',
+                  width: 56, height: 56, borderRadius: '50%',
+                  background: '#F0FDF4', border: '1px solid #D1FAE5',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 20px rgba(13,143,65,0.5)',
                 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/airplane.svg" alt="Modo avião" width={32} height={32} style={{ filter: 'brightness(0) invert(1)' }} />
+                  <img src="/airplane.svg" alt="Modo avião" width={26} height={26} />
                 </div>
               </div>
-              <p style={{ margin: 0, fontWeight: 900, fontSize: '1.3rem', color: '#fff', lineHeight: 1.2 }}>
-                Coloque seu celular<br />em modo avião!
+              <p style={{ margin: '0 0 4px', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0D8F41' }}>
+                💡 Dica
               </p>
-              <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#4ADE80', fontWeight: 600 }}>
-                Esta mensagem some automaticamente faltando 2 minutos
+              <p style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem', color: '#111827', lineHeight: 1.3 }}>
+                Que tal ativar o modo avião?
+              </p>
+              <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#6B7280', lineHeight: 1.5 }}>
+                Evita ligações e notificações atrapalhando a sua marcação. Este aviso some sozinho faltando 2 minutos.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left' }}>
               {([
-                'Arraste do canto superior direito da tela para baixo para abrir o painel rápido',
-                <span key="s2">Toque no ícone{' '}<span style={{ display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle', background: '#0D8F41', borderRadius: '50%', width: 20, height: 20, justifyContent: 'center', margin: '0 3px' }}><img src="/airplane.svg" alt="" width={11} height={11} style={{ filter: 'brightness(0) invert(1)' }} /></span>{' '}para ativar o modo avião</span>,
-                'Nos apps de mensagem (WhatsApp, etc.) desative as notificações antes de começar',
+                'Arraste do canto superior da tela para baixo para abrir o painel rápido',
+                <span key="s2">Toque no ícone{' '}<span style={{ display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle', background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: '50%', width: 20, height: 20, justifyContent: 'center', margin: '0 3px' }}><img src="/airplane.svg" alt="" width={11} height={11} /></span>{' '}do modo avião</span>,
+                'Se preferir, só silencie as notificações dos apps de mensagem',
               ] as React.ReactNode[]).map((text, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(13,143,65,0.2)', border: '1px solid rgba(13,143,65,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.75rem', fontWeight: 800, color: '#4ADE80' }}>{i + 1}</div>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#9CA3AF', lineHeight: 1.55 }}>{text}</p>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#F9FAFB', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.72rem', fontWeight: 800, color: '#6B7280' }}>{i + 1}</div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#6B7280', lineHeight: 1.55 }}>{text}</p>
                 </div>
               ))}
             </div>
 
             {msUntilStart !== null && msUntilStart > 0 && (
-              <div style={{ background: 'rgba(13,143,65,0.15)', border: '1px solid rgba(13,143,65,0.3)', borderRadius: 10, padding: '10px 16px' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '1.4rem', fontWeight: 800, color: '#4ADE80' }}>
+              <div style={{ background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 10, padding: '9px 16px' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>
                   {formatMs(msUntilStart)}
                 </span>
-                <span style={{ marginLeft: 8, fontSize: '0.7rem', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <span style={{ marginLeft: 8, fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   para início
                 </span>
               </div>

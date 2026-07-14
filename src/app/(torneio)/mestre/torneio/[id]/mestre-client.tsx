@@ -498,9 +498,10 @@ export default function MestreClient({
     .filter(p => p.status === 'approved' && (divisions <= 1 || p.round_group === activeGroup))
     .sort((a, b) => (scores[b.id] ?? 0) - (scores[a.id] ?? 0))
 
-  // possíveis fraudes da marcação atual, do maior p/ o menor nº de suspeitas
+  // possíveis fraudes da marcação atual (só acima de 5 suspeitas — abaixo disso é
+  // ruído de dedo rápido), do maior p/ o menor nº de suspeitas
   const fraudList = ranking
-    .filter(p => (suspicious[p.id] ?? 0) > 0)
+    .filter(p => (suspicious[p.id] ?? 0) > 5)
     .sort((a, b) => (suspicious[b.id] ?? 0) - (suspicious[a.id] ?? 0))
 
   // ranking geral — todos os aprovados (todas as marcações do ciclo)
@@ -559,10 +560,38 @@ export default function MestreClient({
     ? new Date(finishedAt).getTime() + 3600_000 - now.getTime()
     : null
 
+  const pendentes = participantes.filter(p => p.status === 'pending').length
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
       {confirm && <ConfirmModal message={confirm.message} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
+
+      {/* ── Notificação: participantes aguardando aprovação (click → rola até a lista) ── */}
+      {pendentes > 0 && status !== 'finished' && (
+        <div style={{ position: 'fixed', top: 10, left: 0, right: 0, zIndex: 350, display: 'flex', justifyContent: 'center', padding: '0 12px', pointerEvents: 'none' }}>
+          <button
+            onClick={() => document.getElementById('secao-aprovacao')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            style={{
+              pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: 10,
+              background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 30,
+              padding: '9px 18px', cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+            }}>
+            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>🙋</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#92400E' }}>
+              {pendentes} participante{pendentes !== 1 ? 's' : ''} aguardando aprovação
+            </span>
+            <span style={{
+              background: '#D97706', color: '#fff', borderRadius: '50%', minWidth: 22, height: 22,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.72rem', fontWeight: 800, padding: '0 5px',
+            }}>
+              {pendentes}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* ── Torneio finalizado ── */}
       {status === 'finished' && (
@@ -613,8 +642,8 @@ export default function MestreClient({
           </div>
         )}
 
-        {/* Encerrar live — junto dos relógios pra ficar sempre à mão */}
-        {streamUrl && (
+        {/* Iniciar/Encerrar live — junto dos relógios pra ficar sempre à mão */}
+        {streamUrl ? (
           <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
             style={{
               background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
@@ -622,6 +651,15 @@ export default function MestreClient({
               cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
             }}>
             ✕ Encerrar live
+          </button>
+        ) : status !== 'finished' && (
+          <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
+            style={{
+              background: '#111827', color: '#fff', border: 'none',
+              borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            📡 Iniciar live
           </button>
         )}
       </div>
@@ -784,16 +822,6 @@ export default function MestreClient({
             <button onClick={openVassoura}
               style={ctrlBtn('#DC2626', '#fff')}>
               🧹 Vassourada
-            </button>
-          </CtrlCard>
-        )}
-
-        {/* Transmissão */}
-        {status !== 'finished' && !streamUrl && (
-          <CtrlCard title="📡 Transmissão ao vivo" desc="Cole o link da live do YouTube para os espectadores acompanharem o torneio pelo site.">
-            <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
-              style={ctrlBtn('#111827', '#fff')}>
-              📡 Iniciar live
             </button>
           </CtrlCard>
         )}
@@ -1130,7 +1158,7 @@ export default function MestreClient({
               <div style={{ flex: 1 }}>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
                   {p.bird_name}
-                  {(suspicious[p.id] ?? 0) > 0 && (() => {
+                  {(suspicious[p.id] ?? 0) > 5 && (() => {
                     const fc = fraudColor(suspicious[p.id])
                     return (
                       <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
@@ -1162,7 +1190,7 @@ export default function MestreClient({
               <div style={{ flex: 1 }}>
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
                   {p.bird_name}
-                  {(suspicious[p.id] ?? 0) > 0 && (() => {
+                  {(suspicious[p.id] ?? 0) > 5 && (() => {
                     const fc = fraudColor(suspicious[p.id])
                     return (
                       <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
@@ -1186,7 +1214,7 @@ export default function MestreClient({
       )}
 
       {/* ── Participantes ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div id="secao-aprovacao" style={{ display: 'flex', flexDirection: 'column', gap: 8, scrollMarginTop: 64 }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>Participantes</p>
         {participantes.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: '#9CA3AF', margin: 0 }}>Nenhum ainda. Compartilhe o QR code.</p>

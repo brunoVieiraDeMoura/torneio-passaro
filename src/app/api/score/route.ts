@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextResponse } from 'next/server'
 
 const MAX_INCREMENT = 30 // teto anti-abuso por envio (client agrupa cliques a cada 1s)
@@ -15,7 +15,10 @@ export async function POST(req: Request) {
   // suspeitas de fraude deste envio (cliques < 1s) — anti-abuso
   const susp = Math.min(MAX_INCREMENT, Math.max(0, Math.floor(Number(suspicious) || 0)))
 
-  const supabase = await createClient()
+  // service role: esta rota valida as regras de negócio (janela de tempo, participante
+  // aprovado, grupo ativo) e precisa gravar SEMPRE — antes, com o client de cookie,
+  // o RLS podia recusar o insert/update em silêncio e a rota respondia ok sem gravar.
+  const supabase = createServiceClient()
 
   const { data: torneio } = await supabase
     .from('tournaments')
@@ -35,10 +38,11 @@ export async function POST(req: Request) {
   if (nowMs < startAt) {
     return NextResponse.json({ error: 'A contagem ainda não começou' }, { status: 403 })
   }
-  // 3s de tolerância: o client agrupa cliques e envia a cada 1s, então os cliques
-  // feitos dentro da janela chegam logo após o fim — sem isso eram descartados e o
-  // total do servidor ficava menor que o número mostrado no botão do participante
-  if (nowMs > endsAt + 3000) {
+  // 30s de tolerância após o fim: o client agrupa cliques (1 envio/s, máx 30 por envio)
+  // e pode ter ficado offline — cliques feitos DENTRO da janela chegam atrasados e são
+  // drenados em lotes ao reconectar. Sem isso o total do servidor ficava menor que o
+  // número mostrado no botão do participante.
+  if (nowMs > endsAt + 30_000) {
     return NextResponse.json({ error: 'Tempo esgotado' }, { status: 403 })
   }
 
@@ -67,7 +71,7 @@ export async function POST(req: Request) {
   const now = new Date().toISOString()
 
   if (existing) {
-    const { data: updated } = await supabase
+    const { data: updated, error } = await supabase
       .from('scores')
       .update({
         count: existing.count + inc,
@@ -78,10 +82,15 @@ export async function POST(req: Request) {
       .select('count')
       .single()
 
-    return NextResponse.json({ ok: true, count: updated?.count ?? existing.count + inc })
+    // erro OU zero linhas: nada foi gravado — 500 faz o client devolver os cliques
+    // pro backlog e tentar de novo (antes respondia ok e os cantos sumiam)
+    if (error || !updated) {
+      return NextResponse.json({ error: 'Falha ao gravar contagem' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, count: updated.count })
   }
 
-  const { data: created } = await supabase
+  const { data: created, error } = await supabase
     .from('scores')
     .insert({
       participant_id: participantId,
@@ -93,5 +102,8 @@ export async function POST(req: Request) {
     .select('count')
     .single()
 
-  return NextResponse.json({ ok: true, count: created?.count ?? inc })
+  if (error || !created) {
+    return NextResponse.json({ error: 'Falha ao gravar contagem' }, { status: 500 })
+  }
+  return NextResponse.json({ ok: true, count: created.count })
 }
