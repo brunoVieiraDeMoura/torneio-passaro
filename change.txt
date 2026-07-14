@@ -1,4 +1,12 @@
+em https://torneio-passaro.vercel.app/mestre/torneio/61a67ad1-a2df-45e3-a670-081fad3e9ecb , quando um participante solicitar aprovação, aparecer uma notificação na parte superior da tela do mestre (bota também um bonequinho com a mão para cima com o numero de participantes requisitando aprovaçção), se ele clicar lá, dar um scrolldown até a parte de aprovação.
+
+em https://torneio-passaro.vercel.app/mestre/torneio/61a67ad1-a2df-45e3-a670-081fad3e9ecb, botar o botão de transimição "Iniciar a Live" abaixo da hora marcando.
+
+mudar a ui de aviso para colocar o celular em modo avião, e deixar mais amigavel, (remover o verde pesado) e trocar para "Dica", está muito insisiva a mensagem.
+
 se você estiver logado em sua conta, e tiver algum pássaro seu no ranking da liga, pintar ele com o verde do site
+
+na contagem em https://torneio-passaro.vercel.app/mestre/torneio/61a67ad1-a2df-45e3-a670-081fad3e9ecb , só marcar o jogador com possivel fraude de marcação se ele passar de 5 fraudes
 
 na hora de imprimir o histórico do passarinho, mostrar todas as páginas de torneios que ele participou.
 
@@ -11,6 +19,8 @@ o mestre de roda em https://torneio-passaro.vercel.app/clube/dashboard no menu l
 
 se o participante cair, ou a internet cair, o webapp, continua contando em cache, para junto com o tempo limite de contar, 
 depois envia o resultado final para o servidor (enviar os alertas de punição também) [fazer apenas se fizer sentido e for viável]
+
+
 
 ===============================================================
 

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import MestreWalker from '@/components/ui/mestre-walker'
+import AdBanner from '@/components/ui/ad-banner'
 
 interface Torneio {
   id: string
@@ -481,7 +482,8 @@ export default function ParticipanteClient({
         )}
       </div>
 
-      {/* Aguardando início da minha marcação — mostra countdown + animação */}
+      {/* Aguardando início da minha marcação — banner no topo + countdown + animação */}
+      {preStart && <AdBanner />}
       {preStart && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%' }}>
           {msUntilStart !== null && msUntilStart > 0 ? (
