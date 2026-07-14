@@ -87,7 +87,7 @@ export default async function MeusPassarinhos() {
         <BirdForm userId={user.id} />
 
         {sortedBirds.length > 0 ? (
-          <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: 16 }}>
             {sortedBirds.map(b => (
               <BirdCard
                 key={b.id}

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import GoogleButton, { OrDivider } from '@/components/ui/google-button'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -18,8 +19,11 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const params = useSearchParams()
+  // fluxo do QR code: /login?redirect=/entrar/<token> volta pra inscrição após logar
+  const redirect = params.get('redirect')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +42,9 @@ export default function LoginPage() {
     }
     const { data: profile } = await supabase
       .from('profiles').select('role').eq('id', data.user.id).single()
-    const dest = profile?.role === 'club' ? '/clube/dashboard' : '/torneios'
+    const dest = profile?.role === 'club'
+      ? '/clube/dashboard'
+      : (redirect ?? '/torneios')
     router.push(dest)
     router.refresh()
   }
@@ -61,6 +67,9 @@ export default function LoginPage() {
           Criar conta
         </Link>
       </p>
+
+      <GoogleButton next={redirect ?? '/torneios'} label="Entrar com Google" />
+      <OrDivider />
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
@@ -133,5 +142,14 @@ export default function LoginPage() {
         </button>
       </form>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  // useSearchParams exige Suspense no App Router
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

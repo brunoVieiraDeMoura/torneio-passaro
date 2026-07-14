@@ -1,18 +1,31 @@
-A MENSAGEM FINAL (quando o torneio é finalizado para o usuário) ESTÁ SALVANDO 2 VEZES A ULTIMA RODADA EM NUMEROS DE CANTOS,
-mas ela não está salvando 2 vezes no histórico, e isso é o comportamento correto, mas o texto está sendo mostrado errado.
+ui https://torneio-passaro.vercel.app/liga
+melhor toda a estética para mobile, deixar mais responsivel, visivel e menos confuso, sem mudar as funcionalidades
 
-o meu passarinho não está sendo re-alocado no ranking de acordo com seu numero de canto em http://localhost:3000/liga
+ui https://torneio-passaro.vercel.app/clube/ranking
+melhorar a estética e responsividade
 
+Ajusta a ui de  https://torneio-passaro.vercel.app/meus-passarinhos
+melhor a estética para mobile e deixa mais responsia, deixa tudo caber na tela, tem algumas coisas bugadas com padding tamanho de texto e etc..
 
-em : https://torneio-passaro.vercel.app/mestre/torneio/9909aee8-fd68-492e-b1aa-b4ca10cc8fbf
-já deixar abrir a live, e ela aparecer para o mestre que ja esta funcionado, antes de abrir as inscrições ou começar a rodada
-
-organizar a responsividade e os botões em https://torneio-passaro.vercel.app/mestre/torneio/9909aee8-fd68-492e-b1aa-b4ca10cc8fbf
-para que fique de mais facil acesso, vizualização e de boa para clicar e achar as coisas
-
-
-não estou como usuario conseguindo ler o qrcode para ser direcionado para um torneio, está me dando unknow link
+em https://torneio-passaro.vercel.app/clube/torneios , ao criar um torneio e não dar inicio ao torneio, criar um botão  ao lado de gerenciar "[icone de play] Iniciar Torneio" (que inicia diretamenta o torneio e leva para o torneio como se tivesse clicado em gerenciar. ex:https://torneio-passaro.vercel.app/mestre/torneio/f822f8f8-9c66-4283-a0ec-df246ba3915b)
 
 
-em http://localhost:3000/clube/torneios quando vou criar um novo torneio, os textos dos campos do select aberto, estão muito claros.
+fazer cadastro e login com google account, bota o login no google também se a pessoa ler qrcode e estiver deslogada
 
+quero que bote limite de históricos dos paths a seguir (botar uma página daquelas 1/x)
+renderizar só uma certa quantidade.
+
+histórico de campeonatos em:
+https://torneio-passaro.vercel.app/meus-passarinhos/ab6d709e-cfc6-405a-a236-1775be623927
+
+histórico do clube:
+https://torneio-passaro.vercel.app/clube/historico
+
+ranking interno :
+https://torneio-passaro.vercel.app/clube/ranking
+
+participantes:
+https://torneio-passaro.vercel.app/clube/participantes
+
+torneios:
+https://torneio-passaro.vercel.app/clube/torneios

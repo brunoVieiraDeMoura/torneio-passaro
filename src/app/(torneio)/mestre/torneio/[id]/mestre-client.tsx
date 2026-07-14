@@ -599,6 +599,18 @@ export default function MestreClient({
             </span>
           </div>
         )}
+
+        {/* Encerrar live — junto dos relógios pra ficar sempre à mão */}
+        {streamUrl && (
+          <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
+            style={{
+              background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+              borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            ✕ Encerrar live
+          </button>
+        )}
       </div>
 
       {/* ── QR Code (só enquanto inscrições abertas, some 10min antes) ── */}
@@ -762,11 +774,11 @@ export default function MestreClient({
           </>
         )}
 
-        {/* Iniciar/Encerrar live — após finalizar, só resta encerrar a live */}
-        {(status !== 'finished' || streamUrl) && (
-          <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
-            style={ctrlBtn(streamUrl ? '#FEF2F2' : '#111827', streamUrl ? '#DC2626' : '#fff', streamUrl ? '1px solid #FECACA' : 'none')}>
-            {streamUrl ? '✕ Encerrar live' : '📡 Iniciar live'}
+        {/* Iniciar live — o "Encerrar live" fica lá em cima, junto do relógio */}
+        {status !== 'finished' && !streamUrl && (
+          <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
+            style={ctrlBtn('#111827', '#fff')}>
+            📡 Iniciar live
           </button>
         )}
 
@@ -774,7 +786,7 @@ export default function MestreClient({
         {(status === 'draft' || status === 'open') && !groupsAssigned && (
           <button onClick={() => setAddOpen(true)}
             style={ctrlBtn('#7C3AED', '#fff')}>
-            + Adicionar sem app
+            Adicionar Participante sem App
           </button>
         )}
       </div>

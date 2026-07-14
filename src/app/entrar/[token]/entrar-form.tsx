@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import GoogleButton, { OrDivider } from '@/components/ui/google-button'
 
 interface Bird { id: string; name: string; raca: string | null; estilo_canto: string | null }
 
@@ -35,6 +36,9 @@ function NeedLogin({ returnPath }: { returnPath: string }) {
       <p style={{ margin: '0 0 20px', fontSize: '0.8rem', color: '#6B7280', lineHeight: 1.5 }}>
         Você precisa estar logado para inscrever seu pássaro neste torneio.
       </p>
+      {/* Google volta direto pra esta inscrição após o login */}
+      <GoogleButton next={returnPath} />
+      <OrDivider />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Link
           href={`/login?redirect=${encodeURIComponent(returnPath)}`}

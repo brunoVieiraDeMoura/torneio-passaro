@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import PaginatedList from '@/components/ui/paginated-list'
 
 const BREED_STYLE: Record<string, { color: string; bg: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC' },
@@ -150,7 +151,7 @@ export default function BirdReport({ bird, history }: Props) {
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 16px 60px' }}>
 
           {/* ── bird header ── */}
-          <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{
               width: 72, height: 72, borderRadius: 18, flexShrink: 0,
               overflow: 'hidden',
@@ -189,7 +190,7 @@ export default function BirdReport({ bird, history }: Props) {
           </div>
 
           {/* ── stats grid ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 12, marginBottom: 20 }}>
             {/* cantos por período */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '20px' }}>
               <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9CA3AF' }}>
@@ -254,6 +255,7 @@ export default function BirdReport({ bird, history }: Props) {
                     </p>
                   ))}
                 </div>
+                <PaginatedList pageSize={10}>
                 {history.map((h, i) => (
                   <div key={h.participant_id} className="hist-row" style={{
                     borderBottom: i < history.length - 1 ? '1px solid #F9FAFB' : 'none',
@@ -288,6 +290,7 @@ export default function BirdReport({ bird, history }: Props) {
                     </p>
                   </div>
                 ))}
+                </PaginatedList>
               </>
             )}
           </div>

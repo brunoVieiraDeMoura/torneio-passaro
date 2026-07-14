@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import PaginatedList from '@/components/ui/paginated-list'
 
 export default async function ClubeParticipantes() {
   const supabase = await createClient()
@@ -69,6 +70,7 @@ export default async function ClubeParticipantes() {
           </div>
         )}
 
+        <PaginatedList pageSize={10}>
         {participantes?.map((p, i) => {
           const torneio = torneioMap[p.tournament_id]
           const isManual = !p.user_id
@@ -104,6 +106,7 @@ export default async function ClubeParticipantes() {
             </div>
           )
         })}
+        </PaginatedList>
       </div>
     </div>
   )

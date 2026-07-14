@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import MUNICIPIOS from '@/data/municipios.json'
+import GoogleButton, { OrDivider } from '@/components/ui/google-button'
 
 const ESTADOS = Object.keys(MUNICIPIOS as Record<string, string[]>).sort()
 
@@ -35,6 +36,8 @@ export default function CadastroForm() {
   const router = useRouter()
   const params = useSearchParams()
   const tipo = params.get('tipo') === 'clube' ? 'club' : 'user'
+  // fluxo do QR code: /cadastro?redirect=/entrar/<token> volta pra inscrição após criar a conta
+  const redirect = params.get('redirect')
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -59,7 +62,7 @@ export default function CadastroForm() {
       // build redirectTo with club data encoded (for email confirmation flow)
       const next = tipo === 'club'
         ? `/clube/setup?estado=${encodeURIComponent(estado)}&cidade=${encodeURIComponent(cidade)}&clubName=${encodeURIComponent(name)}`
-        : '/torneios'
+        : (redirect ?? '/torneios')
       const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
 
       const { data, error } = await supabase.auth.signUp({
@@ -80,7 +83,7 @@ export default function CadastroForm() {
           })
         }
         // clube novo entra pendente de aprovação do admin
-        router.push(tipo === 'club' ? '/aprovacao-pendente' : '/torneios')
+        router.push(tipo === 'club' ? '/aprovacao-pendente' : (redirect ?? '/torneios'))
         router.refresh()
       } else {
         setEmailSent(true)
@@ -131,6 +134,14 @@ export default function CadastroForm() {
           </a>
         ))}
       </div>
+
+      {/* Google só para participante — clube precisa de nome/cidade antes */}
+      {tipo === 'user' && (
+        <div style={{ marginBottom: 4 }}>
+          <GoogleButton next={redirect ?? '/torneios'} label="Cadastrar com Google" />
+          <OrDivider />
+        </div>
+      )}
 
       <div>
         <label style={labelStyle}>{tipo === 'club' ? 'Nome do clube' : 'Seu nome'}</label>

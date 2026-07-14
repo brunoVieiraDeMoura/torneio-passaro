@@ -4,6 +4,8 @@ import Link from 'next/link'
 import CriarTorneioForm from './criar-torneio-form'
 import DeleteTorneioButton from './delete-torneio-button'
 import FinalizarTorneioButton from './finalizar-torneio-button'
+import IniciarTorneioButton from './iniciar-torneio-button'
+import PaginatedList from '@/components/ui/paginated-list'
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   draft:    { label: 'Rascunho', color: '#92400E', bg: '#FFFBEB' },
@@ -42,6 +44,7 @@ export default async function ClubeTorneios() {
             Nenhum torneio ainda. Crie o primeiro!
           </div>
         )}
+        <PaginatedList pageSize={10}>
         {torneios?.map(t => {
           const s = STATUS_LABEL[t.status] ?? STATUS_LABEL.draft
           return (
@@ -62,19 +65,21 @@ export default async function ClubeTorneios() {
                   {t.estilo_canto && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 20, padding: '1px 8px' }}>{t.estilo_canto}</span>}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Link
                   href={`/mestre/torneio/${t.id}`}
                   style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0D8F41', background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 8, padding: '7px 14px', textDecoration: 'none' }}
                 >
                   Gerenciar
                 </Link>
+                {t.status === 'draft' && <IniciarTorneioButton torneioId={t.id} />}
                 {(t.status === 'open' || t.status === 'running') && <FinalizarTorneioButton torneioId={t.id} />}
                 {t.status === 'draft' && <DeleteTorneioButton torneioId={t.id} />}
               </div>
             </div>
           )
         })}
+        </PaginatedList>
       </div>
     </div>
   )

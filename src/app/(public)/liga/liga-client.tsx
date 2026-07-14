@@ -33,9 +33,10 @@ function Sel({ value, onChange, options, placeholder, required }: {
 }) {
   return (
     <select value={value} onChange={e => onChange(e.target.value)} style={{
-      border: '1px solid #E5E7EB', borderRadius: 8, padding: '7px 10px',
-      fontSize: '0.8rem', fontFamily: 'inherit', background: '#fff', outline: 'none',
+      border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px',
+      fontSize: '0.85rem', fontFamily: 'inherit', background: '#fff', outline: 'none',
       color: value ? '#111827' : '#9CA3AF', cursor: 'pointer',
+      flex: '1 1 130px', minWidth: 0, maxWidth: '100%',
     }}>
       {!required && <option value="" style={{ color: '#9CA3AF' }}>{placeholder}</option>}
       {options.map(o => <option key={o} value={o} style={{ color: '#111827' }}>{o}</option>)}
@@ -152,7 +153,7 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
             Temporada 2025
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-            <Typography sx={{ color: '#111827', fontSize: '1.7rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
+            <Typography sx={{ color: '#111827', fontSize: { xs: '1.3rem', sm: '1.7rem' }, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
               Liga — {scopeLabel}
             </Typography>
             {geoStatus === 'loading' && (
@@ -165,16 +166,16 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
             )}
           </Box>
 
-          {/* scope underline tabs */}
-          <Box sx={{ display: 'flex', borderBottom: '1px solid #F3F4F6', gap: 0 }}>
+          {/* scope underline tabs — largura igual no mobile (mais fácil de tocar) */}
+          <Box sx={{ display: 'flex', borderBottom: '1px solid #F3F4F6', gap: 0, '& button': { flex: { xs: 1, sm: '0 0 auto' } } }}>
             {(['municipal', 'estadual', 'nacional'] as Scope[]).map(s => {
               const active = effectiveScope === s
               const label = s === 'nacional' ? 'Nacional' : s === 'estadual' ? 'Estadual' : 'Municipal'
               return (
                 <button key={s} onClick={() => { setScope(s); setUserOverride(true) }} style={{
                   background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                  padding: '10px 20px', fontSize: '0.85rem', fontWeight: active ? 700 : 500,
-                  color: active ? '#111827' : '#9CA3AF',
+                  padding: '12px 16px', fontSize: '0.85rem', fontWeight: active ? 700 : 500,
+                  color: active ? '#111827' : '#9CA3AF', textAlign: 'center',
                   borderBottom: active ? '2px solid #111827' : '2px solid transparent',
                   marginBottom: -1, transition: 'color 0.15s',
                 }}>
@@ -190,7 +191,7 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
 
         {/* ── FILTERS ROW ── */}
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 3, alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
             {(effectiveScope === 'estadual' || effectiveScope === 'municipal') && (
               <Sel value={estado} onChange={setEstado} options={ESTADOS} placeholder="Estado" />
             )}
@@ -204,8 +205,8 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
             <Sel value={estilo}  onChange={setEstilo}  options={ESTILOS} placeholder="Estilo de canto" required />
           </Box>
 
-          {/* Top N segment */}
-          <Box sx={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+          {/* Top N segment — ocupa a linha toda no mobile */}
+          <Box sx={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 8, overflow: 'hidden', flexShrink: 0, width: { xs: '100%', sm: 'auto' }, '& button': { flex: { xs: 1, sm: '0 0 auto' } } }}>
             {([10, 50, 100] as Limit[]).map((n, i) => {
               const active = limit === n
               return (
@@ -215,10 +216,10 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
                   border: 'none',
                   borderLeft: i > 0 ? '1px solid #E5E7EB' : 'none',
                   cursor: 'pointer', fontFamily: 'inherit',
-                  padding: '7px 14px', fontSize: '0.78rem', fontWeight: active ? 700 : 500,
+                  padding: '9px 14px', fontSize: '0.78rem', fontWeight: active ? 700 : 500,
                   transition: 'all 0.15s',
                 }}>
-                  {n}
+                  Top {n}
                 </button>
               )
             })}
@@ -261,17 +262,18 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
                   <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: PODIUM_COLOR[i], letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.75 }}>
                     {PODIUM_LABEL[i]}
                   </Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.85rem' }, lineHeight: 1.25, color: '#111827', mb: 0.25 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.85rem' }, lineHeight: 1.25, color: '#111827', mb: 0.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.bird_name}
                   </Typography>
                   <Typography sx={{ fontSize: '0.68rem', color: '#9CA3AF', mb: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.user_name}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 0.75 }}>
-                    <Box sx={{ display: 'inline-flex', bgcolor: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: '5px', px: '5px', py: '1px' }}>
-                      <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#065F46' }}>{item.tipo_ave}</Typography>
+                    <Box sx={{ display: 'inline-flex', bgcolor: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: '5px', px: '5px', py: '1px', minWidth: 0 }}>
+                      <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#065F46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.tipo_ave}</Typography>
                     </Box>
-                    <Box sx={{ display: 'inline-flex', bgcolor: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: '5px', px: '5px', py: '1px' }}>
+                    {/* estilo some no celular: pódio estreito ficava poluído */}
+                    <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: '5px', px: '5px', py: '1px' }}>
                       <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#6B7280' }}>{item.estilo_canto}</Typography>
                     </Box>
                   </Box>
