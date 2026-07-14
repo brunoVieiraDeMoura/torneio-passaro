@@ -57,7 +57,10 @@
       "Bash(Select-Object -Last 30)",
       "Bash(npx eslint *)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Bash(file ./logo/*)",
+      "Bash(xargs grep -ln \"Cantorias\\\\|Torneio de Pássaro\\\\|Torneio de Passaro\\\\|torneio de pássaro\\\\|torneio de passaro\")",
+      "Bash(git stash *)"
     ]
   },
   "enableAllProjectMcpServers": true,

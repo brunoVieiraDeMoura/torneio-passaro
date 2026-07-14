@@ -1,14 +1,7 @@
 import Link from 'next/link'
 import Header from '@/components/ui/header'
 import { createClient } from '@/lib/supabase/server'
-
-function BirdMark({ color = '#0D8F41', size = 22 }: { color?: string; size?: number }) {
-  return (
-    <svg width={size} height={size * 16 / 22} viewBox="0 0 22 16" fill="none" aria-hidden="true">
-      <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    </svg>
-  )
-}
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 
 const stats = [
   { v: '327', l: 'Participantes' },
@@ -44,17 +37,13 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       >
         {/* decorative wave watermark */}
         <div style={{ position: 'absolute', right: -60, bottom: 40, opacity: 0.05, pointerEvents: 'none' }}>
-          <svg width="520" height="360" viewBox="0 0 22 16" fill="none">
-            <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#fff" strokeWidth="1" strokeLinecap="round"/>
-          </svg>
+          <BirdMark size={360} color="#fff" />
         </div>
 
         {/* logo */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginBottom: 'auto' }}>
-          <BirdMark color="#0D8F41" size={26} />
-          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff', letterSpacing: '-0.02em' }}>
-            Cantorias
-          </span>
+          <BirdMark color="#0D8F41" size={40} />
+          <AveumWordmark onDark style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em' }} />
         </Link>
 
         {/* main copy */}

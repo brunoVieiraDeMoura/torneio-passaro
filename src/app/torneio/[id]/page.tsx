@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
+import { getBaseUrl } from '@/lib/base-url'
 
 type Club = { name: string; cidade: string; estado: string } | null
 
@@ -154,7 +156,7 @@ const getTorneioData = async (id: string) => {
     .sort((a, b) => (b.lastRound ?? 0) - (a.lastRound ?? 0) || b.total - a.total)
     .map((p, idx) => ({ ...p, position: ranked.length + idx + 1 }))
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = await getBaseUrl()
   const [qrDataUrl, qrDesktopDataUrl] = torneio.qr_token
     ? await Promise.all([
         QRCode.toDataURL(`${appUrl}/entrar/${torneio.qr_token}`, { width: 280, margin: 2, color: { dark: '#111827', light: '#ffffff' } }),
@@ -202,10 +204,8 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             {/* logo + back */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'auto' }}>
               <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-                <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
-                  <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-                </svg>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '-0.02em' }}>Cantorias</span>
+                <BirdMark size={36} />
+                <AveumWordmark onDark style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em' }} />
               </Link>
               <Link href="/torneios" style={{
                 fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)',

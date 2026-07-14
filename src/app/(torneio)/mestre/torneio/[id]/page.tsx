@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import MestreClient from './mestre-client'
 import QRCode from 'qrcode'
+import { getBaseUrl } from '@/lib/base-url'
 
 export default async function MestreTorneioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -32,7 +33,7 @@ export default async function MestreTorneioPage({ params }: { params: Promise<{ 
     .select('participant_id, count')
     .eq('tournament_id', id)
 
-  const qrUrl = `${process.env.NEXT_PUBLIC_APP_URL}/entrar/${torneio.qr_token}`
+  const qrUrl = `${await getBaseUrl()}/entrar/${torneio.qr_token}`
   const qrDataUrl = torneio.qr_token ? await QRCode.toDataURL(qrUrl, { width: 256, margin: 2 }) : null
 
   return (

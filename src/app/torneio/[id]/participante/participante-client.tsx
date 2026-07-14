@@ -270,7 +270,10 @@ export default function ParticipanteClient({
       const rank = (parts ?? []).map(p => ({ ...p, score: map[p.id] ?? 0 })).sort((a, b) => b.score - a.score)
       setRanking(rank)
       const histSum = (hist ?? []).reduce((a, h) => a + (h.count ?? 0), 0)
-      setHistoryTotal(histSum + (map[participante.id] ?? 0)) // ciclos anteriores + marcação atual
+      // torneio finalizado: a marcação final JÁ foi gravada no histórico (finalizeTorneio
+      // insere antes de virar o status) — somar o score vivo de novo dobraria a última rodada
+      const live = torneioStatus === 'finished' ? 0 : (map[participante.id] ?? 0)
+      setHistoryTotal(histSum + live) // ciclos anteriores + marcação atual (se ainda não gravada)
     }
     load()
     const id = setInterval(load, 5000)
@@ -287,7 +290,10 @@ export default function ParticipanteClient({
     return () => document.body.classList.remove('hide-site-header')
   }, [hideHeader])
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.PointerEvent) => {
+    // multi-touch: só o toque primário conta — 2 dedos (ou a palma encostando)
+    // disparavam 2 pointerdown e o contador pulava de 2 em 2
+    if (!e.isPrimary) return
     if (!isRunning || !isCountingDown) return
     if (participanteStatus !== 'approved') return
     if (!isMyTurn) return

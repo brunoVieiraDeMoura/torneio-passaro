@@ -68,7 +68,7 @@ export default function FaqPage() {
           </Typography>
           <Typography sx={{ color: '#6B7280', fontSize: '0.9rem', lineHeight: 1.7 }}>
             Não encontrou o que procura?{' '}
-            <Link href="mailto:contato@cantorias.com.br" style={{ color: '#0D8F41', fontWeight: 600 }}>
+            <Link href="mailto:contato@aveum.com.br" style={{ color: '#0D8F41', fontWeight: 600 }}>
               Fale com a gente
             </Link>
             .

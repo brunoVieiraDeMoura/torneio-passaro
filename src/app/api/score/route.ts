@@ -35,7 +35,10 @@ export async function POST(req: Request) {
   if (nowMs < startAt) {
     return NextResponse.json({ error: 'A contagem ainda não começou' }, { status: 403 })
   }
-  if (nowMs > endsAt) {
+  // 3s de tolerância: o client agrupa cliques e envia a cada 1s, então os cliques
+  // feitos dentro da janela chegam logo após o fim — sem isso eram descartados e o
+  // total do servidor ficava menor que o número mostrado no botão do participante
+  if (nowMs > endsAt + 3000) {
     return NextResponse.json({ error: 'Tempo esgotado' }, { status: 403 })
   }
 

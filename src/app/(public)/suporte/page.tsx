@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 
-const CONTACT_EMAIL = 'contato@cantorias.com.br'
+const CONTACT_EMAIL = 'contato@aveum.com.br'
 
 export default function SuportePage() {
   const [nome, setNome] = useState('')

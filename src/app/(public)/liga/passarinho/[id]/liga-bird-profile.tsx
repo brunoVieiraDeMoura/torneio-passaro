@@ -175,7 +175,7 @@ export default function LigaBirdProfile({ entry, position, total }: Props) {
 
         <div style={{ marginTop: 32, textAlign: 'center' }}>
           <p style={{ margin: 0, fontSize: '0.68rem', color: '#D1D5DB' }}>
-            Cantorias · Temporada 2025
+            aveum · Temporada 2025
           </p>
         </div>
       </div>

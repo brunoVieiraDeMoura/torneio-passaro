@@ -2,14 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-
-function BirdMark() {
-  return (
-    <svg width="22" height="16" viewBox="0 0 22 16" fill="none" aria-hidden="true">
-      <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-    </svg>
-  )
-}
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 
 const homeLink = {
   href: '/', label: 'Início',
@@ -186,10 +179,8 @@ export default function Nav({ role, isLoggedIn = true }: { role: 'user' | 'club'
       >
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginRight: 'auto' }}>
-            <BirdMark />
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827', letterSpacing: '-0.02em' }}>
-              Cantorias
-            </span>
+            <BirdMark size={36} />
+            <AveumWordmark style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em' }} />
           </Link>
           <nav style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {links.map(link => {

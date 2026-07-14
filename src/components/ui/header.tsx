@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 
 const navLinks = [
   {
@@ -40,14 +41,6 @@ const navLinks = [
     ),
   },
 ]
-
-function BirdMark() {
-  return (
-    <svg width="22" height="16" viewBox="0 0 22 16" fill="none" aria-hidden="true">
-      <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-    </svg>
-  )
-}
 
 function CloseIcon() {
   return (
@@ -182,8 +175,8 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
             }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', marginRight: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            <BirdMark />
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827', letterSpacing: '-0.02em', lineHeight: 1 }}>Cantorias</span>
+            <BirdMark size={36} />
+            <AveumWordmark style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', lineHeight: 1 }} />
           </button>
 
           {/* desktop nav */}

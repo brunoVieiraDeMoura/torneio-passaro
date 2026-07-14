@@ -1,8 +1,18 @@
-http://localhost:3000/mestre/torneio/ca7155fc-2da6-4272-85dc-142e08aa7ebb
-após torneio ser finalizado, some o botão "Eliminar", o torneio se fecha, e o usuário mestre do torneio só tem a posibilidade de fechar a live, após finalizado, o torneio redireciona o mestre do torneio e fecha a live automáticamente em 1 hora.
+A MENSAGEM FINAL (quando o torneio é finalizado para o usuário) ESTÁ SALVANDO 2 VEZES A ULTIMA RODADA EM NUMEROS DE CANTOS,
+mas ela não está salvando 2 vezes no histórico, e isso é o comportamento correto, mas o texto está sendo mostrado errado.
 
-O numero de cantos do passáro deve ser contabilizado para o mesmo a cada marcação que ele participar,
-caso no mesmo torneio ele participe de 1 ou mais marcações, todas elas vão para o histórico dele.
+o meu passarinho não está sendo re-alocado no ranking de acordo com seu numero de canto em http://localhost:3000/liga
 
-A mensagem de fraude gerada para o Usuário que está marcando, deve cer acima do botão, não pode interferir no botão de maneira algum, sem nem mover o botão.
-ainda está dando alguns bugs visais na quantidade de clique no inicio, talvez seja por conta do cache ao marcar o botão,"glitch" clicar 4 vezes mostra algo ao contar ex: 1 2 3 4 3 4
+
+em : https://torneio-passaro.vercel.app/mestre/torneio/9909aee8-fd68-492e-b1aa-b4ca10cc8fbf
+já deixar abrir a live, e ela aparecer para o mestre que ja esta funcionado, antes de abrir as inscrições ou começar a rodada
+
+organizar a responsividade e os botões em https://torneio-passaro.vercel.app/mestre/torneio/9909aee8-fd68-492e-b1aa-b4ca10cc8fbf
+para que fique de mais facil acesso, vizualização e de boa para clicar e achar as coisas
+
+
+não estou como usuario conseguindo ler o qrcode para ser direcionado para um torneio, está me dando unknow link
+
+
+em http://localhost:3000/clube/torneios quando vou criar um novo torneio, os textos dos campos do select aberto, estão muito claros.
+

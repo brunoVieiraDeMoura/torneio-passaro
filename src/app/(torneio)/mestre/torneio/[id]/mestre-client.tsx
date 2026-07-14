@@ -207,10 +207,10 @@ export default function MestreClient({
   async function updateStatus(newStatus: string, refresh = true) {
     setLoading(true)
     const supabase = createClient()
-    const body: Record<string, string> = { status: newStatus }
-    if (newStatus === 'running') body.start_at = new Date().toISOString()
-    await supabase.from('tournaments').update(body).eq('id', torneio.id)
-    if (newStatus === 'running') setStartAt(new Date().toISOString())
+    // NUNCA reescreve start_at aqui: o auto-start dispara segundos DEPOIS do horário
+    // agendado, e mover o start_at zerava o contador dos participantes no meio da
+    // marcação (o reset deles é disparado pela troca de start_at) e deslocava o fim.
+    await supabase.from('tournaments').update({ status: newStatus }).eq('id', torneio.id)
     setStatus(newStatus)
     setLoading(false)
     // refresh só em ações manuais (ex.: abrir inscrições) — nunca no auto-start (evita loop)
@@ -533,6 +533,14 @@ export default function MestreClient({
     marginBottom: 5, letterSpacing: '0.06em', textTransform: 'uppercase',
   }
 
+  // botões de controle: célula inteira do grid, alvo de toque grande (mobile)
+  const ctrlBtn = (bg: string, color: string, border = 'none'): React.CSSProperties => ({
+    background: bg, color, border, borderRadius: 10, padding: '14px 16px',
+    fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+    width: '100%', minHeight: 52, display: 'flex', alignItems: 'center',
+    justifyContent: 'center', gap: 6, textAlign: 'center',
+  })
+
   // tempo restante p/ auto-fechar a live e sair (1h após finalizar)
   const finishedCloseMsLeft = (status === 'finished' && finishedAt && now)
     ? new Date(finishedAt).getTime() + 3600_000 - now.getTime()
@@ -603,8 +611,9 @@ export default function MestreClient({
         </div>
       )}
 
-      {/* ── Live / Logo (substitui o QR quando inscrições fecham) ── */}
-      {!showQR && status !== 'finished' && (
+      {/* ── Live / Logo — com stream ativa aparece SEMPRE (até em rascunho/inscrições,
+           junto do QR); sem stream, só substitui o QR quando as inscrições fecham ── */}
+      {(streamUrl || !showQR) && status !== 'finished' && (
         <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
           {streamUrl ? (
             <div style={{ position: 'relative', paddingTop: '56.25%' }}>
@@ -672,11 +681,11 @@ export default function MestreClient({
         </div>
       )}
 
-      {/* ── Controles ── */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* ── Controles — grid responsivo: 1 coluna no celular, lado a lado no desktop ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 10 }}>
         {status === 'draft' && (
           <button onClick={() => ask('Tem certeza que deseja abrir as inscrições?', openInscricoes)} disabled={loading}
-            style={{ background: '#1D4ED8', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={ctrlBtn('#1D4ED8', '#fff')}>
             Abrir inscrições
           </button>
         )}
@@ -684,7 +693,7 @@ export default function MestreClient({
         {/* Inscrições abertas, marcações ainda não configuradas → Configuração da Marcação */}
         {status === 'open' && !groupsAssigned && (
           <button onClick={() => openMarcConfig(false)}
-            style={{ background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={ctrlBtn('#0D8F41', '#fff')}>
             Configuração da Marcação
           </button>
         )}
@@ -692,7 +701,7 @@ export default function MestreClient({
         {/* Marcações configuradas, falta agendar o horário da marcação atual */}
         {awaitingTiming && roundPhase !== 'counting' && roundPhase !== 'waiting' && (
           <button onClick={() => openMarcTiming(activeGroup)}
-            style={{ background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={ctrlBtn('#0D8F41', '#fff')}>
             ▶ Configurar marcação {marcLabel}
           </button>
         )}
@@ -700,7 +709,7 @@ export default function MestreClient({
         {/* Marcação agendada, contagem regressiva rolando → abortar e redefinir horário */}
         {awaitingStart && (
           <button onClick={() => ask(`Abortar a marcação ${marcLabel} e redefinir o horário de início?`, abortarMarcacao)}
-            style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={ctrlBtn('#FEF2F2', '#DC2626', '1px solid #FECACA')}>
             ✕ Abortar marcação {marcLabel}
           </button>
         )}
@@ -710,12 +719,12 @@ export default function MestreClient({
           <>
             {semAppAtuais.length > 0 && (
               <button onClick={() => setCantosOpen(true)}
-                style={{ background: '#F3E8FF', color: '#7C3AED', border: '1px solid #E9D5FF', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={ctrlBtn('#F3E8FF', '#7C3AED', '1px solid #E9D5FF')}>
                 Cantos sem app · marcação {marcLabel}
               </button>
             )}
             <button onClick={() => openMarcTiming(activeGroup + 1)}
-              style={{ background: '#1D4ED8', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={ctrlBtn('#1D4ED8', '#fff')}>
               ▶ Configurar marcação {round}-{activeGroup + 1}
             </button>
           </>
@@ -726,7 +735,7 @@ export default function MestreClient({
           <>
             {semAppAtuais.length > 0 && (
               <button onClick={() => setCantosOpen(true)}
-                style={{ background: '#F3E8FF', color: '#7C3AED', border: '1px solid #E9D5FF', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={ctrlBtn('#F3E8FF', '#7C3AED', '1px solid #E9D5FF')}>
                 Cantos sem app · marcação {marcLabel}
               </button>
             )}
@@ -736,18 +745,18 @@ export default function MestreClient({
                 {/* vassourada some após usada; volta só no fim do próximo ciclo */}
                 {!vassouradaDone && (
                   <button onClick={openVassoura}
-                    style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    style={ctrlBtn('#DC2626', '#fff')}>
                     🧹 Vassourada
                   </button>
                 )}
                 <button onClick={() => openMarcConfig(true)}
-                  style={{ background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={ctrlBtn('#0D8F41', '#fff')}>
                   Configuração da Marcação
                 </button>
               </>
             )}
             <button onClick={() => ask('Tem certeza que deseja finalizar o torneio?', finalizeTorneio)} disabled={loading}
-              style={{ background: '#111827', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              style={ctrlBtn('#111827', '#fff')}>
               ■ Finalizar torneio
             </button>
           </>
@@ -756,11 +765,7 @@ export default function MestreClient({
         {/* Iniciar/Encerrar live — após finalizar, só resta encerrar a live */}
         {(status !== 'finished' || streamUrl) && (
           <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
-            style={{
-              background: streamUrl ? '#FEF2F2' : '#111827', color: streamUrl ? '#DC2626' : '#fff',
-              border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-            }}>
+            style={ctrlBtn(streamUrl ? '#FEF2F2' : '#111827', streamUrl ? '#DC2626' : '#fff', streamUrl ? '1px solid #FECACA' : 'none')}>
             {streamUrl ? '✕ Encerrar live' : '📡 Iniciar live'}
           </button>
         )}
@@ -768,7 +773,7 @@ export default function MestreClient({
         {/* Adicionar sem app — SÓ antes de começar (inscrições, antes de configurar as marcações) */}
         {(status === 'draft' || status === 'open') && !groupsAssigned && (
           <button onClick={() => setAddOpen(true)}
-            style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={ctrlBtn('#7C3AED', '#fff')}>
             + Adicionar sem app
           </button>
         )}

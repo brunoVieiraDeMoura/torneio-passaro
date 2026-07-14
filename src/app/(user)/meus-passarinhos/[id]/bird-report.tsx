@@ -295,7 +295,7 @@ export default function BirdReport({ bird, history }: Props) {
           {/* print footer */}
           <div style={{ marginTop: 32, textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: '0.68rem', color: '#D1D5DB' }}>
-              Cantorias · Relatório gerado em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+              aveum · Relatório gerado em {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
             </p>
           </div>
         </div>

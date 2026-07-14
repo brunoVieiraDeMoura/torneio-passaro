@@ -129,15 +129,15 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
             <div>
               <label style={lbl}>Passarinho</label>
               <select style={{ ...inp, color: tipoAve ? '#111827' : '#9CA3AF' }} value={tipoAve} onChange={e => setTipoAve(e.target.value)} required>
-                <option value="">Selecionar raça...</option>
-                {RACAS.map(r => <option key={r} value={r}>{r}</option>)}
+                <option value="" style={{ color: '#9CA3AF' }}>Selecionar raça...</option>
+                {RACAS.map(r => <option key={r} value={r} style={{ color: '#111827' }}>{r}</option>)}
               </select>
             </div>
             <div>
               <label style={lbl}>Estilo de canto</label>
               <select style={{ ...inp, color: estiloCanto ? '#111827' : '#9CA3AF' }} value={estiloCanto} onChange={e => setEstiloCanto(e.target.value)} required>
-                <option value="">Selecionar estilo...</option>
-                {ESTILOS.map(s => <option key={s} value={s}>{s}</option>)}
+                <option value="" style={{ color: '#9CA3AF' }}>Selecionar estilo...</option>
+                {ESTILOS.map(s => <option key={s} value={s} style={{ color: '#111827' }}>{s}</option>)}
               </select>
             </div>
           </div>

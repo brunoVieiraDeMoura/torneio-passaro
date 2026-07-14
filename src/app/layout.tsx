@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Torneio de Pássaros',
+  title: 'aveum',
   description: 'Torneios de canto de pássaro',
   manifest: '/manifest.json',
 }

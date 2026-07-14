@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import EntrarForm from './entrar-form'
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 
 type Club = { name: string } | null
 
@@ -55,12 +56,8 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
-            <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontWeight: 800, fontSize: '1rem', color: '#111827', letterSpacing: '-0.02em' }}>
-            Cantorias
-          </span>
+          <BirdMark size={36} />
+          <AveumWordmark style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em' }} />
         </Link>
         <Link href="/torneios" style={{ fontSize: '0.75rem', color: '#9CA3AF', textDecoration: 'none', fontWeight: 500 }}>
           Ver torneios →

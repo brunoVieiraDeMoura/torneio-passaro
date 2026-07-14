@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 
 interface Props {
   clubName: string
@@ -85,10 +86,8 @@ export default function ClubSidebar({ clubName, userName }: Props) {
       {/* logo */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #F3F4F6' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <svg width="20" height="14" viewBox="0 0 22 16" fill="none">
-            <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#111827', letterSpacing: '-0.02em' }}>Cantorias</span>
+          <BirdMark size={32} />
+          <AveumWordmark style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em' }} />
         </div>
         <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 8, padding: '8px 10px' }}>
           <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Clube</p>
@@ -180,10 +179,8 @@ export default function ClubSidebar({ clubName, userName }: Props) {
       {/* mobile top bar */}
       <div className="club-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <svg width="18" height="13" viewBox="0 0 22 16" fill="none">
-            <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-          </svg>
-          <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#111827', letterSpacing: '-0.02em' }}>Cantorias</span>
+          <BirdMark size={30} />
+          <AveumWordmark style={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.02em' }} />
         </div>
         <button
           onClick={() => setOpen(o => !o)}

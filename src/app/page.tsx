@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
 import Link from 'next/link'
 import Header from '@/components/ui/header'
+import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 import RankingPreview from '@/components/ui/ranking-preview'
 import TorneiosPreview from '@/components/ui/torneios-preview'
 import { createClient } from '@/lib/supabase/server'
@@ -412,11 +413,9 @@ export default async function LandingPage() {
             {/* brand — full width on mobile */}
             <Box sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' }, display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', sm: 'flex-start' }, gap: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
-                  <path d="M1 8 Q5.5 1 11 8 Q16.5 15 21 8" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round"/>
-                </svg>
-                <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#fff', letterSpacing: '-0.02em' }}>
-                  Cantorias
+                <BirdMark size={36} />
+                <Typography sx={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em' }}>
+                  <AveumWordmark onDark />
                 </Typography>
               </Box>
               <Typography sx={{ fontSize: '0.78rem', color: '#6B7280', lineHeight: 1.6, maxWidth: 220 }}>
@@ -468,10 +467,10 @@ export default async function LandingPage() {
             textAlign: { xs: 'center', sm: 'left' },
           }}>
             <Typography sx={{ fontSize: '0.72rem', color: '#4B5563' }}>
-              © 2025 Cantorias. Todos os direitos reservados.
+              © 2025 aveum. Todos os direitos reservados.
             </Typography>
-            <Link href="mailto:contato@cantorias.com.br" style={{ fontSize: '0.72rem', color: '#4B5563', textDecoration: 'none' }}>
-              contato@cantorias.com.br
+            <Link href="mailto:contato@aveum.com.br" style={{ fontSize: '0.72rem', color: '#4B5563', textDecoration: 'none' }}>
+              contato@aveum.com.br
             </Link>
           </Box>
         </Container>

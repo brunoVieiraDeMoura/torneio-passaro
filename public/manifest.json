@@ -1,6 +1,6 @@
 {
-  "name": "Passarinho Torneio",
-  "short_name": "Passarinho",
+  "name": "aveum",
+  "short_name": "aveum",
   "description": "Torneios de canto de pássaro",
   "start_url": "/",
   "display": "standalone",
