@@ -56,6 +56,19 @@ function splitGroups(list: Participante[], n: number): Record<string, number> {
   return map
 }
 
+// Card que agrupa botões de controle com título + descrição do que fazem
+function CtrlCard({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: '0.82rem', color: '#111827' }}>{title}</p>
+        <p style={{ margin: '3px 0 0', fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.5 }}>{desc}</p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>{children}</div>
+    </div>
+  )
+}
+
 function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onCancel() }}
@@ -693,101 +706,106 @@ export default function MestreClient({
         </div>
       )}
 
-      {/* ── Controles — grid responsivo: 1 coluna no celular, lado a lado no desktop ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 10 }}>
+      {/* ── Controles — cards com descrição, agrupados por função ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 12 }}>
+
+        {/* Inscrições */}
         {status === 'draft' && (
-          <button onClick={() => ask('Tem certeza que deseja abrir as inscrições?', openInscricoes)} disabled={loading}
-            style={ctrlBtn('#1D4ED8', '#fff')}>
-            Abrir inscrições
-          </button>
-        )}
-
-        {/* Inscrições abertas, marcações ainda não configuradas → Configuração da Marcação */}
-        {status === 'open' && !groupsAssigned && (
-          <button onClick={() => openMarcConfig(false)}
-            style={ctrlBtn('#0D8F41', '#fff')}>
-            Configuração da Marcação
-          </button>
-        )}
-
-        {/* Marcações configuradas, falta agendar o horário da marcação atual */}
-        {awaitingTiming && roundPhase !== 'counting' && roundPhase !== 'waiting' && (
-          <button onClick={() => openMarcTiming(activeGroup)}
-            style={ctrlBtn('#0D8F41', '#fff')}>
-            ▶ Configurar marcação {marcLabel}
-          </button>
-        )}
-
-        {/* Marcação agendada, contagem regressiva rolando → abortar e redefinir horário */}
-        {awaitingStart && (
-          <button onClick={() => ask(`Abortar a marcação ${marcLabel} e redefinir o horário de início?`, abortarMarcacao)}
-            style={ctrlBtn('#FEF2F2', '#DC2626', '1px solid #FECACA')}>
-            ✕ Abortar marcação {marcLabel}
-          </button>
-        )}
-
-        {/* Fim de uma marcação, mas ainda há marcações no ciclo → cantos sem app + configurar a próxima */}
-        {roundPhase === 'done' && !allGroupsDone && (
-          <>
-            {semAppAtuais.length > 0 && (
-              <button onClick={() => setCantosOpen(true)}
-                style={ctrlBtn('#F3E8FF', '#7C3AED', '1px solid #E9D5FF')}>
-                Cantos sem app · marcação {marcLabel}
-              </button>
-            )}
-            <button onClick={() => openMarcTiming(activeGroup + 1)}
+          <CtrlCard title="📋 Inscrições" desc="Abre as inscrições: o QR code fica visível e os participantes podem se inscrever pelo celular.">
+            <button onClick={() => ask('Tem certeza que deseja abrir as inscrições?', openInscricoes)} disabled={loading}
               style={ctrlBtn('#1D4ED8', '#fff')}>
-              ▶ Configurar marcação {round}-{activeGroup + 1}
+              Abrir inscrições
             </button>
-          </>
+          </CtrlCard>
         )}
 
-        {/* Fim do ciclo → cantos sem app + (se dividido) vassourada + nova configuração + finalizar */}
-        {allGroupsDone && (
-          <>
-            {semAppAtuais.length > 0 && (
+        {/* Marcações — é aqui que o torneio começa de fato */}
+        {((status === 'open' && !groupsAssigned) ||
+          (awaitingTiming && roundPhase !== 'counting' && roundPhase !== 'waiting') ||
+          awaitingStart ||
+          (roundPhase === 'done' && !allGroupsDone) ||
+          (allGroupsDone && divisions > 1)) && (
+          <CtrlCard title="▶ Marcações" desc="É aqui que o torneio inicia: defina em quantas marcações (grupos de gaiolas) o ciclo será dividido e agende a duração e o horário de cada uma.">
+            {status === 'open' && !groupsAssigned && (
+              <button onClick={() => openMarcConfig(false)}
+                style={ctrlBtn('#0D8F41', '#fff')}>
+                Configuração da Marcação
+              </button>
+            )}
+            {awaitingTiming && roundPhase !== 'counting' && roundPhase !== 'waiting' && (
+              <button onClick={() => openMarcTiming(activeGroup)}
+                style={ctrlBtn('#0D8F41', '#fff')}>
+                ▶ Configurar marcação {marcLabel}
+              </button>
+            )}
+            {awaitingStart && (
+              <button onClick={() => ask(`Abortar a marcação ${marcLabel} e redefinir o horário de início?`, abortarMarcacao)}
+                style={ctrlBtn('#FEF2F2', '#DC2626', '1px solid #FECACA')}>
+                ✕ Abortar marcação {marcLabel}
+              </button>
+            )}
+            {roundPhase === 'done' && !allGroupsDone && (
+              <button onClick={() => openMarcTiming(activeGroup + 1)}
+                style={ctrlBtn('#1D4ED8', '#fff')}>
+                ▶ Configurar marcação {round}-{activeGroup + 1}
+              </button>
+            )}
+            {allGroupsDone && divisions > 1 && (
+              <button onClick={() => openMarcConfig(true)}
+                style={ctrlBtn('#0D8F41', '#fff')}>
+                Configuração da Marcação (novo ciclo)
+              </button>
+            )}
+          </CtrlCard>
+        )}
+
+        {/* Participantes fora do app */}
+        {(((status === 'draft' || status === 'open') && !groupsAssigned) ||
+          (roundPhase === 'done' && semAppAtuais.length > 0)) && (
+          <CtrlCard title="👤 Participante sem App" desc="Adicione quem participa sem celular. Os cantos deles (catraca) são informados por você ao fim de cada marcação.">
+            {(status === 'draft' || status === 'open') && !groupsAssigned && (
+              <button onClick={() => setAddOpen(true)}
+                style={ctrlBtn('#7C3AED', '#fff')}>
+                Adicionar Participante sem App
+              </button>
+            )}
+            {roundPhase === 'done' && semAppAtuais.length > 0 && (
               <button onClick={() => setCantosOpen(true)}
                 style={ctrlBtn('#F3E8FF', '#7C3AED', '1px solid #E9D5FF')}>
                 Cantos sem app · marcação {marcLabel}
               </button>
             )}
-            {/* mais marcações/vassourada só quando o ciclo teve +1 marcação; 1 marcação = rodada final */}
-            {divisions > 1 && (
-              <>
-                {/* vassourada some após usada; volta só no fim do próximo ciclo */}
-                {!vassouradaDone && (
-                  <button onClick={openVassoura}
-                    style={ctrlBtn('#DC2626', '#fff')}>
-                    🧹 Vassourada
-                  </button>
-                )}
-                <button onClick={() => openMarcConfig(true)}
-                  style={ctrlBtn('#0D8F41', '#fff')}>
-                  Configuração da Marcação
-                </button>
-              </>
-            )}
+          </CtrlCard>
+        )}
+
+        {/* Vassourada */}
+        {allGroupsDone && divisions > 1 && !vassouradaDone && (
+          <CtrlCard title="🧹 Vassourada" desc="Opcional, ao fim do ciclo: elimina uma porcentagem das gaiolas com menos cantos. Quem passa avança para o próximo ciclo.">
+            <button onClick={openVassoura}
+              style={ctrlBtn('#DC2626', '#fff')}>
+              🧹 Vassourada
+            </button>
+          </CtrlCard>
+        )}
+
+        {/* Transmissão */}
+        {status !== 'finished' && !streamUrl && (
+          <CtrlCard title="📡 Transmissão ao vivo" desc="Cole o link da live do YouTube para os espectadores acompanharem o torneio pelo site.">
+            <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
+              style={ctrlBtn('#111827', '#fff')}>
+              📡 Iniciar live
+            </button>
+          </CtrlCard>
+        )}
+
+        {/* Encerramento */}
+        {allGroupsDone && (
+          <CtrlCard title="🏁 Encerrar torneio" desc="Grava a marcação final no histórico dos pássaros e finaliza o torneio. Ação definitiva — não dá pra reabrir.">
             <button onClick={() => ask('Tem certeza que deseja finalizar o torneio?', finalizeTorneio)} disabled={loading}
               style={ctrlBtn('#111827', '#fff')}>
               ■ Finalizar torneio
             </button>
-          </>
-        )}
-
-        {/* Iniciar live — o "Encerrar live" fica lá em cima, junto do relógio */}
-        {status !== 'finished' && !streamUrl && (
-          <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
-            style={ctrlBtn('#111827', '#fff')}>
-            📡 Iniciar live
-          </button>
-        )}
-
-        {/* Adicionar sem app — SÓ antes de começar (inscrições, antes de configurar as marcações) */}
-        {(status === 'draft' || status === 'open') && !groupsAssigned && (
-          <button onClick={() => setAddOpen(true)}
-            style={ctrlBtn('#7C3AED', '#fff')}>
-            Adicionar Participante sem App
-          </button>
+          </CtrlCard>
         )}
       </div>
 

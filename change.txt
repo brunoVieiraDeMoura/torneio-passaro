@@ -1,31 +1,26 @@
-ui https://torneio-passaro.vercel.app/liga
-melhor toda a estética para mobile, deixar mais responsivel, visivel e menos confuso, sem mudar as funcionalidades
+se você estiver logado em sua conta, e tiver algum pássaro seu no ranking da liga, pintar ele com o verde do site
 
-ui https://torneio-passaro.vercel.app/clube/ranking
-melhorar a estética e responsividade
+na hora de imprimir o histórico do passarinho, mostrar todas as páginas de torneios que ele participou.
 
-Ajusta a ui de  https://torneio-passaro.vercel.app/meus-passarinhos
-melhor a estética para mobile e deixa mais responsia, deixa tudo caber na tela, tem algumas coisas bugadas com padding tamanho de texto e etc..
+em https://torneio-passaro.vercel.app/mestre/torneio/f822f8f8-9c66-4283-a0ec-df246ba3915b , criar um card de descrição
+que envolva os botões relacionado as configurações de marcação, informando que ali inicia o torneio, a quantidade de marcação, 
+faça isso também para o "Adicionar Participante " , Para a Vassourada, para encerramento de torneio, cria também um tutorial de uso para
+o mestre de roda em https://torneio-passaro.vercel.app/clube/dashboard no menu lateral, explicando tudo dentro do torneio, e tudo da dashboard também.
 
-em https://torneio-passaro.vercel.app/clube/torneios , ao criar um torneio e não dar inicio ao torneio, criar um botão  ao lado de gerenciar "[icone de play] Iniciar Torneio" (que inicia diretamenta o torneio e leva para o torneio como se tivesse clicado em gerenciar. ex:https://torneio-passaro.vercel.app/mestre/torneio/f822f8f8-9c66-4283-a0ec-df246ba3915b)
+===============================================================
 
+se o participante cair, ou a internet cair, o webapp, continua contando em cache, para junto com o tempo limite de contar, 
+depois envia o resultado final para o servidor (enviar os alertas de punição também) [fazer apenas se fizer sentido e for viável]
 
-fazer cadastro e login com google account, bota o login no google também se a pessoa ler qrcode e estiver deslogada
+===============================================================
 
-quero que bote limite de históricos dos paths a seguir (botar uma página daquelas 1/x)
-renderizar só uma certa quantidade.
+fazer teste forçado com 
+multiplos usuários
+multiplos torneios
+clicando simultaniamente e marcando simultaneamente,
+adicionar lives aleatórias em cada torneio, para forçar 
 
-histórico de campeonatos em:
-https://torneio-passaro.vercel.app/meus-passarinhos/ab6d709e-cfc6-405a-a236-1775be623927
+faça testes com 50 pessoas em 5 torneios, vá multiplicando por 2, para ver até onde aguenta.
+(obss: me informe se isso é correto ou viável)
 
-histórico do clube:
-https://torneio-passaro.vercel.app/clube/historico
-
-ranking interno :
-https://torneio-passaro.vercel.app/clube/ranking
-
-participantes:
-https://torneio-passaro.vercel.app/clube/participantes
-
-torneios:
-https://torneio-passaro.vercel.app/clube/torneios
+após esse teste, me mande o relatório

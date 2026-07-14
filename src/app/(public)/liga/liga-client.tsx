@@ -44,7 +44,9 @@ function Sel({ value, onChange, options, placeholder, required }: {
   )
 }
 
-export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
+export default function LigaClient({ entries, currentUserId }: { entries: LigaEntry[]; currentUserId?: string | null }) {
+  // pássaro real do usuário logado: id gerado como `r_${user_id}_${slug}` em lib/liga
+  const isMine = (id: string) => !!currentUserId && id.startsWith(`r_${currentUserId}_`)
   const [scope,   setScope]   = useState<Scope>('municipal')
   const [limit,   setLimit]   = useState<Limit>(10)
   const [estado,  setEstado]  = useState('')
@@ -254,16 +256,17 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: { xs: 1, sm: 1.5 }, mb: 3 }}>
               {podium.map((item, i) => (
                 <Box key={item.id} component={Link} href={`/liga/passarinho/${item.id}`} sx={{
-                  border: '1px solid #E5E7EB', borderTop: `3px solid ${PODIUM_COLOR[i]}`,
-                  borderRadius: 2, p: { xs: 1.5, sm: 2 }, bgcolor: PODIUM_BG[i],
+                  border: isMine(item.id) ? '2px solid #0D8F41' : '1px solid #E5E7EB',
+                  borderTop: `3px solid ${isMine(item.id) ? '#0D8F41' : PODIUM_COLOR[i]}`,
+                  borderRadius: 2, p: { xs: 1.5, sm: 2 }, bgcolor: isMine(item.id) ? '#F0FDF4' : PODIUM_BG[i],
                   textDecoration: 'none', display: 'block', cursor: 'pointer',
                   '&:hover': { opacity: 0.85 }, transition: 'opacity 0.15s',
                 }}>
                   <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: PODIUM_COLOR[i], letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.75 }}>
                     {PODIUM_LABEL[i]}
                   </Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.85rem' }, lineHeight: 1.25, color: '#111827', mb: 0.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.bird_name}
+                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.85rem' }, lineHeight: 1.25, color: isMine(item.id) ? '#0D8F41' : '#111827', mb: 0.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.bird_name}{isMine(item.id) ? ' (você)' : ''}
                   </Typography>
                   <Typography sx={{ fontSize: '0.68rem', color: '#9CA3AF', mb: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.user_name}
@@ -297,9 +300,10 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
                   display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 1.5,
                   px: { xs: 2, sm: 2.5 }, py: { xs: 1.5, sm: 1.75 }, alignItems: 'center',
                   borderBottom: i < filtered.length - 1 ? '1px solid #F9FAFB' : 'none',
-                  bgcolor: i === 0 ? '#FFFBEB' : 'transparent',
+                  bgcolor: isMine(item.id) ? '#F0FDF4' : i === 0 ? '#FFFBEB' : 'transparent',
+                  boxShadow: isMine(item.id) ? 'inset 3px 0 0 #0D8F41' : 'none',
                   textDecoration: 'none', cursor: 'pointer',
-                  '&:hover': { bgcolor: i === 0 ? '#FEF3C7' : '#F9FAFB' },
+                  '&:hover': { bgcolor: isMine(item.id) ? '#DCFCE7' : i === 0 ? '#FEF3C7' : '#F9FAFB' },
                   transition: 'background-color 0.15s',
                 }}>
                   <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.05em', color: i < 3 ? PODIUM_COLOR[i] : '#D1D5DB' }}>
@@ -307,8 +311,8 @@ export default function LigaClient({ entries }: { entries: LigaEntry[] }) {
                   </Typography>
 
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.87rem', color: '#111827', lineHeight: 1.3, mb: 0.2 }}>
-                      {item.bird_name}
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.87rem', color: isMine(item.id) ? '#0D8F41' : '#111827', lineHeight: 1.3, mb: 0.2 }}>
+                      {item.bird_name}{isMine(item.id) ? ' (você)' : ''}
                     </Typography>
                     <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mb: 0.4 }}>
                       {item.user_name} · {item.cidade}, {item.estado}

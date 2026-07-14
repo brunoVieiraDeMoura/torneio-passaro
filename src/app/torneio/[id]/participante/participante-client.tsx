@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import MestreWalker from '@/components/ui/mestre-walker'
 
 interface Torneio {
   id: string
@@ -480,9 +481,9 @@ export default function ParticipanteClient({
         )}
       </div>
 
-      {/* Aguardando início da minha marcação — mostra countdown */}
+      {/* Aguardando início da minha marcação — mostra countdown + animação */}
       {preStart && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%' }}>
           {msUntilStart !== null && msUntilStart > 0 ? (
             <>
               <div style={{ background: '#FEF3C7', borderRadius: 14, padding: '14px 24px', textAlign: 'center' }}>
@@ -498,6 +499,7 @@ export default function ParticipanteClient({
           ) : (
             <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.85rem' }}>Aguardando o Chefe de Roda iniciar o torneio...</p>
           )}
+          <MestreWalker />
         </div>
       )}
 

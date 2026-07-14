@@ -60,7 +60,8 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(file ./logo/*)",
       "Bash(xargs grep -ln \"Cantorias\\\\|Torneio de Pássaro\\\\|Torneio de Passaro\\\\|torneio de pássaro\\\\|torneio de passaro\")",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(file animation/*)"
     ]
   },
   "enableAllProjectMcpServers": true,

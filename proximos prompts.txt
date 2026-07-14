@@ -1,0 +1,14 @@
+fazer teste forçado com 
+multiplos usuários
+multiplos torneios
+clicando simultaniamente e marcando simultaneamente,
+adicionar lives aleatórias em cada torneio, para forçar 
+
+faça testes com 50 pessoas em 5 torneios, vá multiplicando por 2, para ver até onde aguenta.
+(obss: me informe se isso é correto ou viável)
+
+===============================================================
+
+se o participante cair, ou a internet cair, o webapp, continua contando em cache, para junto com o tempo limite de contar, 
+depois envia o resultado final para o servidor (enviar os alertas de punição também) [fazer apenas se fizer sentido e for viável]
+
