@@ -1,8 +1,4 @@
-em criar torneio https://torneio-passaro.vercel.app/clube/torneios , quero um botão de switch que ficara deligado
-com a mensagem "Marque essa opção para definir a posição das gaiolas manualmente" , caso estiver marcada, msg "desmarque para definir automáticamente"
-
-se estiver desmarcado, continue funcionando da maneira que está.
-
-se estiver marcado, depois de definir o numero de marcações acima de 1 ex: 2 marcações,
-será divido em 2 grupos, deixar o mestre de roda definir qual gaiola vai para o grupo 1, e automaticamente definir quem não foi pro 1 para o grupo 2,
-se tiver 3 marcações, deixar ele definir o grupo 1 e 2 , e o 3 marca quem faltar.
+em https://torneio-passaro.vercel.app/mestre/torneio/ac507db1-4585-4762-b527-a2deaacf075b , na parte de "Possíveis fraude Marcação",
+cria um botão para remover da contagem, todas as contagens fraudulentas, 
+esse botão por exemplo , gaiola 123 o passarinho marcou 32 cantos, mas 9 foram marcados como fraude, o saldo de cantos seria de 23 ao final do botão, após clicar nesse botão
+remove a fraude de todos os participantes, subtrai os cantos, e fecha a section de Possiveis fraudes

@@ -243,6 +243,22 @@ export default function ParticipanteClient({
     return () => { active = false; clearInterval(id) }
   }, [participanteStatus, torneioStatus, participante.id, torneio.id])
 
+  // Sincronização pré-marcação: recarrega a página a 40s, 30s e 20s do início
+  // pra realinhar horário/estado de todos os participantes antes da contagem.
+  // Após cada reload o efeito re-agenda só os marcos ainda futuros.
+  useEffect(() => {
+    if (!startAt) return
+    if (participanteStatus !== 'approved') return
+    if (torneioStatus !== 'open' && torneioStatus !== 'running') return
+    if (divisions > 1 && roundGroup !== activeGroup) return // só quem vai participar
+    const start = new Date(startAt).getTime()
+    const timers = [40_000, 30_000, 20_000]
+      .map(offset => start - offset - Date.now())
+      .filter(ms => ms > 500) // marcos já passados não agendam
+      .map(ms => setTimeout(() => window.location.reload(), ms))
+    return () => timers.forEach(clearTimeout)
+  }, [startAt, participanteStatus, torneioStatus, divisions, roundGroup, activeGroup])
+
   const nowMs = now ? now.getTime() : null
   const startAtMs = startAt ? new Date(startAt).getTime() : null
   const msUntilStart = startAtMs !== null && nowMs !== null ? startAtMs - nowMs : null
@@ -422,8 +438,16 @@ export default function ParticipanteClient({
           style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
         >
           <div style={{ background: '#fff', borderRadius: 14, padding: '24px 22px', width: '100%', maxWidth: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <p style={{ margin: '0 0 20px', fontWeight: 700, fontSize: '0.92rem', color: '#111827', lineHeight: 1.5 }}>
-              Sair da tela do torneio? Você pode voltar a qualquer momento pela página do torneio.
+            <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '0.92rem', color: '#111827', lineHeight: 1.5 }}>
+              Sair da tela do torneio?
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: '0.8rem', color: '#6B7280', lineHeight: 1.55 }}>
+              Você pode voltar a qualquer momento tocando no botão{' '}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#0D8F41', color: '#fff', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
+                Voltar ao torneio
+              </span>{' '}
+              no topo do site, à direita.
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={sairDaTela}

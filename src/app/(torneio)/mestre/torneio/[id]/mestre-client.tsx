@@ -290,6 +290,32 @@ export default function MestreClient({
     if (rows.length) await supabase.from('round_scores').insert(rows)
   }
 
+  // Desconta as contagens fraudulentas de TODOS os listados em "Possíveis fraudes":
+  // count = count - suspeitas (mín. 0), zera as suspeitas → a section fecha sozinha
+  // (ela só renderiza com fraudes acima do limite).
+  async function descontarFraudes(lista: Participante[]) {
+    setLoading(true)
+    const supabase = createClient()
+    for (const p of lista) {
+      const susp = suspicious[p.id] ?? 0
+      const novo = Math.max(0, (scores[p.id] ?? 0) - susp)
+      await supabase.from('scores')
+        .update({ count: novo, suspicious_count: 0 })
+        .eq('participant_id', p.id).eq('tournament_id', torneio.id)
+    }
+    setScores(prev => {
+      const n = { ...prev }
+      lista.forEach(p => { n[p.id] = Math.max(0, (prev[p.id] ?? 0) - (suspicious[p.id] ?? 0)) })
+      return n
+    })
+    setSuspicious(prev => {
+      const n = { ...prev }
+      lista.forEach(p => { n[p.id] = 0 })
+      return n
+    })
+    setLoading(false)
+  }
+
   // Eliminar participante: grava os cantos no histórico e registra o motivo.
   // reason: 'fraud' (botão da área de fraudes) | 'manual' (lista de participantes)
   async function eliminarParticipante(p: Participante, reason: 'fraud' | 'manual' = 'manual') {
@@ -1209,6 +1235,28 @@ export default function MestreClient({
           <p style={{ margin: 0, fontSize: '0.72rem', color: '#B45309' }}>
             Participantes marcando rápido demais (cliques &lt; 1s). Verifique quem pode estar burlando.
           </p>
+
+          {/* desconta as suspeitas do total de todos (ex: 32 cantos − 9 fraudes = 23) e fecha a section */}
+          {status !== 'finished' && (
+            <button
+              disabled={loading}
+              onClick={() => {
+                const totalSusp = fraudList.reduce((a, p) => a + (suspicious[p.id] ?? 0), 0)
+                ask(
+                  `Remover as contagens fraudulentas de ${fraudList.length} participante${fraudList.length !== 1 ? 's' : ''}? ` +
+                  `${totalSusp} canto${totalSusp !== 1 ? 's' : ''} suspeito${totalSusp !== 1 ? 's' : ''} ser${totalSusp !== 1 ? 'ão' : 'á'} subtraído${totalSusp !== 1 ? 's' : ''} do total (ex.: 32 cantos com 9 fraudes fica 23).`,
+                  () => descontarFraudes(fraudList),
+                )
+              }}
+              style={{
+                width: '100%', background: '#92400E', color: '#fff', border: 'none',
+                borderRadius: 8, padding: '11px', fontSize: '0.8rem', fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+              }}>
+              ⚠ Remover contagens fraudulentas de todos
+            </button>
+          )}
+
           {fraudList.map(p => {
             const n = suspicious[p.id] ?? 0
             const fc = fraudColor(n)
