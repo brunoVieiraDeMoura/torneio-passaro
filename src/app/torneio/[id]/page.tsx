@@ -2,11 +2,9 @@ import type { CSSProperties } from 'react'
 import { createPublicClient } from '@/lib/supabase/public'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import QRCode from 'qrcode'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
-import { getBaseUrl } from '@/lib/base-url'
 
 type Club = { name: string; cidade: string; estado: string } | null
 
@@ -179,15 +177,7 @@ const getTorneioData = async (id: string) => {
     .sort((a, b) => (b.lastRound ?? 0) - (a.lastRound ?? 0) || b.total - a.total)
     .map((p, idx) => ({ ...p, position: ranked.length + idx + 1 }))
 
-  const appUrl = await getBaseUrl()
-  const [qrDataUrl, qrDesktopDataUrl] = torneio.qr_token
-    ? await Promise.all([
-        QRCode.toDataURL(`${appUrl}/entrar/${torneio.qr_token}`, { width: 280, margin: 2, color: { dark: '#111827', light: '#ffffff' } }),
-        QRCode.toDataURL(`${appUrl}/entrar/${torneio.qr_token}`, { width: 340, margin: 2, color: { dark: '#ffffff', light: '#0D2B17' } }),
-      ])
-    : [null, null]
-
-  return { torneio, ranked, eliminated, historyByRound, qrDataUrl, qrDesktopDataUrl }
+  return { torneio, ranked, eliminated, historyByRound }
 }
 
 export default async function TorneioEspectadorPage({ params }: { params: Promise<{ id: string }> }) {
@@ -195,7 +185,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const data = await getTorneioData(id)
   if (!data) notFound()
 
-  const { torneio, ranked, eliminated, historyByRound, qrDataUrl, qrDesktopDataUrl } = data
+  const { torneio, ranked, eliminated, historyByRound } = data
   const clube = torneio.clubs as unknown as Club
   // contagem dirigida pelo tempo: ao vivo se rodando OU aberto dentro da janela de start
   const startMs = torneio.start_at ? new Date(torneio.start_at).getTime() : null
@@ -279,27 +269,13 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               </div>
             )}
 
-            {/* QR code */}
-            {qrDesktopDataUrl && canJoin && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-                <div style={{ background: '#0D2B17', borderRadius: 16, padding: 16, border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrDesktopDataUrl} alt="QR para participar" width={220} height={220} style={{ display: 'block' }} />
-                </div>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#4ADE80', fontWeight: 600, textAlign: 'center' }}>
-                  Escaneie para participar
-                </p>
-                <p style={{ margin: 0, fontSize: '0.68rem', color: '#4B5563', textAlign: 'center', lineHeight: 1.4 }}>
-                  {ranked.length} participante{ranked.length !== 1 ? 's' : ''} inscrito{ranked.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
-
-            {(!canJoin || !qrDesktopDataUrl) && (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#4B5563' }}>Inscrições encerradas</p>
-              </div>
-            )}
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: '#4B5563' }}>
+                {canJoin
+                  ? `${ranked.length} participante${ranked.length !== 1 ? 's' : ''} inscrito${ranked.length !== 1 ? 's' : ''}`
+                  : 'Inscrições encerradas'}
+              </p>
+            </div>
           </div>
 
           {/* right: ranking */}
@@ -484,16 +460,6 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             </div>
           )}
 
-          {/* QR code mobile (smaller, discreto) */}
-          {qrDataUrl && canJoin && (
-            <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: '0.68rem', color: '#D1D5DB', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
-                QR de acesso
-              </p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qrDataUrl} alt="QR para participar" width={120} height={120} style={{ borderRadius: 8, border: '1px solid #F3F4F6' }} />
-            </div>
-          )}
         </div>
       </div>
 
