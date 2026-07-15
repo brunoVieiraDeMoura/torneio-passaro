@@ -20,6 +20,7 @@ const tag: React.CSSProperties = {
   fontSize: '0.65rem', fontWeight: 700, color: '#0D8F41', background: '#F0FDF4',
   border: '1px solid #D1FAE5', borderRadius: 20, padding: '2px 10px', whiteSpace: 'nowrap',
 }
+const link: React.CSSProperties = { color: '#0D8F41', fontWeight: 600 }
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
@@ -50,26 +51,11 @@ export default async function ClubeTutorial() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ── Dashboard ── */}
+        {/* ── 1. Criar torneio ── */}
         <div style={card}>
-          <h2 style={h2}>📊 Dashboard</h2>
-          <p style={p}>
-            Visão geral do clube: torneios ativos, inscrições pendentes e atalhos. Pelo menu lateral você acessa:
-          </p>
-          <p style={p}>
-            <strong style={{ color: '#374151' }}>Torneios</strong> — criar, iniciar e gerenciar torneios em andamento.{' '}
-            <strong style={{ color: '#374151' }}>Participantes</strong> — todas as inscrições dos seus torneios (aprovadas, pendentes e fora do app).{' '}
-            <strong style={{ color: '#374151' }}>Ranking</strong> — ranking interno somando os cantos de todos os torneios finalizados do clube.{' '}
-            <strong style={{ color: '#374151' }}>Histórico</strong> — torneios já encerrados.{' '}
-            <strong style={{ color: '#374151' }}>Configurações</strong> — dados do clube e logo (aparece na tela do torneio quando não há live).
-          </p>
-        </div>
-
-        {/* ── Criar torneio ── */}
-        <div style={card}>
-          <h2 style={h2}>🏆 Criar e iniciar um torneio</h2>
+          <h2 style={h2}>🏆 Criar um torneio</h2>
           <Step n={1} title="Criar">
-            Em <Link href="/clube/torneios" style={{ color: '#0D8F41', fontWeight: 600 }}>Torneios</Link>, clique em
+            Em <Link href="/clube/torneios" style={link}>Torneios</Link>, clique em
             &quot;Criar torneio&quot;: defina nome, data/hora, duração da contagem, raça e estilo de canto.
             Só pássaros compatíveis com raça + estilo conseguem se inscrever.
           </Step>
@@ -83,20 +69,42 @@ export default async function ClubeTutorial() {
           </Step>
         </div>
 
-        {/* ── Aprovação ── */}
+        {/* ── 2. Live ── */}
         <div style={card}>
-          <h2 style={h2}>✅ Aprovar participantes</h2>
-          <p style={p}>
-            Cada inscrição chega como <span style={tag}>pendente</span> na lista de participantes do painel.
-            Atribua o número da gaiola e aprove (ou recuse). Só aprovados participam da contagem.
-            Quem não usa o aplicativo entra pelo botão &quot;Adicionar Participante sem App&quot; — os cantos
-            desses participantes são informados por você ao fim de cada marcação (botão &quot;Cantos sem app&quot;).
-          </p>
+          <h2 style={h2}>📡 Transmissão ao vivo</h2>
+          <Step n={1} title="Ativar">
+            No painel do torneio, clique em &quot;Iniciar live&quot; (ao lado do relógio) e cole o link
+            de uma live do YouTube.
+          </Step>
+          <Step n={2} title="Onde aparece">
+            A live aparece para você no painel, para os espectadores na página pública do torneio,
+            e substitui o QR quando as inscrições fecham.
+          </Step>
+          <Step n={3} title="Encerrar">
+            O botão vira &quot;Encerrar live&quot; no mesmo lugar. Após finalizar o torneio,
+            a live encerra sozinha em 1 hora.
+          </Step>
         </div>
 
-        {/* ── Marcações ── */}
+        {/* ── 3. Aprovação ── */}
         <div style={card}>
-          <h2 style={h2}>▶ Marcações (a contagem)</h2>
+          <h2 style={h2}>✅ Aprovar participantes</h2>
+          <Step n={1} title="Inscrição chega pendente">
+            Cada inscrição entra como <span style={tag}>pendente</span> na lista de participantes do painel.
+            Recusados e eliminados somem da lista automaticamente.
+          </Step>
+          <Step n={2} title="Gaiola + aprovar">
+            Atribua o número da gaiola e aprove (ou recuse). Só aprovados participam da contagem.
+          </Step>
+          <Step n={3} title="Participante sem app">
+            Quem não usa o aplicativo entra pelo botão &quot;Adicionar Participante sem App&quot; — os cantos
+            desses participantes são informados por você ao fim de cada marcação (botão &quot;Cantos sem app&quot;).
+          </Step>
+        </div>
+
+        {/* ── 4. Marcações ── */}
+        <div style={card}>
+          <h2 style={h2}>▶ Marcação (a contagem)</h2>
           <Step n={1} title="Configuração da Marcação">
             É aqui que o torneio começa de fato. Escolha em quantas marcações (grupos de gaiolas) o ciclo será
             dividido — 1 marcação = todos cantam juntos; 2+ = as gaiolas são divididas e cada grupo canta na sua vez.
@@ -116,34 +124,71 @@ export default async function ClubeTutorial() {
           </Step>
         </div>
 
-        {/* ── Vassourada ── */}
+        {/* ── 5. Vassourada ── */}
         <div style={card}>
           <h2 style={h2}>🧹 Vassourada</h2>
-          <p style={p}>
-            Opcional, disponível ao fim de cada ciclo com 2+ marcações: elimina uma porcentagem (25% a 75%) das
-            gaiolas com menos cantos. Antes de aplicar você vê exatamente quem avança e quem sai. Os cantos dos
-            eliminados ficam gravados no histórico deles. A vassourada só volta a aparecer no fim do próximo ciclo.
-          </p>
+          <Step n={1} title="Quando usar">
+            Opcional, disponível ao fim de cada ciclo com 2+ marcações. Serve para afunilar o torneio
+            eliminando as gaiolas com menos cantos.
+          </Step>
+          <Step n={2} title="Escolher a porcentagem">
+            Escolha quanto eliminar (25% a 75%). Antes de aplicar você vê exatamente quem avança e quem sai.
+          </Step>
+          <Step n={3} title="O que acontece">
+            Os cantos dos eliminados ficam gravados no histórico deles. A vassourada só volta a aparecer
+            no fim do próximo ciclo.
+          </Step>
         </div>
 
-        {/* ── Live ── */}
-        <div style={card}>
-          <h2 style={h2}>📡 Transmissão ao vivo</h2>
-          <p style={p}>
-            Cole o link de uma live do YouTube em &quot;Iniciar live&quot;. Ela aparece para você, para os espectadores
-            na página pública do torneio e substitui o QR quando as inscrições fecham. O botão &quot;Encerrar live&quot;
-            fica no topo do painel, ao lado do relógio. Após finalizar o torneio, a live encerra sozinha em 1 hora.
-          </p>
-        </div>
-
-        {/* ── Finalizar ── */}
+        {/* ── 6. Finalizar ── */}
         <div style={card}>
           <h2 style={h2}>🏁 Finalizar o torneio</h2>
-          <p style={p}>
-            &quot;Finalizar torneio&quot; grava a marcação final no histórico, mostra a classificação final aos
-            participantes e soma os cantos ao ranking do pássaro na Liga e no ranking interno do clube.
-            É definitivo — não dá pra reabrir. O torneio vai para o Histórico do clube.
-          </p>
+          <Step n={1} title="Quando finalizar">
+            Ao fim do último ciclo, use &quot;Finalizar torneio&quot; no painel.
+          </Step>
+          <Step n={2} title="O que é gravado">
+            A marcação final vai pro histórico, a classificação final aparece aos participantes,
+            e os cantos somam ao ranking do pássaro na Liga e no ranking interno do clube.
+          </Step>
+          <Step n={3} title="É definitivo">
+            Não dá pra reabrir. O torneio vai para o <Link href="/clube/historico" style={link}>Histórico</Link> do clube.
+          </Step>
+        </div>
+
+        {/* ── 7. Dashboard ── */}
+        <div style={card}>
+          <h2 style={h2}>📊 Dashboard</h2>
+          <Step n={1} title="Visão geral">
+            Torneios ativos, inscrições pendentes e atalhos rápidos do clube.
+          </Step>
+          <Step n={2} title="Menu lateral">
+            <strong style={{ color: '#374151' }}>Torneios</strong> — criar, iniciar e gerenciar.{' '}
+            <strong style={{ color: '#374151' }}>Participantes</strong> — todas as inscrições dos seus torneios.{' '}
+            <strong style={{ color: '#374151' }}>Ranking</strong> — ranking interno somando os torneios finalizados.{' '}
+            <strong style={{ color: '#374151' }}>Histórico</strong> — torneios encerrados.
+          </Step>
+          <Step n={3} title="Configurações">
+            Dados do clube e logo — o logo aparece na tela do torneio quando não há live.
+          </Step>
+        </div>
+
+        {/* ── 8. QR Code ── */}
+        <div style={card}>
+          <h2 style={h2}>📱 QR Code</h2>
+          <Step n={1} title="QR fixo do clube">
+            No menu <Link href="/clube/qrcode" style={link}>QR Code</Link> fica o QR geral do clube:
+            um link fixo que leva quem ler ao torneio ativo do momento (ao vivo tem prioridade).
+            Imprima uma vez e use em todos os torneios.
+          </Step>
+          <Step n={2} title="Folha de impressão">
+            &quot;Baixar folha de impressão&quot; gera uma página A4 com o nome do clube, o título
+            &quot;Inscrições&quot; e o QR bem grande. Dá pra preencher o Wi-Fi do clube antes de
+            imprimir — sai no papel junto com a dica de modo avião.
+          </Step>
+          <Step n={3} title="QR do torneio">
+            Cada torneio também tem o próprio QR no painel do mestre — esse é específico e some
+            10 minutos antes da marcação começar.
+          </Step>
         </div>
 
         <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
