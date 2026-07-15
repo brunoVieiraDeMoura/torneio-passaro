@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import MestreWalker from '@/components/ui/mestre-walker'
 import AdBanner from '@/components/ui/ad-banner'
+import { AmpulhetaAnim, FinalTorneioAnim } from '@/components/ui/frame-anim'
 
 interface Torneio {
   id: string
@@ -389,15 +390,22 @@ export default function ParticipanteClient({
 
   // ── Telas de estado ──
 
+  // fixo embaixo à direita — não interfere no botão de marcação
   const sairBtn = (
     <button
       onClick={sairDaTela}
       style={{
-        marginTop: 8, background: 'none', border: 'none', cursor: 'pointer',
-        fontFamily: 'inherit', fontSize: '0.75rem', color: '#9CA3AF',
-        textDecoration: 'underline', padding: '8px 12px',
+        position: 'fixed', bottom: 14, right: 14, zIndex: 400,
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: '#fff', border: '1px solid #E5E7EB', borderRadius: 20,
+        padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit',
+        fontSize: '0.72rem', fontWeight: 600, color: '#6B7280',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
       }}
     >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
       Sair da tela do torneio
     </button>
   )
@@ -405,7 +413,7 @@ export default function ParticipanteClient({
   if (participanteStatus === 'pending') {
     return (
       <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 24px', textAlign: 'center', background: '#fff' }}>
-        <span style={{ fontSize: '3rem' }}>⏳</span>
+        <AmpulhetaAnim height={110} />
         <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Aguardando aprovação</h1>
         <p style={{ color: '#9CA3AF', fontSize: '0.85rem', margin: 0 }}>O mestre vai te aprovar em breve. Fique nessa tela.</p>
         {sairBtn}
@@ -449,7 +457,7 @@ export default function ParticipanteClient({
     const total = historyTotal ?? myScore
     return (
       <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, padding: '40px 20px', background: '#fff', overflowY: 'auto' }}>
-        <span style={{ fontSize: '3rem' }}>🏁</span>
+        <FinalTorneioAnim maxWidth={320} />
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Fim do torneio!</h1>
         {myPosition > 0 && (
           <div style={{ textAlign: 'center' }}>

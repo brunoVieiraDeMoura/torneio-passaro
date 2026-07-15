@@ -25,6 +25,27 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
 
   let profile: { name: string; email: string } | null = null
   let matchingBirds: { id: string; name: string; raca: string | null; estilo_canto: string | null }[] = []
+  let existingPid: string | null = null
+  let outroTorneio: { tid: string; pid: string } | null = null
+
+  if (user) {
+    // inscrição ativa em QUALQUER torneio aberto/rolando: neste → volta pra tela;
+    // em outro → bloqueia (só 1 torneio por vez, até o encerramento)
+    const { data: parts } = await supabase
+      .from('participants')
+      .select('id, tournament_id, tournaments!inner(status)')
+      .eq('user_id', user.id)
+      .in('status', ['pending', 'approved'])
+    const active = (parts ?? []).find(p => {
+      const rel = p.tournaments as unknown
+      const t = (Array.isArray(rel) ? rel[0] : rel) as { status: string } | undefined
+      return t?.status === 'open' || t?.status === 'running'
+    })
+    if (active) {
+      if (active.tournament_id === torneio.id) existingPid = active.id
+      else outroTorneio = { tid: active.tournament_id, pid: active.id }
+    }
+  }
 
   if (user) {
     const { data: p } = await supabase
@@ -64,9 +85,10 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
         </Link>
       </div>
 
-      {/* content */}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '28px 20px 48px' }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+      {/* content — centraliza via margin:auto (alignItems:center cortava o topo
+          quando o conteúdo era maior que a tela em celulares menores) */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', padding: '28px 20px 48px' }}>
+        <div style={{ width: '100%', maxWidth: 400, margin: 'auto' }}>
 
           {/* torneio info card */}
           <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '24px', marginBottom: 12 }}>
@@ -125,6 +147,8 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
               profile={profile}
               matchingBirds={matchingBirds}
               returnPath={`/entrar/${token}`}
+              existingPid={existingPid}
+              outroTorneio={outroTorneio}
             />
           </div>
 

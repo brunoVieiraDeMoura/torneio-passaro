@@ -1223,32 +1223,40 @@ export default function MestreClient({
         </div>
       )}
 
-      {/* ── Participantes ── */}
+      {/* ── Participantes (recusados/eliminados somem da lista na hora) ── */}
       <div id="secao-aprovacao" style={{ display: 'flex', flexDirection: 'column', gap: 8, scrollMarginTop: 64 }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>Participantes</p>
         {participantes.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: '#9CA3AF', margin: 0 }}>Nenhum ainda. Compartilhe o QR code.</p>
         )}
-        {participantes.map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: p.status === 'eliminated' ? '#FAFAFA' : '#fff', opacity: p.status === 'eliminated' ? 0.5 : 1, flexWrap: 'wrap' }}>
+        {participantes.filter(p => p.status !== 'rejected' && p.status !== 'eliminated').map(p => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 150px', minWidth: 150 }}>
               <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827' }}>{p.bird_name}</p>
               <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                 {p.user_name}
                 {!p.user_id && <span style={{ marginLeft: 6, fontWeight: 700, color: '#7C3AED' }}>· fora do app</span>}
-                {p.status === 'eliminated' && <span style={{ marginLeft: 6, fontWeight: 700, color: '#DC2626' }}>· eliminado</span>}
               </p>
             </div>
             {p.status === 'pending' && (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                <input type="number" placeholder="Gaiola" style={{ width: 72, border: '1px solid #E5E7EB', borderRadius: 7, padding: '5px 8px', fontSize: '0.8rem', fontFamily: 'inherit', outline: 'none' }}
-                  onBlur={e => { const n = parseInt(e.target.value); if (!isNaN(n)) updateParticipante(p.id, { cage_number: n }) }} />
+              // quebra pra linha própria em telas estreitas; alvos de toque grandes
+              <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', flex: '1 1 300px', minWidth: 0 }}>
+                <input
+                  type="number" inputMode="numeric" placeholder="Nº gaiola"
+                  style={{
+                    flex: '1 1 90px', minWidth: 76, boxSizing: 'border-box',
+                    border: '1.5px solid #D1D5DB', borderRadius: 8, padding: '10px 10px',
+                    fontSize: '1rem', fontWeight: 700, textAlign: 'center',
+                    fontFamily: 'inherit', outline: 'none', minHeight: 44,
+                  }}
+                  onBlur={e => { const n = parseInt(e.target.value); if (!isNaN(n)) updateParticipante(p.id, { cage_number: n }) }}
+                />
                 <button onClick={() => updateParticipante(p.id, { status: 'approved' })}
-                  style={{ background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 11px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ flex: '1 1 auto', background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
                   Aprovar
                 </button>
                 <button onClick={() => updateParticipante(p.id, { status: 'rejected' })}
-                  style={{ background: '#FEF2F2', color: '#DC2626', border: 'none', borderRadius: 7, padding: '6px 11px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ flex: '1 1 auto', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
                   Recusar
                 </button>
               </div>
@@ -1266,8 +1274,6 @@ export default function MestreClient({
                 )}
               </div>
             )}
-            {p.status === 'rejected' && <span style={{ fontSize: '0.72rem', color: '#EF4444', flexShrink: 0 }}>Recusado</span>}
-            {p.status === 'eliminated' && <span style={{ fontSize: '0.72rem', color: '#DC2626', flexShrink: 0 }}>Eliminado</span>}
           </div>
         ))}
       </div>

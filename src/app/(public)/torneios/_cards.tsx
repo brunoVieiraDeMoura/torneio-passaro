@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Link from 'next/link'
 import { fmtTime, fmtDate, fmtDateFull, type Item } from './_utils'
+import { useTorneioAtivo } from '@/lib/use-torneio-ativo'
 
 const btnBase = {
   display: 'block', textAlign: 'center', fontSize: '0.78rem',
@@ -27,8 +28,19 @@ export function BirdTag({ tipo_ave, estilo_canto }: { tipo_ave: string | null; e
   )
 }
 
+// botão verde "Voltar ao torneio" — substitui Ver/Participar no torneio ativo do usuário
+function VoltarBtn({ pid, tid, flex }: { pid: string; tid: string; flex?: object }) {
+  return (
+    <Box component={Link} href={`/torneio/${tid}/participante?pid=${pid}`}
+      sx={{ ...btnBase, ...(flex ?? {}), color: '#fff', bgcolor: '#0D8F41', '&:hover': { bgcolor: '#0B7A36' } }}>
+      ● Voltar ao torneio
+    </Box>
+  )
+}
+
 export function LiveCard({ t }: { t: Item }) {
   const time = fmtTime(t.start_at)
+  const ativo = useTorneioAtivo()
   return (
     <Box sx={{
       bgcolor: '#fff', border: '1px solid #E5E7EB', borderRadius: 2, p: 2.5,
@@ -59,9 +71,13 @@ export function LiveCard({ t }: { t: Item }) {
         <BirdTag tipo_ave={t.tipo_ave} estilo_canto={t.estilo_canto} />
       </Box>
       <Box sx={{ display: 'flex', gap: 1, flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
-        <Box component={Link} href={`/torneio/${t.id}`} sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#374151', border: '1px solid #E5E7EB', '&:hover': { borderColor: '#9CA3AF', color: '#111827' } }}>
-          Ver torneio
-        </Box>
+        {ativo?.tid === t.id ? (
+          <VoltarBtn pid={ativo.pid} tid={t.id} flex={{ flex: { xs: 1, sm: 'none' } }} />
+        ) : (
+          <Box component={Link} href={`/torneio/${t.id}`} sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#374151', border: '1px solid #E5E7EB', '&:hover': { borderColor: '#9CA3AF', color: '#111827' } }}>
+            Ver torneio
+          </Box>
+        )}
       </Box>
     </Box>
   )
@@ -69,6 +85,7 @@ export function LiveCard({ t }: { t: Item }) {
 
 export function OpenCard({ t }: { t: Item }) {
   const time = fmtTime(t.start_at)
+  const ativo = useTorneioAtivo()
   return (
     <Box sx={{
       bgcolor: '#fff', border: '1px solid #E5E7EB', borderRadius: 2, p: 2.5,
@@ -96,17 +113,29 @@ export function OpenCard({ t }: { t: Item }) {
         <BirdTag tipo_ave={t.tipo_ave} estilo_canto={t.estilo_canto} />
       </Box>
       <Box sx={{ display: 'flex', gap: 1, flexShrink: 0, width: { xs: '100%', sm: 'auto' } }}>
-        <Box component={Link} href={`/torneio/${t.id}`} sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#374151', border: '1px solid #E5E7EB', '&:hover': { borderColor: '#9CA3AF', color: '#111827' } }}>
-          Ver torneio
-        </Box>
-        {t.qr_token ? (
-          <Box component={Link} href={`/entrar/${t.qr_token}`} sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#fff', bgcolor: '#0D8F41', '&:hover': { bgcolor: '#0B7A36' } }}>
-            Participar →
-          </Box>
+        {ativo?.tid === t.id ? (
+          // torneio ativo do usuário → só o botão de voltar
+          <VoltarBtn pid={ativo.pid} tid={t.id} flex={{ flex: { xs: 1, sm: 'none' } }} />
         ) : (
-          <Box sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#D1D5DB', border: '1px solid #F3F4F6' }}>
-            Participar
-          </Box>
+          <>
+            <Box component={Link} href={`/torneio/${t.id}`} sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#374151', border: '1px solid #E5E7EB', '&:hover': { borderColor: '#9CA3AF', color: '#111827' } }}>
+              Ver torneio
+            </Box>
+            {ativo ? (
+              // já participa de outro torneio → participar desativado até o fim dele
+              <Box title="Você já está participando de outro torneio" sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#D1D5DB', border: '1px solid #F3F4F6', cursor: 'not-allowed' }}>
+                Participar
+              </Box>
+            ) : t.qr_token ? (
+              <Box component={Link} href={`/entrar/${t.qr_token}`} sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#fff', bgcolor: '#0D8F41', '&:hover': { bgcolor: '#0B7A36' } }}>
+                Participar →
+              </Box>
+            ) : (
+              <Box sx={{ ...btnBase, flex: { xs: 1, sm: 'none' }, color: '#D1D5DB', border: '1px solid #F3F4F6' }}>
+                Participar
+              </Box>
+            )}
+          </>
         )}
       </Box>
     </Box>

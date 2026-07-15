@@ -120,6 +120,8 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
   const [open, setOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [user, setUser] = useState<User | null>(initialUser ?? null)
+  // participação ativa (aguardando/participando) em torneio aberto/rolando → botão "Voltar ao torneio"
+  const [torneioAtivo, setTorneioAtivo] = useState<{ tid: string; pid: string } | null>(null)
   const pathname = usePathname()
   const router = useRouter()
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -133,6 +135,42 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
   }, [])
 
   useEffect(() => { setOpen(false); setDropdownOpen(false) }, [pathname])
+
+  // checa se o usuário tem inscrição (pendente ou aprovada) em torneio aberto/ao vivo
+  useEffect(() => {
+    if (!user) { setTorneioAtivo(null); return }
+    let cancelled = false
+    const supabase = createClient()
+    async function check() {
+      const { data } = await supabase
+        .from('participants')
+        .select('id, tournament_id, tournaments!inner(status)')
+        .eq('user_id', user!.id)
+        .in('status', ['pending', 'approved'])
+      if (cancelled) return
+      const active = (data ?? []).find(p => {
+        const rel = p.tournaments as unknown
+        const t = (Array.isArray(rel) ? rel[0] : rel) as { status: string } | undefined
+        return t?.status === 'open' || t?.status === 'running'
+      })
+      setTorneioAtivo(active ? { tid: active.tournament_id, pid: active.id } : null)
+    }
+    check()
+    return () => { cancelled = true }
+  }, [user, pathname])
+
+  const voltarBtnStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 6,
+    background: '#0D8F41', color: '#fff', textDecoration: 'none',
+    borderRadius: 20, padding: '7px 13px',
+    fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
+  }
+  const voltarBtn = torneioAtivo && (
+    <Link href={`/torneio/${torneioAtivo.tid}/participante?pid=${torneioAtivo.pid}`} style={voltarBtnStyle}>
+      <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
+      Voltar ao torneio
+    </Link>
+  )
 
   useEffect(() => {
     if (!dropdownOpen) return
@@ -194,6 +232,9 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
               )
             })}
           </nav>
+
+          {/* participando de torneio ativo → atalho de volta (fica ao lado do hamburguer no mobile) */}
+          {voltarBtn}
 
           {/* desktop auth */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }} className="desktop-auth" ref={dropdownRef}>

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
+import ParticiparCta from './participar-cta'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
 import { getBaseUrl } from '@/lib/base-url'
 
@@ -421,14 +422,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
           )}
 
           {canJoin && torneio.qr_token && (
-            <Link href={`/entrar/${torneio.qr_token}`} style={{
-              display: 'block', textAlign: 'center',
-              background: '#0D8F41', color: '#fff', fontWeight: 700,
-              fontSize: '0.88rem', textDecoration: 'none',
-              padding: '12px', borderRadius: 10, marginBottom: 20,
-            }}>
-              Participar deste torneio →
-            </Link>
+            <ParticiparCta tournamentId={torneio.id} qrToken={torneio.qr_token} />
           )}
 
           <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>

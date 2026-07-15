@@ -16,6 +16,8 @@ interface Props {
   profile: { name: string; email: string } | null
   matchingBirds: Bird[]
   returnPath: string
+  existingPid?: string | null
+  outroTorneio?: { tid: string; pid: string } | null
 }
 
 /* ── not logged in ── */
@@ -128,7 +130,7 @@ function NoBirds({ tipoAve, estiloCanto }: { tipoAve: string | null; estiloCanto
 /* ── main form ── */
 export default function EntrarForm({
   tournamentId, tipoAve, estiloCanto,
-  isLoggedIn, profile, matchingBirds, returnPath,
+  isLoggedIn, profile, matchingBirds, returnPath, existingPid, outroTorneio,
 }: Props) {
   const router = useRouter()
   const [selectedBirdId, setSelectedBirdId] = useState<string>(matchingBirds[0]?.id ?? '')
@@ -137,6 +139,65 @@ export default function EntrarForm({
   const [done, setDone] = useState(false)
 
   if (!isLoggedIn) return <NeedLogin returnPath={returnPath} />
+
+  // já inscrito → não cria segunda inscrição, leva de volta pra tela do torneio
+  if (existingPid) {
+    return (
+      <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D8F41" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>
+          Você já está inscrito
+        </p>
+        <p style={{ margin: '0 0 20px', fontSize: '0.8rem', color: '#6B7280', lineHeight: 1.5 }}>
+          Sua inscrição neste torneio já existe. Volte para a tela do torneio para acompanhar.
+        </p>
+        <Link
+          href={`/torneio/${tournamentId}/participante?pid=${existingPid}`}
+          style={{
+            display: 'block', textAlign: 'center', padding: '12px',
+            background: '#0D8F41', color: '#fff', borderRadius: 8,
+            fontWeight: 700, fontSize: '0.88rem', textDecoration: 'none',
+          }}
+        >
+          Voltar ao torneio
+        </Link>
+      </div>
+    )
+  }
+
+  // participando de OUTRO torneio → só 1 por vez, até o encerramento
+  if (outroTorneio) {
+    return (
+      <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>
+          Você já está em um torneio
+        </p>
+        <p style={{ margin: '0 0 20px', fontSize: '0.8rem', color: '#6B7280', lineHeight: 1.5 }}>
+          Só é possível participar de um torneio por vez. Novas inscrições liberam quando o seu torneio atual for encerrado.
+        </p>
+        <Link
+          href={`/torneio/${outroTorneio.tid}/participante?pid=${outroTorneio.pid}`}
+          style={{
+            display: 'block', textAlign: 'center', padding: '12px',
+            background: '#0D8F41', color: '#fff', borderRadius: 8,
+            fontWeight: 700, fontSize: '0.88rem', textDecoration: 'none',
+          }}
+        >
+          Voltar ao meu torneio
+        </Link>
+      </div>
+    )
+  }
+
   if (matchingBirds.length === 0) return <NoBirds tipoAve={tipoAve} estiloCanto={estiloCanto} />
 
   const selectedBird = matchingBirds.find(b => b.id === selectedBirdId)
@@ -163,7 +224,10 @@ export default function EntrarForm({
       .single()
 
     if (error || !data) {
-      setError('Erro ao se inscrever. Tente novamente.')
+      // 23505 = índice único: já existe inscrição ativa deste usuário no torneio
+      setError(error?.code === '23505'
+        ? 'Você já está inscrito neste torneio. Recarregue a página.'
+        : 'Erro ao se inscrever. Tente novamente.')
       setLoading(false)
       return
     }
