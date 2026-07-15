@@ -31,7 +31,7 @@ export default async function ParticipantePage({
 
   const { data: score } = await supabase
     .from('scores')
-    .select('count')
+    .select('count, suspicious_count')
     .eq('participant_id', pid)
     .eq('tournament_id', id)
     .single()
@@ -41,6 +41,7 @@ export default async function ParticipantePage({
       torneio={torneio}
       participante={participante}
       initialCount={score?.count ?? 0}
+      initialSuspicious={(score as { suspicious_count?: number } | null)?.suspicious_count ?? 0}
     />
   )
 }

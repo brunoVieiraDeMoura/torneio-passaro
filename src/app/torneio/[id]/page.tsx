@@ -22,6 +22,24 @@ const summaryStyle: CSSProperties = {
   borderTop: '1px solid #F3F4F6', userSelect: 'none',
 }
 
+// avisos de velocidade (suspeitas) do participante — pill ⚠ ao lado da contagem
+function WarnBadge({ n, big = false }: { n: number; big?: boolean }) {
+  if (n <= 0) return null
+  return (
+    <span title={`${n} aviso${n !== 1 ? 's' : ''} de marcação`} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
+      background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 20,
+      padding: big ? '4px 10px' : '3px 8px',
+    }}>
+      <svg width={big ? 14 : 12} height={big ? 14 : 12} viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Avisos de marcação">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span style={{ fontWeight: 800, fontSize: big ? '0.85rem' : '0.72rem', color: '#B91C1C' }}>{n}</span>
+    </span>
+  )
+}
+
 function EliminadoRow({ p }: { p: Elim }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', opacity: 0.8 }}>
@@ -112,7 +130,7 @@ const getTorneioData = async (id: string) => {
       .order('cage_number', { ascending: true }),
     supabase
       .from('scores')
-      .select('participant_id, count')
+      .select('participant_id, count, suspicious_count')
       .eq('tournament_id', id),
     supabase
       .from('round_scores')
@@ -122,14 +140,18 @@ const getTorneioData = async (id: string) => {
   ])
 
   const scoreMap: Record<string, number> = {}
-  for (const s of scores ?? []) scoreMap[s.participant_id] = s.count
+  const warnMap: Record<string, number> = {}
+  for (const s of scores ?? []) {
+    scoreMap[s.participant_id] = s.count
+    warnMap[s.participant_id] = (s as { suspicious_count?: number }).suspicious_count ?? 0
+  }
 
   const allParts = participants ?? []
 
   // ainda participando (aprovados) — placar do ciclo atual
   const ranked = allParts
     .filter(p => p.status === 'approved')
-    .map(p => ({ ...p, score: scoreMap[p.id] ?? 0 }))
+    .map(p => ({ ...p, score: scoreMap[p.id] ?? 0, warns: warnMap[p.id] ?? 0 }))
     .sort((a, b) => b.score - a.score)
 
   // histórico por rodada (snapshots de round_scores)
@@ -312,6 +334,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
                       {p.user_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
                     </p>
                   </div>
+                  <WarnBadge n={p.warns} big />
                   <span style={{ fontWeight: 800, fontSize: '1.4rem', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
                     {p.score.toLocaleString('pt-BR')}
                   </span>
@@ -429,6 +452,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
                         {p.user_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
                       </p>
                     </div>
+                    <WarnBadge n={p.warns} />
                     <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
                       {p.score.toLocaleString('pt-BR')}
                     </span>

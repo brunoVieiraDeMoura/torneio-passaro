@@ -4,7 +4,7 @@ import { isAdmin } from '@/lib/admin'
 
 const AUTH_PATHS  = ['/login', '/cadastro', '/perdeu']
 const CLUB_PATHS  = ['/clube', '/mestre']
-const PUBLIC_PATHS = ['/', '/entrar', '/torneios', '/torneio', '/liga', '/contato', '/parceiros', '/configuracoes', '/faq', '/suporte']
+const PUBLIC_PATHS = ['/', '/entrar', '/c', '/torneios', '/torneio', '/liga', '/contato', '/parceiros', '/configuracoes', '/faq', '/suporte']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -31,6 +31,12 @@ export async function middleware(request: NextRequest) {
   // e participante aprovado). Redirecionar pra /login devolvia HTML com status 200 ao
   // fetch — o participante com sessão expirada "enviava" cantos que nunca eram gravados.
   if (pathname.startsWith('/api/')) {
+    return supabaseResponse
+  }
+
+  // /auth/callback: chega SEM sessão (o code ainda não foi trocado) — bloquear aqui
+  // redirecionava todo login Google pra /login antes do exchange acontecer.
+  if (pathname.startsWith('/auth/')) {
     return supabaseResponse
   }
 
@@ -137,10 +143,15 @@ export async function middleware(request: NextRequest) {
       })
 
       if (active) {
-        const url = request.nextUrl.clone()
-        url.pathname = `/torneio/${active.tournament_id}/participante`
-        url.search = `?pid=${active.id}` // participante page exige o pid
-        return NextResponse.redirect(url)
+        // "Sair da tela do torneio": cookie setado pelo botão na tela do participante
+        // libera a navegação mesmo com o torneio ainda ativo (voltar à página re-trava)
+        const saiu = request.cookies.get('sair_torneio')?.value === active.tournament_id
+        if (!saiu) {
+          const url = request.nextUrl.clone()
+          url.pathname = `/torneio/${active.tournament_id}/participante`
+          url.search = `?pid=${active.id}` // participante page exige o pid
+          return NextResponse.redirect(url)
+        }
       }
     }
   }

@@ -1,36 +1,15 @@
-em https://torneio-passaro.vercel.app/mestre/torneio/61a67ad1-a2df-45e3-a670-081fad3e9ecb , quando um participante solicitar aprovação, aparecer uma notificação na parte superior da tela do mestre (bota também um bonequinho com a mão para cima com o numero de participantes requisitando aprovaçção), se ele clicar lá, dar um scrolldown até a parte de aprovação.
+desbloquear a tela do usuário para ele poder "Sair da tela do torneio", mesmo que o torneio não seja encerrado em 2 horas.
 
-em https://torneio-passaro.vercel.app/mestre/torneio/61a67ad1-a2df-45e3-a670-081fad3e9ecb, botar o botão de transimição "Iniciar a Live" abaixo da hora marcando.
+ Nao esta logando pelo pop up criado pelo qr code do google
+ex: https://torneio-passaro.vercel.app/entrar/e67df1c3ba72d262c9450488d8000f3f en "Inscrever pássaro" (Login Necessário), quando eu tento conectar com google ele me redireciona para o path de login ao invés de conectar dali mesmo
 
-mudar a ui de aviso para colocar o celular em modo avião, e deixar mais amigavel, (remover o verde pesado) e trocar para "Dica", está muito insisiva a mensagem.
 
-se você estiver logado em sua conta, e tiver algum pássaro seu no ranking da liga, pintar ele com o verde do site
-
-na contagem em https://torneio-passaro.vercel.app/mestre/torneio/61a67ad1-a2df-45e3-a670-081fad3e9ecb , só marcar o jogador com possivel fraude de marcação se ele passar de 5 fraudes
-
-na hora de imprimir o histórico do passarinho, mostrar todas as páginas de torneios que ele participou.
-
-em https://torneio-passaro.vercel.app/mestre/torneio/f822f8f8-9c66-4283-a0ec-df246ba3915b , criar um card de descrição
-que envolva os botões relacionado as configurações de marcação, informando que ali inicia o torneio, a quantidade de marcação, 
-faça isso também para o "Adicionar Participante " , Para a Vassourada, para encerramento de torneio, cria também um tutorial de uso para
-o mestre de roda em https://torneio-passaro.vercel.app/clube/dashboard no menu lateral, explicando tudo dentro do torneio, e tudo da dashboard também.
-
-===============================================================
-
-se o participante cair, ou a internet cair, o webapp, continua contando em cache, para junto com o tempo limite de contar, 
-depois envia o resultado final para o servidor (enviar os alertas de punição também) [fazer apenas se fizer sentido e for viável]
+Ver a parte de criar clubes, e-mails etc
+quando eu estou tentando criar outro clube, aparentemente nao está criando check isso, eu quero que multiplos clubes possam ser criados, e cada um posso logar em sua dashboard, tendo todas as opções dos mesmos separados ( seu próprio torneio/ranking interno etc..)
 
 
 
-===============================================================
+EM https://torneio-passaro.vercel.app/mestre/torneio/caa8d115-d4d1-41f1-b5b5-183bde55db42 , o tamanho do botão de iniciar live, deve ser proporcional e extensivo até o final do botão da hora, todos os outros botões devem ser abaixou ou subsequente da hora/live
 
-fazer teste forçado com 
-multiplos usuários
-multiplos torneios
-clicando simultaniamente e marcando simultaneamente,
-adicionar lives aleatórias em cada torneio, para forçar 
 
-faça testes com 50 pessoas em 5 torneios, vá multiplicando por 2, para ver até onde aguenta.
-(obss: me informe se isso é correto ou viável)
-
-após esse teste, me mande o relatório
+fazer um qr code vinculado a todos os torneios ativos do clube em questão, um qr code geral, do clube em questão onde ao ler, se ele tiver algum torneio ativo, redireciona para ele.

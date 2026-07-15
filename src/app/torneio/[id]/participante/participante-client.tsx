@@ -65,12 +65,16 @@ export default function ParticipanteClient({
   torneio,
   participante,
   initialCount,
+  initialSuspicious = 0,
 }: {
   torneio: Torneio
   participante: Participante
   initialCount: number
+  initialSuspicious?: number
 }) {
   const [count, setCount] = useState(initialCount)
+  // avisos de velocidade já contabilizados pro Chefe de Roda (servidor + sessão)
+  const [warnCount, setWarnCount] = useState(initialSuspicious)
   // now começa null p/ evitar erro de hidratação (server e client renderizam igual);
   // só passa a valer após montar no cliente
   const [now, setNow] = useState<Date | null>(null)
@@ -142,6 +146,7 @@ export default function ParticipanteClient({
       if (startAt) {
         pendingRef.current = 0
         setCount(0)
+        setWarnCount(0) // nova marcação: o mestre zera as suspeitas no servidor
         try { localStorage.removeItem(storageKey) } catch {}
       }
     }
@@ -157,6 +162,20 @@ export default function ParticipanteClient({
     const id = setInterval(() => setNow(new Date()), 500)
     return () => clearInterval(id)
   }, [])
+
+  // voltou pra tela do torneio → apaga o cookie de saída (o middleware volta a travar)
+  useEffect(() => {
+    document.cookie = 'sair_torneio=; path=/; max-age=0'
+  }, [])
+
+  // "Sair da tela do torneio": seta o cookie que o middleware respeita e navega pro site.
+  // Disponível sempre — mesmo que o torneio não seja encerrado em 2 horas.
+  const sairDaTela = useCallback(() => {
+    if (!window.confirm('Sair da tela do torneio? Você pode voltar a qualquer momento pela página do torneio.')) return
+    document.cookie = `sair_torneio=${torneio.id}; path=/; max-age=43200`
+    document.body.classList.remove('hide-site-header')
+    router.push('/torneios')
+  }, [torneio.id, router])
 
   // limpa os timers de fraude ao desmontar
   useEffect(() => () => {
@@ -347,6 +366,9 @@ export default function ParticipanteClient({
     const t = Date.now()
     if (t - lastClickRef.current < 1000) {
       suspiciousPendingRef.current += 1
+      setWarnCount(w => w + 1)
+      // vibra ao tomar o aviso — sem permissão (Android/Chrome; iOS não suporta a API)
+      try { navigator.vibrate?.(200) } catch {}
       setFraudWarning(true)
       if (fraudTimerRef.current) clearTimeout(fraudTimerRef.current)
       fraudTimerRef.current = setTimeout(() => setFraudWarning(false), 5000)
@@ -367,12 +389,26 @@ export default function ParticipanteClient({
 
   // ── Telas de estado ──
 
+  const sairBtn = (
+    <button
+      onClick={sairDaTela}
+      style={{
+        marginTop: 8, background: 'none', border: 'none', cursor: 'pointer',
+        fontFamily: 'inherit', fontSize: '0.75rem', color: '#9CA3AF',
+        textDecoration: 'underline', padding: '8px 12px',
+      }}
+    >
+      Sair da tela do torneio
+    </button>
+  )
+
   if (participanteStatus === 'pending') {
     return (
       <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 24px', textAlign: 'center', background: '#fff' }}>
         <span style={{ fontSize: '3rem' }}>⏳</span>
         <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Aguardando aprovação</h1>
         <p style={{ color: '#9CA3AF', fontSize: '0.85rem', margin: 0 }}>O mestre vai te aprovar em breve. Fique nessa tela.</p>
+        {sairBtn}
       </main>
     )
   }
@@ -562,6 +598,23 @@ export default function ParticipanteClient({
             </div>
           )}
 
+          {/* avisos de velocidade já enviados ao Chefe de Roda */}
+          {warnCount > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, marginBottom: -12,
+              background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 20,
+              padding: '7px 14px',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#B91C1C' }}>
+                {warnCount} aviso{warnCount !== 1 ? 's' : ''} enviado{warnCount !== 1 ? 's' : ''} ao Chefe de Roda
+              </span>
+            </div>
+          )}
+
           <button
             onPointerDown={handleClick}
             style={{
@@ -634,6 +687,9 @@ export default function ParticipanteClient({
           </p>
         </div>
       )}
+
+      {/* saída sempre disponível — não fica preso na tela até o fim/2h */}
+      {sairBtn}
     </main>
   )
 }

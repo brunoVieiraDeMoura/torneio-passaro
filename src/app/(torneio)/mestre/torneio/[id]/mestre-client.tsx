@@ -609,58 +609,68 @@ export default function MestreClient({
         </div>
       )}
 
-      {/* ── Relógio ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ background: '#111827', borderRadius: 10, padding: '10px 18px', display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>{clockStr}</span>
-          <span style={{ fontSize: '0.65rem', color: '#6B7280', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>agora</span>
+      {/* ── Relógio + live na mesma linha (live estica até o fim); demais chips abaixo ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 12 }}>
+          <div style={{ background: '#111827', borderRadius: 10, padding: '10px 18px', display: 'inline-flex', alignItems: 'baseline', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>{clockStr}</span>
+            <span style={{ fontSize: '0.65rem', color: '#6B7280', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>agora</span>
+          </div>
+
+          {/* Iniciar/Encerrar live — mesma altura do relógio, ocupa o resto da linha */}
+          {streamUrl ? (
+            <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
+              style={{
+                background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center',
+                justifyContent: 'center', gap: 6, flex: 1, minHeight: 51,
+              }}>
+              ✕ Encerrar live
+            </button>
+          ) : status !== 'finished' && (
+            <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
+              style={{
+                background: '#111827', color: '#fff', border: 'none',
+                borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center',
+                justifyContent: 'center', gap: 6, flex: 1, minHeight: 51,
+              }}>
+              📡 Iniciar live
+            </button>
+          )}
         </div>
 
-        {(status === 'open' || roundPhase === 'waiting') && msUntilStart !== null && msUntilStart > 0 && (
-          <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '10px 18px', display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, color: '#92400E', letterSpacing: '0.04em' }}>{formatMs(msUntilStart)}</span>
-            <span style={{ fontSize: '0.65rem', color: '#B45309', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              para Marcação {marcLabel}
-            </span>
-          </div>
-        )}
+        {(((status === 'open' || roundPhase === 'waiting') && msUntilStart !== null && msUntilStart > 0) ||
+          (roundPhase === 'counting' && msRemaining !== null) ||
+          roundPhase === 'done') && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {(status === 'open' || roundPhase === 'waiting') && msUntilStart !== null && msUntilStart > 0 && (
+              <div style={{ background: '#FEF3C7', borderRadius: 10, padding: '10px 18px', display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, color: '#92400E', letterSpacing: '0.04em' }}>{formatMs(msUntilStart)}</span>
+                <span style={{ fontSize: '0.65rem', color: '#B45309', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  para Marcação {marcLabel}
+                </span>
+              </div>
+            )}
 
-        {roundPhase === 'counting' && msRemaining !== null && (
-          <div style={{ background: msRemaining < 120_000 ? '#FEF2F2' : '#F0FDF4', borderRadius: 10, padding: '10px 18px', display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, color: msRemaining < 120_000 ? '#DC2626' : '#0D8F41', letterSpacing: '0.04em' }}>{formatMs(msRemaining)}</span>
-            <span style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: msRemaining < 120_000 ? '#DC2626' : '#0D8F41' }}>
-              Marcação {marcLabel}
-            </span>
-          </div>
-        )}
+            {roundPhase === 'counting' && msRemaining !== null && (
+              <div style={{ background: msRemaining < 120_000 ? '#FEF2F2' : '#F0FDF4', borderRadius: 10, padding: '10px 18px', display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 800, color: msRemaining < 120_000 ? '#DC2626' : '#0D8F41', letterSpacing: '0.04em' }}>{formatMs(msRemaining)}</span>
+                <span style={{ fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: msRemaining < 120_000 ? '#DC2626' : '#0D8F41' }}>
+                  Marcação {marcLabel}
+                </span>
+              </div>
+            )}
 
-        {roundPhase === 'done' && (
-          <div style={{ background: '#F3F4F6', borderRadius: 10, padding: '10px 18px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#374151' }}>
-              {allGroupsDone ? `Ciclo ${round} encerrado` : `Marcação ${marcLabel} encerrada`}
-            </span>
+            {roundPhase === 'done' && (
+              <div style={{ background: '#F3F4F6', borderRadius: 10, padding: '10px 18px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#374151' }}>
+                  {allGroupsDone ? `Ciclo ${round} encerrado` : `Marcação ${marcLabel} encerrada`}
+                </span>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Iniciar/Encerrar live — junto dos relógios pra ficar sempre à mão */}
-        {streamUrl ? (
-          <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
-            style={{
-              background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
-              borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}>
-            ✕ Encerrar live
-          </button>
-        ) : status !== 'finished' && (
-          <button onClick={() => { setStreamInput(''); setShowStreamModal(true) }}
-            style={{
-              background: '#111827', color: '#fff', border: 'none',
-              borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
-            }}>
-            📡 Iniciar live
-          </button>
         )}
       </div>
 
