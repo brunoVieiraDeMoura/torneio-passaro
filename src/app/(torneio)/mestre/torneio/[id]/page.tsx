@@ -67,6 +67,7 @@ export default async function MestreTorneioPage({ params }: { params: Promise<{ 
           divisions: (torneio as Record<string, unknown>).divisions as number ?? 1,
           active_group: (torneio as Record<string, unknown>).active_group as number ?? 1,
           finished_at: (torneio as Record<string, unknown>).finished_at as string | null ?? null,
+          manual_groups: (torneio as Record<string, unknown>).manual_groups as boolean ?? false,
         }}
         participantesInitial={participantes ?? []}
         scoresInitial={scores ?? []}

@@ -1,15 +1,8 @@
-desbloquear a tela do usuário para ele poder "Sair da tela do torneio", mesmo que o torneio não seja encerrado em 2 horas.
+em criar torneio https://torneio-passaro.vercel.app/clube/torneios , quero um botão de switch que ficara deligado
+com a mensagem "Marque essa opção para definir a posição das gaiolas manualmente" , caso estiver marcada, msg "desmarque para definir automáticamente"
 
- Nao esta logando pelo pop up criado pelo qr code do google
-ex: https://torneio-passaro.vercel.app/entrar/e67df1c3ba72d262c9450488d8000f3f en "Inscrever pássaro" (Login Necessário), quando eu tento conectar com google ele me redireciona para o path de login ao invés de conectar dali mesmo
+se estiver desmarcado, continue funcionando da maneira que está.
 
-
-Ver a parte de criar clubes, e-mails etc
-quando eu estou tentando criar outro clube, aparentemente nao está criando check isso, eu quero que multiplos clubes possam ser criados, e cada um posso logar em sua dashboard, tendo todas as opções dos mesmos separados ( seu próprio torneio/ranking interno etc..)
-
-
-
-EM https://torneio-passaro.vercel.app/mestre/torneio/caa8d115-d4d1-41f1-b5b5-183bde55db42 , o tamanho do botão de iniciar live, deve ser proporcional e extensivo até o final do botão da hora, todos os outros botões devem ser abaixou ou subsequente da hora/live
-
-
-fazer um qr code vinculado a todos os torneios ativos do clube em questão, um qr code geral, do clube em questão onde ao ler, se ele tiver algum torneio ativo, redireciona para ele.
+se estiver marcado, depois de definir o numero de marcações acima de 1 ex: 2 marcações,
+será divido em 2 grupos, deixar o mestre de roda definir qual gaiola vai para o grupo 1, e automaticamente definir quem não foi pro 1 para o grupo 2,
+se tiver 3 marcações, deixar ele definir o grupo 1 e 2 , e o 3 marca quem faltar.

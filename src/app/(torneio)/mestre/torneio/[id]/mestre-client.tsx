@@ -20,6 +20,7 @@ interface Torneio {
   id: string; status: string; duration_secs: number; start_at: string | null
   round: number; divisions: number; active_group: number
   finished_at: string | null
+  manual_groups?: boolean
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
@@ -138,6 +139,10 @@ export default function MestreClient({
   const [mcDivisions, setMcDivisions] = useState(1)
   const [mcNewCycle, setMcNewCycle] = useState(false)
   const [mcLoading, setMcLoading] = useState(false)
+  // posição manual (torneio.manual_groups): pid → grupo escolhido (1..N-1);
+  // quem não for escolhido cai automaticamente no último grupo
+  const [mcAssign, setMcAssign] = useState<Record<string, number>>({})
+  const manualGroups = torneio.manual_groups ?? false
 
   // modal B: Configurar marcação X-Y (duração + horário de um grupo)
   const [showMarcTiming, setShowMarcTiming] = useState(false)
@@ -334,6 +339,7 @@ export default function MestreClient({
   function openMarcConfig(newCycle: boolean) {
     setMcNewCycle(newCycle)
     setMcDivisions(1)
+    setMcAssign({})
     setShowMarcConfig(true)
   }
 
@@ -352,8 +358,15 @@ export default function MestreClient({
       }
     }
 
-    // distribui sobreviventes em mcDivisions marcações (round-robin)
-    const groupMap = splitGroups(survivors, mcDivisions)
+    // distribui sobreviventes em mcDivisions marcações:
+    // manual → grupos escolhidos pelo mestre (sem escolha = último grupo);
+    // automático → round-robin
+    const groupMap = manualGroups && mcDivisions > 1
+      ? Object.fromEntries(survivors.map(p => {
+          const g = mcAssign[p.id]
+          return [p.id, g && g >= 1 && g < mcDivisions ? g : mcDivisions]
+        }))
+      : splitGroups(survivors, mcDivisions)
     for (let g = 1; g <= mcDivisions; g++) {
       const ids = survivors.filter(p => groupMap[p.id] === g).map(p => p.id)
       if (ids.length) await supabase.from('participants').update({ round_group: g }).in('id', ids)
@@ -536,6 +549,22 @@ export default function MestreClient({
   const keepCount = vsPercent !== null ? Math.ceil(approvedByScore.length * (1 - vsPercent / 100)) : approvedByScore.length
   const advancing = approvedByScore.slice(0, keepCount)
   const eliminating = approvedByScore.slice(keepCount)
+
+  // posição manual das gaiolas (Modal A): lista por gaiola + contagem por grupo
+  const mcManualActive = manualGroups && mcDivisions > 1
+  const mcApproved = useMemo(() =>
+    [...participantes].filter(p => p.status === 'approved')
+      .sort((a, b) => (a.cage_number ?? 999999) - (b.cage_number ?? 999999)),
+    [participantes]
+  )
+  const mcGroupCount = (g: number) => mcApproved.filter(p => {
+    const chosen = mcAssign[p.id]
+    const eff = chosen && chosen >= 1 && chosen < mcDivisions ? chosen : mcDivisions
+    return eff === g
+  }).length
+  // todo grupo precisa de pelo menos 1 gaiola
+  const mcManualInvalid = mcManualActive &&
+    Array.from({ length: mcDivisions }, (_, i) => i + 1).some(g => mcGroupCount(g) === 0)
 
   const inp: React.CSSProperties = {
     width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
@@ -882,18 +911,73 @@ export default function MestreClient({
                     </button>
                   ))}
                 </div>
-                {mcDivisions > 1 && (
+                {mcDivisions > 1 && !mcManualActive && (
                   <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                     {approvedByScore.length} gaiolas divididas em {mcDivisions} marcações (~{Math.round(100 / mcDivisions)}% / ~{Math.ceil(approvedByScore.length / mcDivisions)} gaiolas cada).
                   </p>
                 )}
               </div>
 
-              <button onClick={applyMarcConfig} disabled={mcLoading}
+              {/* posição manual: mestre escolhe os grupos 1..N-1; o resto cai no último */}
+              {mcManualActive && (
+                <div>
+                  <label style={lbl}>Posição das gaiolas (manual)</label>
+                  <p style={{ margin: '0 0 10px', fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                    Escolha o grupo de cada gaiola{mcDivisions > 2 ? ` (1 a ${mcDivisions - 1})` : ' (1)'}.
+                    Quem não for escolhido vai automaticamente para a marcação {mcDivisions}.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+                    {mcApproved.map(p => {
+                      const chosen = mcAssign[p.id]
+                      const eff = chosen && chosen >= 1 && chosen < mcDivisions ? chosen : mcDivisions
+                      return (
+                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #F3F4F6', borderRadius: 8, padding: '8px 10px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.8rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {p.cage_number != null ? `G${p.cage_number} · ` : ''}{p.bird_name}
+                            </p>
+                            <p style={{ margin: 0, fontSize: '0.66rem', color: eff === mcDivisions && !chosen ? '#9CA3AF' : '#0D8F41', fontWeight: 600 }}>
+                              marcação {eff}{eff === mcDivisions && !chosen ? ' (automático)' : ''}
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                            {Array.from({ length: mcDivisions - 1 }, (_, i) => i + 1).map(g => (
+                              <button key={g} type="button"
+                                onClick={() => setMcAssign(prev => {
+                                  const n = { ...prev }
+                                  if (n[p.id] === g) delete n[p.id]  // clicar de novo → volta pro automático
+                                  else n[p.id] = g
+                                  return n
+                                })}
+                                style={{
+                                  width: 34, height: 34, borderRadius: 8, fontSize: '0.82rem', fontWeight: 800,
+                                  cursor: 'pointer', fontFamily: 'inherit',
+                                  border: `2px solid ${chosen === g ? '#0D8F41' : '#E5E7EB'}`,
+                                  background: chosen === g ? '#F0FDF4' : '#fff',
+                                  color: chosen === g ? '#0D8F41' : '#6B7280',
+                                }}>
+                                {g}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p style={{ margin: '10px 0 0', fontSize: '0.72rem', fontWeight: 600, color: mcManualInvalid ? '#DC2626' : '#6B7280' }}>
+                    {Array.from({ length: mcDivisions }, (_, i) => i + 1)
+                      .map(g => `Marcação ${g}: ${mcGroupCount(g)} gaiola${mcGroupCount(g) !== 1 ? 's' : ''}`)
+                      .join(' · ')}
+                    {mcManualInvalid ? ' — toda marcação precisa de pelo menos 1 gaiola' : ''}
+                  </p>
+                </div>
+              )}
+
+              <button onClick={applyMarcConfig} disabled={mcLoading || mcManualInvalid}
                 style={{
-                  background: mcLoading ? '#D1D5DB' : '#0D8F41',
+                  background: (mcLoading || mcManualInvalid) ? '#D1D5DB' : '#0D8F41',
                   color: '#fff', border: 'none', borderRadius: 8, padding: '13px',
-                  fontSize: '0.88rem', fontWeight: 700, cursor: mcLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.88rem', fontWeight: 700, cursor: (mcLoading || mcManualInvalid) ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit', marginTop: 4,
                 }}>
                 {mcLoading ? 'Aplicando...' : 'Aplicar Marcação'}

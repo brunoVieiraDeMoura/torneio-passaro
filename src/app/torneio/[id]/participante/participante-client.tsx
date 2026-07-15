@@ -171,9 +171,10 @@ export default function ParticipanteClient({
   }, [])
 
   // "Sair da tela do torneio": seta o cookie que o middleware respeita e navega pro site.
-  // Disponível sempre — mesmo que o torneio não seja encerrado em 2 horas.
+  // Confirmação via modal próprio — window.confirm é suprimido em PWA/webview mobile
+  // (retornava false sem mostrar nada e o botão parecia morto).
+  const [sairConfirm, setSairConfirm] = useState(false)
   const sairDaTela = useCallback(() => {
-    if (!window.confirm('Sair da tela do torneio? Você pode voltar a qualquer momento pela página do torneio.')) return
     document.cookie = `sair_torneio=${torneio.id}; path=/; max-age=43200`
     document.body.classList.remove('hide-site-header')
     // navegação completa (não router.push): o cache do router guardou os redirects
@@ -396,22 +397,48 @@ export default function ParticipanteClient({
   // fixo embaixo à direita — não interfere no botão de marcação.
   // zIndex acima do overlay do modo avião (9999): sair continua clicável até 1min do início
   const sairBtn = (
-    <button
-      onClick={sairDaTela}
-      style={{
-        position: 'fixed', bottom: 14, right: 14, zIndex: 10000,
-        display: 'flex', alignItems: 'center', gap: 6,
-        background: '#fff', border: '1px solid #E5E7EB', borderRadius: 20,
-        padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit',
-        fontSize: '0.72rem', fontWeight: 600, color: '#6B7280',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-      }}
-    >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-      </svg>
-      Sair da tela do torneio
-    </button>
+    <>
+      <button
+        onClick={() => setSairConfirm(true)}
+        style={{
+          position: 'fixed', bottom: 14, right: 14, zIndex: 10000,
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: '#fff', border: '1px solid #E5E7EB', borderRadius: 20,
+          padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit',
+          fontSize: '0.72rem', fontWeight: 600, color: '#6B7280',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sair da tela do torneio
+      </button>
+
+      {/* modal de confirmação — padrão visual do site */}
+      {sairConfirm && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setSairConfirm(false) }}
+          style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div style={{ background: '#fff', borderRadius: 14, padding: '24px 22px', width: '100%', maxWidth: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <p style={{ margin: '0 0 20px', fontWeight: 700, fontSize: '0.92rem', color: '#111827', lineHeight: 1.5 }}>
+              Sair da tela do torneio? Você pode voltar a qualquer momento pela página do torneio.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={sairDaTela}
+                style={{ flex: 1, background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Sair
+              </button>
+              <button onClick={() => setSairConfirm(false)}
+                style={{ flex: 1, background: '#fff', color: '#6B7280', border: '1px solid #E5E7EB', borderRadius: 8, padding: '11px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 
   if (participanteStatus === 'pending') {

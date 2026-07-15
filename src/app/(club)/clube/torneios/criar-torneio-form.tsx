@@ -36,6 +36,7 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
   const [duration, setDuration] = useState(15)
   const [tipoAve, setTipoAve] = useState('')
   const [estiloCanto, setEstiloCanto] = useState('')
+  const [manualGroups, setManualGroups] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -51,10 +52,11 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
       start_at: startDate ? new Date(`${startDate}T${startHour || '00'}:${startMin || '00'}`).toISOString() : null,
       tipo_ave: tipoAve,
       estilo_canto: estiloCanto,
+      manual_groups: manualGroups,
       status: 'draft',
     })
     setName(''); setStartDate(''); setStartHour(''); setStartMin('')
-    setDuration(15); setTipoAve(''); setEstiloCanto('')
+    setDuration(15); setTipoAve(''); setEstiloCanto(''); setManualGroups(false)
     setOpen(false); setLoading(false)
     router.refresh()
   }
@@ -139,6 +141,35 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
                 <option value="" style={{ color: '#9CA3AF' }}>Selecionar estilo...</option>
                 {ESTILOS.map(s => <option key={s} value={s} style={{ color: '#111827' }}>{s}</option>)}
               </select>
+            </div>
+          </div>
+
+          {/* switch: posição manual das gaiolas nas marcações */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 10, padding: '12px 14px' }}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={manualGroups}
+              onClick={() => setManualGroups(v => !v)}
+              style={{
+                width: 42, height: 24, borderRadius: 24, flexShrink: 0,
+                border: 'none', cursor: 'pointer', padding: 2,
+                background: manualGroups ? '#0D8F41' : '#D1D5DB',
+                display: 'flex', justifyContent: manualGroups ? 'flex-end' : 'flex-start',
+                transition: 'background 0.15s',
+              }}
+            >
+              <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', display: 'block', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+            </button>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#111827' }}>
+                Posição das gaiolas manual
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                {manualGroups
+                  ? 'Desmarque para definir automaticamente.'
+                  : 'Marque essa opção para definir a posição das gaiolas manualmente.'}
+              </p>
             </div>
           </div>
 
