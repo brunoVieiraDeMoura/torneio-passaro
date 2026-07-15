@@ -64,7 +64,15 @@
       "Bash(file animation/*)",
       "Bash(npx kill-port *)",
       "Bash(powershell -Command 'Get-NetTCPConnection -LocalPort 3005 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }')",
-      "Bash(powershell -Command 'try { Get-NetTCPConnection -LocalPort 3005 -State Listen -ErrorAction Stop | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force } } catch {}')"
+      "Bash(powershell -Command 'try { Get-NetTCPConnection -LocalPort 3005 -State Listen -ErrorAction Stop | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force } } catch {}')",
+      "Bash(cp animacao-ampulheta/ampulheta-idle.png public/anim/ampulheta-idle.png)",
+      "Bash(cp animacao-ampulheta/ampulheta-15graus.png public/anim/ampulheta-15graus.png)",
+      "Bash(cp animacao-final-torneio/animation-1.png public/anim/final-1.png)",
+      "Bash(cp animacao-final-torneio/animation-2.png public/anim/final-2.png)",
+      "Bash(cp animacao-final-torneio/animation-3.png public/anim/final-3.png)",
+      "Bash(git add *)",
+      "Bash(git commit -m '15-07-2026-anim-imgs *)",
+      "Bash(git push *)"
     ]
   },
   "enableAllProjectMcpServers": true,
