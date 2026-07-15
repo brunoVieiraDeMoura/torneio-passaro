@@ -98,7 +98,7 @@ export default async function LandingPage() {
     <Box className="page-in" sx={{ bgcolor: '#fff' }}>
 
       {/* ── HERO ── */}
-      <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #F3F4F6', py: { xs: 8, sm: 10 } }}>
+      <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #F3F4F6', py: { xs: 6, sm: 10 } }}>
         <Container maxWidth={false} sx={{ maxWidth: 1000 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', sm: 'center' }, textAlign: 'center' }}>
           <Typography
@@ -119,7 +119,7 @@ export default async function LandingPage() {
             component="h1"
   
             sx={{
-              fontSize: { xs: '2.4rem', sm: '3.2rem' },
+              fontSize: { xs: 'clamp(1.9rem, 8.5vw, 2.4rem)', sm: '3.2rem' },
               fontWeight: 800,
               color: '#111827',
               letterSpacing: '-0.03em',
@@ -150,7 +150,8 @@ export default async function LandingPage() {
 
             sx={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              // mobile: cartões empilhados (alvo de toque maior); lado a lado no desktop
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
               gap: 2,
               maxWidth: 440,
               width: '100%',
@@ -276,7 +277,7 @@ export default async function LandingPage() {
               { v: String(totalTorneios ?? 0),      l: 'Torneios' },
               { v: String(totalClubes ?? 0),        l: 'Clubes' },
             ].map(s => (
-              <Box key={s.l}>
+              <Box key={s.l} sx={{ textAlign: 'center' }}>
                 <Typography sx={{ color: '#111827', fontWeight: 800, fontSize: '1.5rem', letterSpacing: '-0.03em', lineHeight: 1 }}>
                   {s.v}
                 </Typography>
@@ -367,13 +368,13 @@ export default async function LandingPage() {
           <Typography sx={{ color: '#6B7280', fontSize: '0.9rem', lineHeight: 1.7, mb: 5, maxWidth: 380 }}>
             Cadastro grátis. Inscreva seu pássaro ou organize seu próprio torneio.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'center' } }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: { xs: 320, sm: 'none' }, flexDirection: { xs: 'column', sm: 'row' } }}>
             <Button
               component={Link}
               href="/cadastro"
               variant="contained"
               size="large"
-              sx={{ bgcolor: '#0D8F41', color: '#fff', fontWeight: 700, px: 4, '&:hover': { bgcolor: '#0B7A36' } }}
+              sx={{ bgcolor: '#0D8F41', color: '#fff', fontWeight: 700, px: 4, width: { xs: '100%', sm: 'auto' }, '&:hover': { bgcolor: '#0B7A36' } }}
             >
               Sou participante
             </Button>
@@ -387,6 +388,7 @@ export default async function LandingPage() {
                 color: '#374151',
                 fontWeight: 600,
                 px: 4,
+                width: { xs: '100%', sm: 'auto' },
                 '&:hover': { borderColor: '#0D8F41', color: '#0D8F41', bgcolor: '#F0FDF4' },
               }}
             >

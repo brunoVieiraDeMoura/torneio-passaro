@@ -5,14 +5,13 @@ import Link from 'next/link'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
+import { AnimatedRanking, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
 
 type Club = { name: string; cidade: string; estado: string } | null
 
 const RANK_COLORS = ['#B45309', '#6B7280', '#92400E']
-const RANK_BG     = ['rgba(180,83,9,0.08)', 'rgba(107,114,128,0.06)', 'rgba(146,64,14,0.07)']
 
 type Elim = { id: string; bird_name: string; user_name: string; lastRound: number | null; total: number; position: number }
-type RankItem = { id: string; bird_name: string; user_name: string; cage_number: number | null; score: number; warns: number; round_group?: number | null }
 type HistEntry = { participant_id: string; bird_name: string; count: number }
 type HistRound = { round: number; entries: HistEntry[] }
 
@@ -20,75 +19,6 @@ const summaryStyle: CSSProperties = {
   listStyle: 'none', cursor: 'pointer', padding: '10px 18px',
   fontSize: '0.75rem', fontWeight: 700, color: '#0D8F41', background: '#FAFAFA',
   borderTop: '1px solid #F3F4F6', userSelect: 'none',
-}
-
-// avisos de velocidade (suspeitas) do participante — pill ⚠ ao lado da contagem
-function WarnBadge({ n, big = false }: { n: number; big?: boolean }) {
-  if (n <= 0) return null
-  return (
-    <span title={`${n} aviso${n !== 1 ? 's' : ''} de marcação`} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
-      background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 20,
-      padding: big ? '4px 10px' : '3px 8px',
-    }}>
-      <svg width={big ? 14 : 12} height={big ? 14 : 12} viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Avisos de marcação">
-        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>
-      <span style={{ fontWeight: 800, fontSize: big ? '0.85rem' : '0.72rem', color: '#B91C1C' }}>{n}</span>
-    </span>
-  )
-}
-
-// linha do ranking — desktop (telão). Nome do dono visível abaixo do pássaro/gaiola.
-function DeskRankRow({ p, i }: { p: RankItem; i: number }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      background: i < 3 ? RANK_BG[i] : '#FAFAFA',
-      borderRadius: 10, padding: '11px 16px',
-      border: `1px solid ${i < 3 ? 'rgba(0,0,0,0.06)' : '#F3F4F6'}`,
-    }}>
-      <span style={{ minWidth: 30, fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
-        {String(i + 1).padStart(2, '0')}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.95rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
-        </p>
-        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {p.user_name}
-        </p>
-      </div>
-      <WarnBadge n={p.warns} big />
-      <span style={{ fontWeight: 800, fontSize: '1.3rem', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-        {p.score.toLocaleString('pt-BR')}
-      </span>
-    </div>
-  )
-}
-
-// linha do ranking — mobile
-function MobRankRow({ p, i }: { p: RankItem; i: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px' }}>
-      <span style={{ minWidth: 26, fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.05em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
-        {String(i + 1).padStart(2, '0')}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.87rem', color: '#111827' }}>
-          {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
-        </p>
-        <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280' }}>
-          {p.user_name}
-        </p>
-      </div>
-      <WarnBadge n={p.warns} />
-      <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-        {p.score.toLocaleString('pt-BR')}
-      </span>
-    </div>
-  )
 }
 
 function EliminadoRow({ p }: { p: Elim }) {
@@ -245,14 +175,14 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const withinWindow = startMs !== null && endMs !== null && Date.now() >= startMs && Date.now() <= endMs
   const isLive = torneio.status === 'running' || (torneio.status === 'open' && withinWindow)
   const isOpen = torneio.status === 'open'
-  // marcação em contagem AGORA + torneio dividido em grupos → tela dividida:
-  // ranking da marcação atual de um lado, geral do outro
+  // torneio dividido em grupos → tela dividida: painel da marcação
+  // (próxima/atual, controlado por relógio no cliente) + ranking geral
   const divisions = (torneio as Record<string, unknown>).divisions as number ?? 1
   const activeGroup = (torneio as Record<string, unknown>).active_group as number ?? 1
-  const marcacaoAtiva = withinWindow && divisions > 1
-  const competing: RankItem[] = marcacaoAtiva
-    ? ranked.filter(p => (p as RankItem).round_group === activeGroup)
-    : []
+  const groupsAssigned = ranked.some(p => (p as RankItem).round_group != null)
+  const showPanel = (torneio.status === 'open' || torneio.status === 'running') && divisions > 1 && groupsAssigned
+  const competing: RankItem[] = ranked.filter(p => (p as RankItem).round_group === activeGroup)
+  const nextGroupItems: RankItem[] = ranked.filter(p => (p as RankItem).round_group === activeGroup + 1)
   const isActive = torneio.status === 'open' || torneio.status === 'running'
   const canJoin = isOpen
   const time = fmtTime(torneio.start_at)
@@ -311,6 +241,9 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
                 {[clube?.name, clube?.cidade && clube?.estado ? `${clube.cidade}, ${clube.estado}` : null].filter(Boolean).join(' · ')}
                 {time && ` · ${isLive ? 'Iniciado' : 'Previsto'} ${time}`}
               </p>
+
+              {/* horários: agora / próxima marcação / termina em */}
+              {isActive && <SpectatorClock startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0} onDark />}
             </div>
 
             {/* live ao vivo */}
@@ -352,30 +285,22 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {ranked.length === 0 && (
-                <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>
-              )}
-              {marcacaoAtiva ? (
+              {showPanel ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, alignItems: 'start' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#C2410C', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                      Marcação atual
-                    </p>
-                    {competing.length === 0 && (
-                      <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>Nenhuma gaiola nesta marcação.</p>
-                    )}
-                    {competing.map((p, i) => <DeskRankRow key={p.id} p={p} i={i} />)}
-                  </div>
+                  <MarcacaoPanel
+                    startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0}
+                    activeGroup={activeGroup} divisions={divisions}
+                    current={competing} next={nextGroupItems} big
+                  />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0D8F41' }}>
                       Ranking geral
                     </p>
-                    {ranked.map((p, i) => <DeskRankRow key={p.id} p={p} i={i} />)}
+                    <AnimatedRanking items={ranked as RankItem[]} big emptyText="Nenhum participante aprovado ainda." />
                   </div>
                 </div>
               ) : (
-                ranked.map((p, i) => <DeskRankRow key={p.id} p={p} i={i} />)
+                <AnimatedRanking items={ranked as RankItem[]} big emptyText="Nenhum participante aprovado ainda." />
               )}
 
               {/* Eliminados */}
@@ -439,6 +364,9 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         </div>
 
         <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px 40px' }}>
+          {/* horários: agora / próxima marcação / termina em */}
+          {isActive && <SpectatorClock startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0} />}
+
           {/* live ao vivo */}
           {embedUrl && (
             <div style={{ marginBottom: 20 }}>
@@ -468,41 +396,24 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             {ranked.length > 0 ? `${ranked.length} participante${ranked.length !== 1 ? 's' : ''}` : 'Nenhum participante ainda'}
           </p>
 
-          {/* marcação em andamento → lista da marcação atual antes do geral */}
-          {marcacaoAtiva && (
+          {/* painel da marcação (próxima/atual) antes do geral */}
+          {showPanel && (
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: '0 0 8px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C2410C', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                Marcação atual
-              </p>
-              <div style={{ background: '#fff', border: '1px solid #FED7AA', borderRadius: 12, overflow: 'hidden' }}>
-                {competing.length === 0 && (
-                  <p style={{ margin: 0, padding: '14px 18px', color: '#9CA3AF', fontSize: '0.8rem' }}>Nenhuma gaiola nesta marcação.</p>
-                )}
-                {competing.map((p, i) => (
-                  <div key={p.id}>
-                    <MobRankRow p={p} i={i} />
-                    {i < competing.length - 1 && <div style={{ height: 1, background: '#F9FAFB' }} />}
-                  </div>
-                ))}
-              </div>
+              <MarcacaoPanel
+                startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0}
+                activeGroup={activeGroup} divisions={divisions}
+                current={competing} next={nextGroupItems}
+              />
             </div>
           )}
 
-          {marcacaoAtiva && (
+          {showPanel && (
             <p style={{ margin: '0 0 8px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
               Ranking geral
             </p>
           )}
           {ranked.length > 0 ? (
-            <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
-              {ranked.map((p, i) => (
-                <div key={p.id}>
-                  <MobRankRow p={p} i={i} />
-                  {i < ranked.length - 1 && <div style={{ height: 1, background: '#F9FAFB' }} />}
-                </div>
-              ))}
-            </div>
+            <AnimatedRanking items={ranked as RankItem[]} />
           ) : (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
               <p style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>

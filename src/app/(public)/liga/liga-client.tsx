@@ -7,10 +7,12 @@ import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import MUNICIPIOS from '@/data/municipios.json'
 import type { LigaEntry } from '@/data/liga-data'
+import BirdAvatar from '@/components/ui/bird-avatar'
 
 const PODIUM_COLOR = ['#B45309', '#6B7280', '#92400E']
 const PODIUM_LABEL = ['Ouro', 'Prata', 'Bronze']
 const PODIUM_BG    = ['#FFFBEB', '#F9FAFB', '#FFF7ED']
+const PODIUM_EMOJI = ['🥇', '🥈', '🥉']
 
 const STATE_ABBR: Record<string, string> = {
   'Acre':'AC','Alagoas':'AL','Amapá':'AP','Amazonas':'AM','Bahia':'BA','Ceará':'CE',
@@ -259,29 +261,27 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
                   border: isMine(item.id) ? '2px solid #0D8F41' : '1px solid #E5E7EB',
                   borderTop: `3px solid ${isMine(item.id) ? '#0D8F41' : PODIUM_COLOR[i]}`,
                   borderRadius: 2, p: { xs: 1.5, sm: 2 }, bgcolor: isMine(item.id) ? '#F0FDF4' : PODIUM_BG[i],
-                  textDecoration: 'none', display: 'block', cursor: 'pointer',
+                  textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  textAlign: 'center', cursor: 'pointer',
                   '&:hover': { opacity: 0.85 }, transition: 'opacity 0.15s',
                 }}>
-                  <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: PODIUM_COLOR[i], letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.75 }}>
-                    {PODIUM_LABEL[i]}
+                  <Typography sx={{ fontSize: '0.58rem', fontWeight: 800, color: PODIUM_COLOR[i], letterSpacing: '0.1em', textTransform: 'uppercase', mb: 1 }}>
+                    {PODIUM_EMOJI[i]} {PODIUM_LABEL[i]}
                   </Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.85rem' }, lineHeight: 1.25, color: isMine(item.id) ? '#0D8F41' : '#111827', mb: 0.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <Box sx={{ mb: 1 }}>
+                    <BirdAvatar tipoAve={item.tipo_ave} size={52} radius={14} />
+                  </Box>
+                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.88rem' }, lineHeight: 1.25, color: isMine(item.id) ? '#0D8F41' : '#111827', mb: 0.25, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.bird_name}{isMine(item.id) ? ' (você)' : ''}
                   </Typography>
-                  <Typography sx={{ fontSize: '0.68rem', color: '#9CA3AF', mb: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <Typography sx={{ fontSize: '0.68rem', fontWeight: 600, color: '#6B7280', mb: 0.75, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.user_name}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 0.75 }}>
-                    <Box sx={{ display: 'inline-flex', bgcolor: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: '5px', px: '5px', py: '1px', minWidth: 0 }}>
-                      <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#065F46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.tipo_ave}</Typography>
-                    </Box>
-                    {/* estilo some no celular: pódio estreito ficava poluído */}
-                    <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: '5px', px: '5px', py: '1px' }}>
-                      <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#6B7280' }}>{item.estilo_canto}</Typography>
-                    </Box>
-                  </Box>
-                  <Typography sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, fontWeight: 800, letterSpacing: '-0.025em', color: PODIUM_COLOR[i] }}>
+                  <Typography sx={{ fontSize: { xs: '1.15rem', sm: '1.3rem' }, fontWeight: 800, letterSpacing: '-0.025em', color: PODIUM_COLOR[i], lineHeight: 1 }}>
                     {item.count.toLocaleString('pt-BR')}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', mt: 0.4 }}>
+                    cantos
                   </Typography>
                 </Box>
               ))}
@@ -289,15 +289,16 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
 
             {/* ── LIST ── */}
             <Box sx={{ bgcolor: '#fff', border: '1px solid #E5E7EB', borderRadius: 2, overflow: 'hidden' }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 1.5, px: { xs: 2, sm: 2.5 }, py: 1.25, borderBottom: '1px solid #F3F4F6', bgcolor: '#F9FAFB' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '30px 40px 1fr auto', sm: '36px 44px 1fr auto' }, gap: 1.5, px: { xs: 2, sm: 2.5 }, py: 1.25, borderBottom: '1px solid #F3F4F6', bgcolor: '#F9FAFB', alignItems: 'center' }}>
                 <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>#</Typography>
+                <Box />
                 <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pássaro</Typography>
                 <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>Cantos</Typography>
               </Box>
 
               {filtered.map((item, i) => (
                 <Box key={item.id} component={Link} href={`/liga/passarinho/${item.id}`} sx={{
-                  display: 'grid', gridTemplateColumns: '36px 1fr auto', gap: 1.5,
+                  display: 'grid', gridTemplateColumns: { xs: '30px 40px 1fr auto', sm: '36px 44px 1fr auto' }, gap: 1.5,
                   px: { xs: 2, sm: 2.5 }, py: { xs: 1.5, sm: 1.75 }, alignItems: 'center',
                   borderBottom: i < filtered.length - 1 ? '1px solid #F9FAFB' : 'none',
                   bgcolor: isMine(item.id) ? '#F0FDF4' : i === 0 ? '#FFFBEB' : 'transparent',
@@ -307,29 +308,36 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
                   transition: 'background-color 0.15s',
                 }}>
                   <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.05em', color: i < 3 ? PODIUM_COLOR[i] : '#D1D5DB' }}>
-                    {String(i + 1).padStart(2, '0')}
+                    {i < 3 ? PODIUM_EMOJI[i] : String(i + 1).padStart(2, '0')}
                   </Typography>
+
+                  <BirdAvatar tipoAve={item.tipo_ave} size={40} radius={10} />
 
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontWeight: 700, fontSize: '0.87rem', color: isMine(item.id) ? '#0D8F41' : '#111827', lineHeight: 1.3, mb: 0.2 }}>
                       {item.bird_name}{isMine(item.id) ? ' (você)' : ''}
                     </Typography>
-                    <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mb: 0.4 }}>
+                    <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mb: 0.4 }}>
                       {item.user_name} · {item.cidade}, {item.estado}
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                      <Box sx={{ display: 'inline-flex', bgcolor: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: '5px', px: '5px', py: '1px' }}>
+                      <Box sx={{ display: 'inline-flex', bgcolor: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: '20px', px: '7px', py: '1px' }}>
                         <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#065F46', lineHeight: 1.4 }}>{item.tipo_ave}</Typography>
                       </Box>
-                      <Box sx={{ display: 'inline-flex', bgcolor: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: '5px', px: '5px', py: '1px' }}>
-                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#6B7280', lineHeight: 1.4 }}>{item.estilo_canto}</Typography>
+                      <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: '#F3F4F6', borderRadius: '20px', px: '7px', py: '1px' }}>
+                        <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#374151', lineHeight: 1.4 }}>{item.estilo_canto}</Typography>
                       </Box>
                     </Box>
                   </Box>
 
-                  <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', textAlign: 'right' }}>
-                    {item.count.toLocaleString('pt-BR')}
-                  </Typography>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', lineHeight: 1.1 }}>
+                      {item.count.toLocaleString('pt-BR')}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#D1D5DB', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      cantos
+                    </Typography>
+                  </Box>
                 </Box>
               ))}
             </Box>
