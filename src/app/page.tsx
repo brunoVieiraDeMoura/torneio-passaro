@@ -150,8 +150,7 @@ export default async function LandingPage() {
 
             sx={{
               display: 'grid',
-              // mobile: cartões empilhados (alvo de toque maior); lado a lado no desktop
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+              gridTemplateColumns: '1fr 1fr',
               gap: 2,
               maxWidth: 440,
               width: '100%',
