@@ -461,8 +461,9 @@ export default function ParticipanteClient({
     const total = historyTotal ?? myScore
     return (
       <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, padding: '40px 20px', background: '#fff', overflowY: 'auto' }}>
+        {/* abaixo do header do site (56px) — não cobre o logo */}
         <Link href="/" style={{
-          position: 'fixed', top: 14, left: 14, zIndex: 400,
+          position: 'fixed', top: 70, left: 14, zIndex: 150,
           display: 'flex', alignItems: 'center', gap: 6,
           background: '#fff', border: '1px solid #E5E7EB', borderRadius: 20,
           padding: '8px 14px', textDecoration: 'none',
