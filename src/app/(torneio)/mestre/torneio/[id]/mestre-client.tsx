@@ -128,6 +128,10 @@ export default function MestreClient({
   const [addBird, setAddBird] = useState('')
   const [addCage, setAddCage] = useState('')
   const [addLoading, setAddLoading] = useState(false)
+  const [addErr, setAddErr] = useState<string | null>(null)
+
+  // gaiola duplicada por participante (aprovação): pid → mensagem
+  const [cageErr, setCageErr] = useState<Record<string, string>>({})
 
   // marcações / divisões  (round = ciclo, activeGroup = marcação atual do ciclo)
   const [round, setRound] = useState(torneio.round ?? 1)
@@ -142,6 +146,9 @@ export default function MestreClient({
   // posição manual (torneio.manual_groups): pid → grupo escolhido (1..N-1);
   // quem não for escolhido cai automaticamente no último grupo
   const [mcAssign, setMcAssign] = useState<Record<string, number>>({})
+  // etapa do modal: escolher nº de marcações → definir posição das gaiolas
+  const [mcView, setMcView] = useState<'config' | 'gaiolas'>('config')
+  const [mcFilter, setMcFilter] = useState('')
   const manualGroups = torneio.manual_groups ?? false
 
   // modal B: Configurar marcação X-Y (duração + horário de um grupo)
@@ -268,6 +275,24 @@ export default function MestreClient({
     await supabase.from('participants').update(update).eq('id', id)
   }
 
+  // número de gaiola já em uso neste torneio? (só inscrições ativas contam)
+  function cageEmUso(n: number, exceptId?: string) {
+    return participantes.some(p =>
+      p.id !== exceptId && p.cage_number === n &&
+      (p.status === 'pending' || p.status === 'approved'))
+  }
+
+  function handleCageBlur(p: Participante, raw: string) {
+    const n = parseInt(raw)
+    if (isNaN(n)) return
+    if (cageEmUso(n, p.id)) {
+      setCageErr(prev => ({ ...prev, [p.id]: `Gaiola ${n} já está em uso` }))
+      return
+    }
+    setCageErr(prev => { const c = { ...prev }; delete c[p.id]; return c })
+    updateParticipante(p.id, { cage_number: n })
+  }
+
   // Envia os cantos de `parts` ao histórico (round_scores) do ciclo `roundNum`.
   // De-dup por (tournament, round, participant) — nunca conta a mesma marcação 2x.
   async function insertHistory(
@@ -339,9 +364,14 @@ export default function MestreClient({
 
   async function addSemApp(e: React.FormEvent) {
     e.preventDefault()
+    setAddErr(null)
+    const cage = addCage ? parseInt(addCage) : null
+    if (cage != null && !Number.isNaN(cage) && cageEmUso(cage)) {
+      setAddErr(`Gaiola ${cage} já está em uso neste torneio. Escolha outro número.`)
+      return
+    }
     setAddLoading(true)
     const supabase = createClient()
-    const cage = addCage ? parseInt(addCage) : null
     await supabase.from('participants').insert({
       tournament_id: torneio.id, user_id: null, user_name: addName, bird_name: addBird,
       cage_number: Number.isNaN(cage as number) ? null : cage, status: 'approved',
@@ -366,6 +396,8 @@ export default function MestreClient({
     setMcNewCycle(newCycle)
     setMcDivisions(1)
     setMcAssign({})
+    setMcView('config')
+    setMcFilter('')
     setShowMarcConfig(true)
   }
 
@@ -849,7 +881,7 @@ export default function MestreClient({
             )}
             {roundPhase === 'done' && !allGroupsDone && (
               <button onClick={() => openMarcTiming(activeGroup + 1)}
-                style={ctrlBtn('#1D4ED8', '#fff')}>
+                style={ctrlBtn('#0D8F41', '#fff')}>
                 ▶ Configurar marcação {round}-{activeGroup + 1}
               </button>
             )}
@@ -921,39 +953,108 @@ export default function MestreClient({
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={lbl}>Dividir em quantas Marcações?</label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[1, 2, 3, 4, 5, 6].map(n => (
-                    <button key={n} type="button" onClick={() => setMcDivisions(n)}
-                      style={{
-                        width: 44, height: 44, borderRadius: 8, fontSize: '0.95rem', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-                        border: `2px solid ${mcDivisions === n ? '#0D8F41' : '#E5E7EB'}`,
-                        background: mcDivisions === n ? '#F0FDF4' : '#fff',
-                        color: mcDivisions === n ? '#0D8F41' : '#374151',
-                      }}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                {mcDivisions > 1 && !mcManualActive && (
-                  <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
-                    {approvedByScore.length} gaiolas divididas em {mcDivisions} marcações (~{Math.round(100 / mcDivisions)}% / ~{Math.ceil(approvedByScore.length / mcDivisions)} gaiolas cada).
-                  </p>
-                )}
-              </div>
-
-              {/* posição manual: mestre escolhe os grupos 1..N-1; o resto cai no último */}
-              {mcManualActive && (
+            {mcView === 'config' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={lbl}>Posição das gaiolas (manual)</label>
-                  <p style={{ margin: '0 0 10px', fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.5 }}>
-                    Escolha o grupo de cada gaiola{mcDivisions > 2 ? ` (1 a ${mcDivisions - 1})` : ' (1)'}.
-                    Quem não for escolhido vai automaticamente para a marcação {mcDivisions}.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
-                    {mcApproved.map(p => {
+                  <label style={lbl}>Dividir em quantas Marcações?</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[1, 2, 3, 4, 5, 6].map(n => {
+                      // manual: depois de escolher 2+, os botões travam (usar "Trocar" pra mudar)
+                      const locked = mcManualActive
+                      return (
+                        <button key={n} type="button" disabled={locked}
+                          onClick={() => setMcDivisions(n)}
+                          style={{
+                            width: 44, height: 44, borderRadius: 8, fontSize: '0.95rem', fontWeight: 800,
+                            cursor: locked ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                            border: `2px solid ${mcDivisions === n ? '#0D8F41' : '#E5E7EB'}`,
+                            background: mcDivisions === n ? '#F0FDF4' : locked ? '#F9FAFB' : '#fff',
+                            color: mcDivisions === n ? '#0D8F41' : locked ? '#D1D5DB' : '#374151',
+                          }}>
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {mcDivisions > 1 && !mcManualActive && (
+                    <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                      {approvedByScore.length} gaiolas divididas em {mcDivisions} marcações (~{Math.round(100 / mcDivisions)}% / ~{Math.ceil(approvedByScore.length / mcDivisions)} gaiolas cada).
+                    </p>
+                  )}
+                  {mcManualActive && (
+                    <button type="button"
+                      onClick={() => { setMcDivisions(1); setMcAssign({}) }}
+                      style={{ margin: '8px 0 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 700, color: '#0D8F41', textDecoration: 'underline', padding: 0 }}>
+                      Trocar número de marcações
+                    </button>
+                  )}
+                </div>
+
+                {/* posição manual: etapa própria — abre a lista de gaiolas */}
+                {mcManualActive && (
+                  <div>
+                    <button type="button" onClick={() => { setMcFilter(''); setMcView('gaiolas') }}
+                      style={{
+                        width: '100%', background: '#fff', color: '#0D8F41',
+                        border: '2px solid #0D8F41', borderRadius: 8, padding: '12px',
+                        fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                      Definir Posição das Gaiolas
+                    </button>
+                    <p style={{ margin: '8px 0 0', fontSize: '0.72rem', fontWeight: 600, color: mcManualInvalid ? '#DC2626' : '#6B7280' }}>
+                      {Array.from({ length: mcDivisions }, (_, i) => i + 1)
+                        .map(g => `Marcação ${g}: ${mcGroupCount(g)} gaiola${mcGroupCount(g) !== 1 ? 's' : ''}`)
+                        .join(' · ')}
+                      {mcManualInvalid ? ' — toda marcação precisa de pelo menos 1 gaiola' : ''}
+                    </p>
+                  </div>
+                )}
+
+                <button onClick={applyMarcConfig} disabled={mcLoading || mcManualInvalid}
+                  style={{
+                    background: (mcLoading || mcManualInvalid) ? '#D1D5DB' : '#0D8F41',
+                    color: '#fff', border: 'none', borderRadius: 8, padding: '13px',
+                    fontSize: '0.88rem', fontWeight: 700, cursor: (mcLoading || mcManualInvalid) ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit', marginTop: 4,
+                  }}>
+                  {mcLoading ? 'Aplicando...' : 'Aplicar Marcação'}
+                </button>
+              </div>
+            ) : (
+              /* ── etapa 2: Definir Posição das Gaiolas ── */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <button type="button" onClick={() => setMcView('config')}
+                  style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 700, color: '#0D8F41', padding: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6"/>
+                  </svg>
+                  Voltar
+                </button>
+
+                <p style={{ margin: 0, fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                  Escolha o grupo de cada gaiola{mcDivisions > 2 ? ` (1 a ${mcDivisions - 1})` : ' (1)'}.
+                  Quem não for escolhido vai automaticamente para a marcação {mcDivisions}.
+                </p>
+
+                {/* filtro: digita o nº da gaiola e o participante aparece */}
+                <input
+                  style={inp}
+                  type="number" inputMode="numeric"
+                  placeholder="Digite o número da gaiola para filtrar..."
+                  value={mcFilter}
+                  onChange={e => setMcFilter(e.target.value)}
+                  autoFocus
+                />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
+                  {(() => {
+                    const list = mcFilter
+                      ? mcApproved.filter(p => String(p.cage_number ?? '').startsWith(mcFilter))
+                      : mcApproved
+                    if (list.length === 0) {
+                      return <p style={{ margin: 0, fontSize: '0.8rem', color: '#9CA3AF', textAlign: 'center', padding: '12px 0' }}>Nenhuma gaiola encontrada.</p>
+                    }
+                    return list.map(p => {
                       const chosen = mcAssign[p.id]
                       const eff = chosen && chosen >= 1 && chosen < mcDivisions ? chosen : mcDivisions
                       return (
@@ -988,27 +1089,26 @@ export default function MestreClient({
                           </div>
                         </div>
                       )
-                    })}
-                  </div>
-                  <p style={{ margin: '10px 0 0', fontSize: '0.72rem', fontWeight: 600, color: mcManualInvalid ? '#DC2626' : '#6B7280' }}>
-                    {Array.from({ length: mcDivisions }, (_, i) => i + 1)
-                      .map(g => `Marcação ${g}: ${mcGroupCount(g)} gaiola${mcGroupCount(g) !== 1 ? 's' : ''}`)
-                      .join(' · ')}
-                    {mcManualInvalid ? ' — toda marcação precisa de pelo menos 1 gaiola' : ''}
-                  </p>
+                    })
+                  })()}
                 </div>
-              )}
 
-              <button onClick={applyMarcConfig} disabled={mcLoading || mcManualInvalid}
-                style={{
-                  background: (mcLoading || mcManualInvalid) ? '#D1D5DB' : '#0D8F41',
-                  color: '#fff', border: 'none', borderRadius: 8, padding: '13px',
-                  fontSize: '0.88rem', fontWeight: 700, cursor: (mcLoading || mcManualInvalid) ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit', marginTop: 4,
-                }}>
-                {mcLoading ? 'Aplicando...' : 'Aplicar Marcação'}
-              </button>
-            </div>
+                <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 600, color: mcManualInvalid ? '#DC2626' : '#6B7280' }}>
+                  {Array.from({ length: mcDivisions }, (_, i) => i + 1)
+                    .map(g => `Marcação ${g}: ${mcGroupCount(g)} gaiola${mcGroupCount(g) !== 1 ? 's' : ''}`)
+                    .join(' · ')}
+                  {mcManualInvalid ? ' — toda marcação precisa de pelo menos 1 gaiola' : ''}
+                </p>
+
+                <button type="button" onClick={() => setMcView('config')}
+                  style={{
+                    background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '12px',
+                    fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  Concluir posições
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1023,7 +1123,7 @@ export default function MestreClient({
                 <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: '#111827' }}>
                   Configurar marcação {divisions > 1 ? `${round}-${mtTarget}` : `${round}`}
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#1D4ED8' }}>Duração e horário de início</p>
+                <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#0D8F41' }}>Duração e horário de início</p>
               </div>
               <button type="button" onClick={() => setShowMarcTiming(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, lineHeight: 0 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1056,7 +1156,7 @@ export default function MestreClient({
 
               <button onClick={applyMarcTiming} disabled={!mtHour || mtLoading}
                 style={{
-                  background: (!mtHour || mtLoading) ? '#D1D5DB' : '#1D4ED8',
+                  background: (!mtHour || mtLoading) ? '#D1D5DB' : '#0D8F41',
                   color: '#fff', border: 'none', borderRadius: 8, padding: '13px',
                   fontSize: '0.88rem', fontWeight: 700, cursor: (!mtHour || mtLoading) ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit', marginTop: 4,
@@ -1212,7 +1312,10 @@ export default function MestreClient({
               </div>
               <div>
                 <label style={lbl}>Número da gaiola</label>
-                <input style={inp} type="number" min={0} placeholder="Ex: 12" value={addCage} onChange={e => setAddCage(e.target.value)} />
+                <input style={{ ...inp, borderColor: addErr ? '#DC2626' : '#E5E7EB' }} type="number" min={0} placeholder="Ex: 12" value={addCage} onChange={e => { setAddCage(e.target.value); setAddErr(null) }} />
+                {addErr && (
+                  <p style={{ margin: '6px 0 0', fontSize: '0.72rem', fontWeight: 700, color: '#DC2626' }}>{addErr}</p>
+                )}
               </div>
               <p style={{ margin: 0, fontSize: '0.7rem', color: '#9CA3AF', lineHeight: 1.4 }}>
                 Os cantos serão atribuídos ao fim de cada rodada.
@@ -1372,25 +1475,34 @@ export default function MestreClient({
             </div>
             {p.status === 'pending' && (
               // quebra pra linha própria em telas estreitas; alvos de toque grandes
-              <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', flex: '1 1 300px', minWidth: 0 }}>
-                <input
-                  type="number" inputMode="numeric" placeholder="Nº gaiola"
-                  style={{
-                    flex: '1 1 90px', minWidth: 76, boxSizing: 'border-box',
-                    border: '1.5px solid #D1D5DB', borderRadius: 8, padding: '10px 10px',
-                    fontSize: '1rem', fontWeight: 700, textAlign: 'center',
-                    fontFamily: 'inherit', outline: 'none', minHeight: 44,
-                  }}
-                  onBlur={e => { const n = parseInt(e.target.value); if (!isNaN(n)) updateParticipante(p.id, { cage_number: n }) }}
-                />
-                <button onClick={() => updateParticipante(p.id, { status: 'approved' })}
-                  style={{ flex: '1 1 auto', background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
-                  Aprovar
-                </button>
-                <button onClick={() => updateParticipante(p.id, { status: 'rejected' })}
-                  style={{ flex: '1 1 auto', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
-                  Recusar
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 300px', minWidth: 0 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                  <input
+                    type="number" inputMode="numeric" placeholder="Nº gaiola"
+                    style={{
+                      flex: '1 1 90px', minWidth: 76, boxSizing: 'border-box',
+                      border: cageErr[p.id] ? '1.5px solid #DC2626' : '1.5px solid #D1D5DB',
+                      borderRadius: 8, padding: '10px 10px',
+                      fontSize: '1rem', fontWeight: 700, textAlign: 'center',
+                      fontFamily: 'inherit', outline: 'none', minHeight: 44,
+                      background: cageErr[p.id] ? '#FEF2F2' : '#fff',
+                    }}
+                    onBlur={e => handleCageBlur(p, e.target.value)}
+                  />
+                  <button onClick={() => updateParticipante(p.id, { status: 'approved' })}
+                    style={{ flex: '1 1 auto', background: '#0D8F41', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
+                    Aprovar
+                  </button>
+                  <button onClick={() => updateParticipante(p.id, { status: 'rejected' })}
+                    style={{ flex: '1 1 auto', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
+                    Recusar
+                  </button>
+                </div>
+                {cageErr[p.id] && (
+                  <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: '#DC2626' }}>
+                    {cageErr[p.id]} — escolha outro número
+                  </p>
+                )}
               </div>
             )}
             {p.status === 'approved' && (
