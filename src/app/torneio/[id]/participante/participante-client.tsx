@@ -16,6 +16,16 @@ interface Torneio {
   status: string
   active_group: number
   divisions: number
+  round?: number
+}
+
+// "Primeira Marcação", "Segunda Marcação da Segunda Etapa"...
+// grupo = marcação dentro do ciclo; ciclo (round) > 1 vira "Etapa"
+const ORDINAIS = ['Primeira', 'Segunda', 'Terceira', 'Quarta', 'Quinta', 'Sexta', 'Sétima', 'Oitava']
+function nomeMarcacao(group: number, round: number): string {
+  const g = ORDINAIS[group - 1] ?? `${group}ª`
+  const etapa = round > 1 ? ` da ${ORDINAIS[round - 1] ?? `${round}ª`} Etapa` : ''
+  return `${g} Marcação${etapa}`
 }
 
 interface Participante {
@@ -85,6 +95,7 @@ export default function ParticipanteClient({
   const [durationSecs, setDurationSecs] = useState(torneio.duration_secs)
   const [activeGroup, setActiveGroup] = useState(torneio.active_group ?? 1)
   const [divisions, setDivisions] = useState(torneio.divisions ?? 1)
+  const [round, setRound] = useState(torneio.round ?? 1)
   const [roundGroup, setRoundGroup] = useState<number | null>(participante.round_group)
   const [participanteStatus, setParticipanteStatus] = useState(participante.status)
   const [eliminationReason, setEliminationReason] = useState<string | null>(participante.elimination_reason ?? null)
@@ -232,6 +243,7 @@ export default function ParticipanteClient({
           if (payload.new.duration_secs !== undefined) setDurationSecs(payload.new.duration_secs)
           if (payload.new.active_group !== undefined) setActiveGroup(payload.new.active_group)
           if (payload.new.divisions !== undefined) setDivisions(payload.new.divisions)
+          if (payload.new.round !== undefined) setRound(payload.new.round)
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'participants', filter: `id=eq.${participante.id}` },
         payload => {
@@ -253,13 +265,14 @@ export default function ParticipanteClient({
     const load = async () => {
       const [{ data: p }, { data: t }] = await Promise.all([
         supabase.from('participants').select('status, round_group, elimination_reason').eq('id', participante.id).single(),
-        supabase.from('tournaments').select('status, start_at, duration_secs, active_group, divisions').eq('id', torneio.id).single(),
+        supabase.from('tournaments').select('status, start_at, duration_secs, active_group, divisions, round').eq('id', torneio.id).single(),
       ])
       if (!active) return
       if (p) { setParticipanteStatus(p.status); setRoundGroup(p.round_group); setEliminationReason((p as { elimination_reason?: string | null }).elimination_reason ?? null) }
       if (t) {
         setTorneioStatus(t.status); setStartAt(t.start_at); setDurationSecs(t.duration_secs)
         setActiveGroup(t.active_group ?? 1); setDivisions(t.divisions ?? 1)
+        setRound((t as { round?: number }).round ?? 1)
       }
       // o contador NÃO é sincronizado aqui — é local; o reset vem da troca de start_at
     }
@@ -554,8 +567,11 @@ export default function ParticipanteClient({
     )
   }
 
+  // o AdBanner é fixed no topo (~64px): nas telas em que ele aparece, o conteúdo
+  // desce pra não ficar escondido embaixo dele
+  const temBanner = preStart || showRankingScreen
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '32px 20px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '84px 20px 32px' : temBanner ? '84px 24px 24px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
 
       {/* ── Aviso de fraude (toast fixo no topo — NÃO afeta o layout/botão) ── */}
       {fraudWarning && (
@@ -740,7 +756,11 @@ export default function ParticipanteClient({
               {isMyTurn ? 'Sua marcação encerrou' : 'Aguarde a sua marcação'}
             </p>
             <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#9CA3AF' }}>
-              {divisions > 1 ? `Em andamento: marcação ${activeGroup} de ${divisions}. ` : ''}
+              {divisions > 1
+                ? isCountingDown
+                  ? `Em andamento: ${nomeMarcacao(activeGroup, round)}. `
+                  : `${nomeMarcacao(activeGroup, round)} encerrada. `
+                : ''}
               Acompanhe o ranking abaixo.
             </p>
           </div>
@@ -756,8 +776,12 @@ export default function ParticipanteClient({
           {divisions > 1 && competingNow.length > 0 && (
             <div style={{ width: '100%', maxWidth: 420, background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 12, padding: '12px 12px 14px' }}>
               <p style={{ margin: '0 0 10px', fontSize: '0.68rem', fontWeight: 700, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                Competindo agora · marcação {activeGroup}
+                {isCountingDown && (
+                  <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+                )}
+                {isCountingDown
+                  ? `Competindo agora · ${nomeMarcacao(activeGroup, round)}`
+                  : `Resultados da ${nomeMarcacao(activeGroup, round)}`}
               </p>
               <RankingList ranking={competingNow} myId={participante.id} />
             </div>

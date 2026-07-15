@@ -17,7 +17,7 @@ export default async function ParticipantePage({
 
   const { data: torneio } = await supabase
     .from('tournaments')
-    .select('id, name, start_at, duration_secs, status, active_group, divisions')
+    .select('id, name, start_at, duration_secs, status, active_group, divisions, round')
     .eq('id', id)
     .single()
 
