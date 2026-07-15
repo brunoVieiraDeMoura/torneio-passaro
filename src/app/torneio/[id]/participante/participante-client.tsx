@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import MestreWalker from '@/components/ui/mestre-walker'
 import AdBanner from '@/components/ui/ad-banner'
@@ -460,6 +461,19 @@ export default function ParticipanteClient({
     const total = historyTotal ?? myScore
     return (
       <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, padding: '40px 20px', background: '#fff', overflowY: 'auto' }}>
+        <Link href="/" style={{
+          position: 'fixed', top: 14, left: 14, zIndex: 400,
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: '#fff', border: '1px solid #E5E7EB', borderRadius: 20,
+          padding: '8px 14px', textDecoration: 'none',
+          fontSize: '0.75rem', fontWeight: 600, color: '#6B7280',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Home
+        </Link>
         <FinalTorneioAnim maxWidth={320} />
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Fim do torneio!</h1>
         {myPosition > 0 && (
