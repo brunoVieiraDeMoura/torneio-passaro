@@ -392,12 +392,13 @@ export default function ParticipanteClient({
 
   // ── Telas de estado ──
 
-  // fixo embaixo à direita — não interfere no botão de marcação
+  // fixo embaixo à direita — não interfere no botão de marcação.
+  // zIndex acima do overlay do modo avião (9999): sair continua clicável até 1min do início
   const sairBtn = (
     <button
       onClick={sairDaTela}
       style={{
-        position: 'fixed', bottom: 14, right: 14, zIndex: 400,
+        position: 'fixed', bottom: 14, right: 14, zIndex: 10000,
         display: 'flex', alignItems: 'center', gap: 6,
         background: '#fff', border: '1px solid #E5E7EB', borderRadius: 20,
         padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit',
@@ -698,8 +699,8 @@ export default function ParticipanteClient({
         </div>
       )}
 
-      {/* saída disponível — some durante a contagem (marcação ativa não pode sair) */}
-      {!counting && sairBtn}
+      {/* saída disponível — some faltando 1min pro início da minha marcação e durante a contagem */}
+      {!(counting || (isMyTurn && isActive && msUntilStart !== null && msUntilStart > 0 && msUntilStart <= 60_000)) && sairBtn}
     </main>
   )
 }

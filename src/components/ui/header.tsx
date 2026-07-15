@@ -167,7 +167,8 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
         const start = new Date(t.start_at).getTime()
         const end = start + (t.duration_secs ?? 0) * 1000
         const now = Date.now()
-        if (now < start || now > end) return false
+        // 1min antes do início já puxa de volta pra tela de marcação
+        if (now < start - 60_000 || now > end) return false
         return (t.divisions ?? 1) <= 1 || p.round_group === (t.active_group ?? 1)
       })
       if (counting && !naTelaDoTorneio) {

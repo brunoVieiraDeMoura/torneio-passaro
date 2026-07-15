@@ -148,13 +148,14 @@ export async function middleware(request: NextRequest) {
       })
 
       // marcação do participante em contagem AGORA (é a vez do grupo dele)?
+      // Janela começa 1min ANTES do início — participante volta pra tela a tempo.
       const isCounting = (p: { round_group: number | null; tournaments: unknown }) => {
         const t = tinfo(p)
         if (!t?.start_at) return false
         const start = new Date(t.start_at).getTime()
         const end = start + (t.duration_secs ?? 0) * 1000
         const now = Date.now()
-        if (now < start || now > end) return false
+        if (now < start - 60_000 || now > end) return false
         return (t.divisions ?? 1) <= 1 || p.round_group === (t.active_group ?? 1)
       }
       const counting = actives.find(isCounting)
