@@ -571,7 +571,7 @@ export default function ParticipanteClient({
   // desce pra não ficar escondido embaixo dele
   const temBanner = preStart || showRankingScreen
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '84px 20px 32px' : temBanner ? '84px 24px 24px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '84px 20px 76px' : temBanner ? '84px 24px 76px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
 
       {/* ── Aviso de fraude (toast fixo no topo — NÃO afeta o layout/botão) ── */}
       {fraudWarning && (
@@ -759,9 +759,16 @@ export default function ParticipanteClient({
               {divisions > 1
                 ? isCountingDown
                   ? `Em andamento: ${nomeMarcacao(activeGroup, round)}. `
-                  : `${nomeMarcacao(activeGroup, round)} encerrada. `
-                : ''}
-              Acompanhe o ranking abaixo.
+                  : `${nomeMarcacao(activeGroup, round)} encerrada. ${activeGroup < divisions ? `Aguarde a ${nomeMarcacao(activeGroup + 1, round)} e a` : 'A'}companhe o ranking abaixo.`
+                : 'Acompanhe o ranking abaixo.'}
+              {divisions > 1 && isCountingDown ? 'Acompanhe o ranking abaixo.' : ''}
+            </p>
+          </div>
+
+          {/* aviso da vassourada — destaque leve, logo abaixo do texto */}
+          <div style={{ width: '100%', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px' }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#92400E', textAlign: 'center', lineHeight: 1.5 }}>
+              🧹 Aguarde as próximas marcações. Se você passar na vassourada, sua vez volta automaticamente.
             </p>
           </div>
 
@@ -792,9 +799,6 @@ export default function ParticipanteClient({
           </p>
           <RankingList ranking={ranking} myId={participante.id} />
 
-          <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#9CA3AF', textAlign: 'center', lineHeight: 1.5 }}>
-            Aguarde as próximas marcações. Se você passar na vassourada, sua vez volta automaticamente.
-          </p>
         </div>
       )}
 
