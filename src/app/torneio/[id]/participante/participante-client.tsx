@@ -175,8 +175,10 @@ export default function ParticipanteClient({
     if (!window.confirm('Sair da tela do torneio? Você pode voltar a qualquer momento pela página do torneio.')) return
     document.cookie = `sair_torneio=${torneio.id}; path=/; max-age=43200`
     document.body.classList.remove('hide-site-header')
-    router.push('/torneios')
-  }, [torneio.id, router])
+    // navegação completa (não router.push): o cache do router guardou os redirects
+    // de quando o usuário estava travado e devolvia ele pra esta tela
+    window.location.assign('/')
+  }, [torneio.id])
 
   // limpa os timers de fraude ao desmontar
   useEffect(() => () => {
@@ -571,8 +573,8 @@ export default function ParticipanteClient({
         )}
       </div>
 
-      {/* Aguardando início da minha marcação — banner no topo + countdown + animação */}
-      {preStart && <AdBanner />}
+      {/* Banner no topo — aguardando início E tela de ranking entre marcações */}
+      {(preStart || showRankingScreen) && <AdBanner />}
       {preStart && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%' }}>
           {msUntilStart !== null && msUntilStart > 0 ? (
@@ -696,8 +698,8 @@ export default function ParticipanteClient({
         </div>
       )}
 
-      {/* saída sempre disponível — não fica preso na tela até o fim/2h */}
-      {sairBtn}
+      {/* saída disponível — some durante a contagem (marcação ativa não pode sair) */}
+      {!counting && sairBtn}
     </main>
   )
 }

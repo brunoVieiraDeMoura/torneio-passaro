@@ -15,18 +15,25 @@ function useFrameLoop(frames: string[], intervalMs: number) {
   return frames[i]
 }
 
-const AMPULHETA_FRAMES = ['/anim/ampulheta-idle.png', '/anim/ampulheta-15graus.png']
-
-// Ampulheta balançando — tela de "aguardando aprovação"
+// Ampulheta girando — tela de "aguardando aprovação".
+// Só a imagem idle, rotacionando +45° por passo (0 → 45 → 90 → ...).
 export function AmpulhetaAnim({ height = 96 }: { height?: number }) {
-  const src = useFrameLoop(AMPULHETA_FRAMES, 600)
+  const [deg, setDeg] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setDeg(d => d + 45), 700)
+    return () => clearInterval(id)
+  }, [])
   return (
     <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src="/anim/ampulheta-idle.png"
         alt="Aguardando aprovação"
-        style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+        style={{
+          maxHeight: '100%', maxWidth: '100%', objectFit: 'contain',
+          transform: `rotate(${deg}deg)`,
+          transition: 'transform 0.35s ease-in-out',
+        }}
       />
     </div>
   )

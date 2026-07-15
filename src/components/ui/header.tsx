@@ -136,27 +136,50 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
 
   useEffect(() => { setOpen(false); setDropdownOpen(false) }, [pathname])
 
-  // checa se o usuário tem inscrição (pendente ou aprovada) em torneio aberto/ao vivo
+  // checa se o usuário tem inscrição (pendente ou aprovada) em torneio aberto/ao vivo.
+  // Se a marcação do grupo dele estiver em CONTAGEM, redireciona pra tela de marcação
+  // na hora (mesmo que ele tenha saído da tela) — poll de 10s pega o início sozinho.
   useEffect(() => {
     if (!user) { setTorneioAtivo(null); return }
+    const naTelaDoTorneio = /^\/torneio\/[^/]+\/participante/.test(pathname)
     let cancelled = false
     const supabase = createClient()
     async function check() {
       const { data } = await supabase
         .from('participants')
-        .select('id, tournament_id, tournaments!inner(status)')
+        .select('id, tournament_id, status, round_group, tournaments!inner(status, start_at, duration_secs, active_group, divisions)')
         .eq('user_id', user!.id)
         .in('status', ['pending', 'approved'])
       if (cancelled) return
-      const active = (data ?? []).find(p => {
+      type TInfo = { status: string; start_at: string | null; duration_secs: number; active_group: number | null; divisions: number | null }
+      const tinfo = (p: { tournaments: unknown }): TInfo | undefined => {
         const rel = p.tournaments as unknown
-        const t = (Array.isArray(rel) ? rel[0] : rel) as { status: string } | undefined
+        return (Array.isArray(rel) ? rel[0] : rel) as TInfo | undefined
+      }
+      const actives = (data ?? []).filter(p => {
+        const t = tinfo(p)
         return t?.status === 'open' || t?.status === 'running'
       })
+      const counting = actives.find(p => {
+        if (p.status !== 'approved') return false
+        const t = tinfo(p)
+        if (!t?.start_at) return false
+        const start = new Date(t.start_at).getTime()
+        const end = start + (t.duration_secs ?? 0) * 1000
+        const now = Date.now()
+        if (now < start || now > end) return false
+        return (t.divisions ?? 1) <= 1 || p.round_group === (t.active_group ?? 1)
+      })
+      if (counting && !naTelaDoTorneio) {
+        window.location.assign(`/torneio/${counting.tournament_id}/participante?pid=${counting.id}`)
+        return
+      }
+      const active = actives[0]
       setTorneioAtivo(active ? { tid: active.tournament_id, pid: active.id } : null)
     }
     check()
-    return () => { cancelled = true }
+    const id = setInterval(check, 10_000)
+    return () => { cancelled = true; clearInterval(id) }
   }, [user, pathname])
 
   const voltarBtnStyle: React.CSSProperties = {

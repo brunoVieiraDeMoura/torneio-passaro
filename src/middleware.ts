@@ -132,26 +132,47 @@ export async function middleware(request: NextRequest) {
     if (!isParticipantePage && !pathname.startsWith('/api/')) {
       const { data: participations } = await supabase
         .from('participants')
-        .select('id, tournament_id, tournaments!inner(status)')
+        .select('id, tournament_id, round_group, tournaments!inner(status, start_at, duration_secs, active_group, divisions)')
         .eq('user_id', user.id)
         .eq('status', 'approved')
 
-      const active = (participations ?? []).find(p => {
+      type TInfo = { status: string; start_at: string | null; duration_secs: number; active_group: number | null; divisions: number | null }
+      const tinfo = (p: { tournaments: unknown }): TInfo | undefined => {
         const rel = p.tournaments as unknown
-        const t = (Array.isArray(rel) ? rel[0] : rel) as { status: string } | undefined
+        return (Array.isArray(rel) ? rel[0] : rel) as TInfo | undefined
+      }
+
+      const actives = (participations ?? []).filter(p => {
+        const t = tinfo(p)
         return t?.status === 'open' || t?.status === 'running'
       })
 
-      if (active) {
-        // "Sair da tela do torneio": cookie setado pelo botão na tela do participante
-        // libera a navegação mesmo com o torneio ainda ativo (voltar à página re-trava)
-        const saiu = request.cookies.get('sair_torneio')?.value === active.tournament_id
-        if (!saiu) {
-          const url = request.nextUrl.clone()
-          url.pathname = `/torneio/${active.tournament_id}/participante`
-          url.search = `?pid=${active.id}` // participante page exige o pid
-          return NextResponse.redirect(url)
-        }
+      // marcação do participante em contagem AGORA (é a vez do grupo dele)?
+      const isCounting = (p: { round_group: number | null; tournaments: unknown }) => {
+        const t = tinfo(p)
+        if (!t?.start_at) return false
+        const start = new Date(t.start_at).getTime()
+        const end = start + (t.duration_secs ?? 0) * 1000
+        const now = Date.now()
+        if (now < start || now > end) return false
+        return (t.divisions ?? 1) <= 1 || p.round_group === (t.active_group ?? 1)
+      }
+      const counting = actives.find(isCounting)
+
+      // "Sair da tela do torneio": cookie setado pelo botão na tela do participante
+      // libera a navegação mesmo com o torneio ainda ativo (voltar à página re-trava).
+      // Compara contra TODAS as inscrições ativas — duplicata antiga em outro
+      // torneio não pode re-travar o usuário que acabou de sair.
+      // EXCEÇÃO: marcação dele em contagem → volta pra tela de marcação sempre.
+      const saiuTid = request.cookies.get('sair_torneio')?.value
+      const saiu = saiuTid != null && actives.some(p => p.tournament_id === saiuTid)
+      const active = counting ?? actives[0]
+
+      if (active && (!saiu || counting)) {
+        const url = request.nextUrl.clone()
+        url.pathname = `/torneio/${active.tournament_id}/participante`
+        url.search = `?pid=${active.id}` // participante page exige o pid
+        return NextResponse.redirect(url)
       }
     }
   }
