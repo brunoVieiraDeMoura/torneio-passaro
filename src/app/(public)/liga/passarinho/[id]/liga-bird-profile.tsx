@@ -90,49 +90,83 @@ export default function LigaBirdProfile({ entry, position, total }: Props) {
         </div>
       </div>
 
+      <style>{`
+        .lbp-hero { display: flex; align-items: center; gap: 20px; }
+        .lbp-hero-pills { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .lbp-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 640px) {
+          .lbp-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 479px) {
+          .lbp-hero { flex-direction: column; text-align: center; }
+          .lbp-hero-pills { justify-content: center; }
+        }
+      `}</style>
+
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 16px 60px' }}>
 
         {/* bird header card */}
-        <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="lbp-hero" style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '24px', marginBottom: 12 }}>
           <div style={{
-            width: 72, height: 72, borderRadius: 18, flexShrink: 0,
+            width: 88, height: 88, borderRadius: 22, flexShrink: 0,
             overflow: 'hidden',
-            background: (photo && !imgError) ? 'transparent' : '#fff',
-            border: (photo && !imgError) ? 'none' : '1.5px solid #E5E7EB',
+            background: (photo && !imgError) ? 'transparent' : '#F0FDF4',
+            border: (photo && !imgError) ? '2px solid #D1FAE5' : '1.5px solid #D1FAE5',
+            boxSizing: 'border-box',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {(photo && !imgError)
               ? <img src={photo} alt={entry.tipo_ave} onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              : <BirdSvg color={bs.color} size={38} />
+              : <BirdSvg color={bs.color} size={44} />
             }
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: '0 0 6px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
               Perfil do Pássaro
             </p>
-            <h1 style={{ margin: '0 0 8px', fontWeight: 800, fontSize: '1.5rem', color: '#111827', letterSpacing: '-0.025em', lineHeight: 1.1 }}>
+            <h1 style={{ margin: '0 0 8px', fontWeight: 800, fontSize: 'clamp(1.35rem, 5vw, 1.6rem)', color: '#111827', letterSpacing: '-0.025em', lineHeight: 1.1, overflowWrap: 'break-word' }}>
               {entry.bird_name}
             </h1>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="lbp-hero-pills">
               <span style={{ fontSize: '0.7rem', fontWeight: 600, color: bs.color, background: bs.bg, borderRadius: 20, padding: '3px 10px' }}>
                 {entry.tipo_ave}
               </span>
               <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#374151', background: '#F3F4F6', borderRadius: 20, padding: '3px 10px' }}>
                 {entry.estilo_canto}
               </span>
-              <span style={{ fontSize: '0.7rem', color: '#9CA3AF', padding: '3px 0' }}>
-                {entry.user_name} · {entry.cidade}, {entry.estado}
-              </span>
             </div>
+            <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+              {entry.user_name} · {entry.cidade}, {entry.estado}
+            </p>
           </div>
         </div>
 
-        {/* stats grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        {/* destaque: cantos + ranking */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
+          <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 14, padding: '18px 14px', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 'clamp(1.5rem, 6vw, 1.9rem)', fontWeight: 800, color: '#0D8F41', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+              {entry.count.toLocaleString('pt-BR')}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '0.65rem', fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Cantos na temporada
+            </p>
+          </div>
+          <div style={{ background: position <= 3 ? '#FFFBEB' : '#fff', border: `1px solid ${position <= 3 ? '#FDE68A' : '#E5E7EB'}`, borderRadius: 14, padding: '18px 14px', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: 'clamp(1.5rem, 6vw, 1.9rem)', fontWeight: 800, color: rankColor, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+              {medalEmoji ? `${medalEmoji} ` : ''}{position}º
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              de {total} na categoria
+            </p>
+          </div>
+        </div>
+
+        {/* stats grid — 1 coluna no mobile, 2 no desktop */}
+        <div className="lbp-grid">
 
           {/* temporada */}
           <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '20px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9CA3AF' }}>
+            <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0D8F41' }}>
               Temporada 2025
             </p>
             {[
@@ -141,16 +175,16 @@ export default function LigaBirdProfile({ entry, position, total }: Props) {
               { label: 'Tipo de ave',         value: entry.tipo_ave },
               { label: 'Estilo de canto',     value: entry.estilo_canto },
             ].map(s => (
-              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
-                <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>{s.label}</span>
-                <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>{s.value}</span>
+              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
+                <span style={{ fontSize: '0.8rem', color: '#6B7280', flexShrink: 0 }}>{s.label}</span>
+                <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em', textAlign: 'right', overflowWrap: 'break-word', minWidth: 0 }}>{s.value}</span>
               </div>
             ))}
           </div>
 
           {/* proprietário */}
           <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '20px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9CA3AF' }}>
+            <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0D8F41' }}>
               Proprietário
             </p>
             {[
@@ -158,14 +192,14 @@ export default function LigaBirdProfile({ entry, position, total }: Props) {
               { label: 'Cidade', value: entry.cidade },
               { label: 'Estado', value: entry.estado },
             ].map(s => (
-              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
-                <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>{s.label}</span>
-                <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>{s.value}</span>
+              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
+                <span style={{ fontSize: '0.8rem', color: '#6B7280', flexShrink: 0 }}>{s.label}</span>
+                <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em', textAlign: 'right', overflowWrap: 'break-word', minWidth: 0 }}>{s.value}</span>
               </div>
             ))}
 
             {medalEmoji && (
-              <div style={{ marginTop: 16, padding: '14px', background: position === 1 ? '#FFFBEB' : '#F9FAFB', borderRadius: 10, textAlign: 'center' }}>
+              <div style={{ marginTop: 16, padding: '14px', background: position === 1 ? '#FFFBEB' : '#F9FAFB', border: `1px solid ${position === 1 ? '#FDE68A' : '#F3F4F6'}`, borderRadius: 10, textAlign: 'center' }}>
                 <p style={{ margin: 0, fontSize: '1.75rem', lineHeight: 1 }}>{medalEmoji}</p>
                 <p style={{ margin: '6px 0 0', fontSize: '0.72rem', fontWeight: 700, color: rankColor }}>{rankLabel}</p>
               </div>

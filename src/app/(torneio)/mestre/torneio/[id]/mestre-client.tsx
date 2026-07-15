@@ -1339,8 +1339,9 @@ export default function MestreClient({
             Participantes marcando rápido demais (cliques &lt; 1s). Verifique quem pode estar burlando.
           </p>
 
-          {/* desconta as suspeitas do total de todos (ex: 32 cantos − 9 fraudes = 23) e fecha a section */}
-          {status !== 'finished' && (
+          {/* desconta as suspeitas do total de todos (ex: 32 cantos − 9 fraudes = 23) e fecha a section.
+              Só ao FIM da marcação — durante a contagem o mestre acompanha sem mexer no placar */}
+          {status !== 'finished' && roundPhase === 'done' && (
             <button
               disabled={loading}
               onClick={() => {

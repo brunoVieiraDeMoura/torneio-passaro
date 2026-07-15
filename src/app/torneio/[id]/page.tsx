@@ -12,6 +12,7 @@ const RANK_COLORS = ['#B45309', '#6B7280', '#92400E']
 const RANK_BG     = ['rgba(180,83,9,0.08)', 'rgba(107,114,128,0.06)', 'rgba(146,64,14,0.07)']
 
 type Elim = { id: string; bird_name: string; user_name: string; lastRound: number | null; total: number; position: number }
+type RankItem = { id: string; bird_name: string; user_name: string; cage_number: number | null; score: number; warns: number; round_group?: number | null }
 type HistEntry = { participant_id: string; bird_name: string; count: number }
 type HistRound = { round: number; entries: HistEntry[] }
 
@@ -36,6 +37,57 @@ function WarnBadge({ n, big = false }: { n: number; big?: boolean }) {
       </svg>
       <span style={{ fontWeight: 800, fontSize: big ? '0.85rem' : '0.72rem', color: '#B91C1C' }}>{n}</span>
     </span>
+  )
+}
+
+// linha do ranking — desktop (telão). Nome do dono visível abaixo do pássaro/gaiola.
+function DeskRankRow({ p, i }: { p: RankItem; i: number }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 14,
+      background: i < 3 ? RANK_BG[i] : '#FAFAFA',
+      borderRadius: 10, padding: '11px 16px',
+      border: `1px solid ${i < 3 ? 'rgba(0,0,0,0.06)' : '#F3F4F6'}`,
+    }}>
+      <span style={{ minWidth: 30, fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
+        {String(i + 1).padStart(2, '0')}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.95rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
+        </p>
+        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {p.user_name}
+        </p>
+      </div>
+      <WarnBadge n={p.warns} big />
+      <span style={{ fontWeight: 800, fontSize: '1.3rem', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
+        {p.score.toLocaleString('pt-BR')}
+      </span>
+    </div>
+  )
+}
+
+// linha do ranking — mobile
+function MobRankRow({ p, i }: { p: RankItem; i: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px' }}>
+      <span style={{ minWidth: 26, fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.05em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
+        {String(i + 1).padStart(2, '0')}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.87rem', color: '#111827' }}>
+          {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
+        </p>
+        <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280' }}>
+          {p.user_name}
+        </p>
+      </div>
+      <WarnBadge n={p.warns} />
+      <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
+        {p.score.toLocaleString('pt-BR')}
+      </span>
+    </div>
   )
 }
 
@@ -115,7 +167,7 @@ const getTorneioData = async (id: string) => {
 
   const { data: torneio } = await supabase
     .from('tournaments')
-    .select('id, name, status, start_at, duration_secs, qr_token, stream_url, clubs(name, cidade, estado)')
+    .select('id, name, status, start_at, duration_secs, qr_token, stream_url, active_group, divisions, clubs(name, cidade, estado)')
     .eq('id', id)
     .single()
 
@@ -124,7 +176,7 @@ const getTorneioData = async (id: string) => {
   const [{ data: participants }, { data: scores }, { data: history }] = await Promise.all([
     supabase
       .from('participants')
-      .select('id, user_name, bird_name, cage_number, status')
+      .select('id, user_name, bird_name, cage_number, status, round_group')
       .eq('tournament_id', id)
       .order('cage_number', { ascending: true }),
     supabase
@@ -193,6 +245,14 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const withinWindow = startMs !== null && endMs !== null && Date.now() >= startMs && Date.now() <= endMs
   const isLive = torneio.status === 'running' || (torneio.status === 'open' && withinWindow)
   const isOpen = torneio.status === 'open'
+  // marcação em contagem AGORA + torneio dividido em grupos → tela dividida:
+  // ranking da marcação atual de um lado, geral do outro
+  const divisions = (torneio as Record<string, unknown>).divisions as number ?? 1
+  const activeGroup = (torneio as Record<string, unknown>).active_group as number ?? 1
+  const marcacaoAtiva = withinWindow && divisions > 1
+  const competing: RankItem[] = marcacaoAtiva
+    ? ranked.filter(p => (p as RankItem).round_group === activeGroup)
+    : []
   const isActive = torneio.status === 'open' || torneio.status === 'running'
   const canJoin = isOpen
   const time = fmtTime(torneio.start_at)
@@ -239,7 +299,9 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 {isLive && <span className="live-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />}
                 <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: isLive ? '#4ADE80' : '#6B7280' }}>
-                  {isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Encerrado'}
+                  {/* "Encerrado" SÓ quando finalizado — entre marcações (running com janela
+                      expirada) o torneio segue em andamento */}
+                  {torneio.status === 'finished' ? 'Encerrado' : isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Em andamento'}
                 </span>
               </div>
               <h1 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '1.3rem', color: '#fff', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
@@ -293,30 +355,28 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               {ranked.length === 0 && (
                 <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>
               )}
-              {ranked.map((p, i) => (
-                <div key={p.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 16,
-                  background: i < 3 ? RANK_BG[i] : '#FAFAFA',
-                  borderRadius: 10, padding: '12px 18px',
-                  border: `1px solid ${i < 3 ? 'rgba(0,0,0,0.06)' : '#F3F4F6'}`,
-                }}>
-                  <span style={{ minWidth: 32, fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '1rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.bird_name}
+              {marcacaoAtiva ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, alignItems: 'start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#C2410C', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+                      Marcação atual
                     </p>
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#D1D5DB', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.user_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
-                    </p>
+                    {competing.length === 0 && (
+                      <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>Nenhuma gaiola nesta marcação.</p>
+                    )}
+                    {competing.map((p, i) => <DeskRankRow key={p.id} p={p} i={i} />)}
                   </div>
-                  <WarnBadge n={p.warns} big />
-                  <span style={{ fontWeight: 800, fontSize: '1.4rem', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-                    {p.score.toLocaleString('pt-BR')}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0D8F41' }}>
+                      Ranking geral
+                    </p>
+                    {ranked.map((p, i) => <DeskRankRow key={p.id} p={p} i={i} />)}
+                  </div>
                 </div>
-              ))}
+              ) : (
+                ranked.map((p, i) => <DeskRankRow key={p.id} p={p} i={i} />)
+              )}
 
               {/* Eliminados */}
               {eliminated.length > 0 && (
@@ -358,7 +418,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
                 <p style={{ margin: '0 0 6px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
-                  {isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Encerrado'}
+                  {torneio.status === 'finished' ? 'Encerrado' : isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Em andamento'}
                 </p>
                 <h1 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.5rem', color: '#111827', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
                   {torneio.name}
@@ -408,25 +468,37 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             {ranked.length > 0 ? `${ranked.length} participante${ranked.length !== 1 ? 's' : ''}` : 'Nenhum participante ainda'}
           </p>
 
+          {/* marcação em andamento → lista da marcação atual antes do geral */}
+          {marcacaoAtiva && (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ margin: '0 0 8px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C2410C', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+                Marcação atual
+              </p>
+              <div style={{ background: '#fff', border: '1px solid #FED7AA', borderRadius: 12, overflow: 'hidden' }}>
+                {competing.length === 0 && (
+                  <p style={{ margin: 0, padding: '14px 18px', color: '#9CA3AF', fontSize: '0.8rem' }}>Nenhuma gaiola nesta marcação.</p>
+                )}
+                {competing.map((p, i) => (
+                  <div key={p.id}>
+                    <MobRankRow p={p} i={i} />
+                    {i < competing.length - 1 && <div style={{ height: 1, background: '#F9FAFB' }} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {marcacaoAtiva && (
+            <p style={{ margin: '0 0 8px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
+              Ranking geral
+            </p>
+          )}
           {ranked.length > 0 ? (
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
               {ranked.map((p, i) => (
                 <div key={p.id}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px' }}>
-                    <span style={{ minWidth: 26, fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.05em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.87rem', color: '#111827' }}>{p.bird_name}</p>
-                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#9CA3AF' }}>
-                        {p.user_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
-                      </p>
-                    </div>
-                    <WarnBadge n={p.warns} />
-                    <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-                      {p.score.toLocaleString('pt-BR')}
-                    </span>
-                  </div>
+                  <MobRankRow p={p} i={i} />
                   {i < ranked.length - 1 && <div style={{ height: 1, background: '#F9FAFB' }} />}
                 </div>
               ))}

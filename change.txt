@@ -1,12 +1,4 @@
-ao marcar Novo torneio a opção Posição das gaiolas manual, depois dentro de
-https://torneio-passaro.vercel.app/mestre/torneio/0a839bab-e05d-47c3-a82d-b35f18769d50 ,
-ao clicar em Configuração de Marcação, vai ficar muito grande para estar na mesma configuração,
-deixa a pessoa escolher quantas marcações vai ser primeiro, depois desativa os botões de marcação,
-e cria um para "Definir Posição das Gaiolas"
-
-nesse botão você bota o texto que você botou, com a mesma ideia de marca select de" 1"
-ou 1 2 3 4, dependendo do numero de marcações,
-bota um scrolldown, caso a lista seja muito grande,
-e bota um campo la em cima para ele digitar o numero da gaiola, para filtrar os participantes,
-porque na vida real a pessoa vai olhar o numero na gaiola, vai botar o numero no select,
-vai aparecer o participante, e ele vai selecionar se é 1 ou 2  ou 3 
+estou tendo um problema com a leitura de qrcode, normalmente a pessoa le o qrcode
+com o celular, e acaba caindo num navegador padrão que ela não usa, safari ou "Internet"
+do android, da pra redirecionar a pessoa para o google chrome? caso ela não tenha ou use outra, tentar
+usar eesse mesmo padrão?

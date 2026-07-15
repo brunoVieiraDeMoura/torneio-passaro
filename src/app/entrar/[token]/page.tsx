@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import EntrarForm from './entrar-form'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
+import ChromeRedirect from '@/components/ui/chrome-redirect'
 
 type Club = { name: string } | null
 
@@ -69,6 +70,7 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
 
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#FAFAFA' }}>
+      <ChromeRedirect />
 
       {/* header */}
       <div style={{

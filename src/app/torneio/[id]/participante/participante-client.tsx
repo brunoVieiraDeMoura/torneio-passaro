@@ -238,7 +238,16 @@ export default function ParticipanteClient({
       .channel(`participante:${torneio.id}:${participante.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${torneio.id}` },
         payload => {
-          if (payload.new.status !== undefined) setTorneioStatus(payload.new.status)
+          if (payload.new.status !== undefined) {
+            // 'finished' é definitivo e troca a tela inteira → confirma no banco antes
+            // de aplicar (evita flash de "Fim do torneio" por evento espúrio/estado velho)
+            if (payload.new.status === 'finished') {
+              supabase.from('tournaments').select('status').eq('id', torneio.id).single()
+                .then(({ data }) => { if (data?.status === 'finished') setTorneioStatus('finished') })
+            } else {
+              setTorneioStatus(payload.new.status)
+            }
+          }
           if (payload.new.start_at !== undefined) setStartAt(payload.new.start_at)
           if (payload.new.duration_secs !== undefined) setDurationSecs(payload.new.duration_secs)
           if (payload.new.active_group !== undefined) setActiveGroup(payload.new.active_group)
@@ -367,10 +376,15 @@ export default function ParticipanteClient({
     const load = async () => {
       const [{ data: parts }, { data: scs }, { data: hist }] = await Promise.all([
         supabase.from('participants').select('id, bird_name, user_name, cage_number, round_group').eq('tournament_id', torneio.id).eq('status', 'approved'),
-        supabase.from('scores').select('participant_id, count').eq('tournament_id', torneio.id),
+        supabase.from('scores').select('participant_id, count, suspicious_count').eq('tournament_id', torneio.id),
         supabase.from('round_scores').select('count').eq('participant_id', participante.id),
       ])
       if (!active) return
+      // mestre descontou as fraudes (zerou no servidor) → some o aviso daqui também
+      const meu = (scs ?? []).find(s => s.participant_id === participante.id) as { suspicious_count?: number } | undefined
+      if (meu && (meu.suspicious_count ?? 0) === 0 && suspiciousPendingRef.current === 0) {
+        setWarnCount(0)
+      }
       const map: Record<string, number> = {}
       ;(scs ?? []).forEach(s => { map[s.participant_id] = s.count })
       const rank = (parts ?? []).map(p => ({ ...p, score: map[p.id] ?? 0 })).sort((a, b) => b.score - a.score)

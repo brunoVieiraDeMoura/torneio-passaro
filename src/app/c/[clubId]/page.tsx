@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
+import ChromeRedirect from '@/components/ui/chrome-redirect'
 
 // QR geral do clube: link fixo que sempre leva ao torneio ativo do momento.
 // Ao vivo tem prioridade; senão o aberto mais recente. Sem torneio ativo → aviso.
@@ -32,6 +33,7 @@ export default async function ClubeQRPage({ params }: { params: Promise<{ clubId
 
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: '#FAFAFA' }}>
+      <ChromeRedirect />
       <div style={{
         padding: '0 20px', height: 56, background: '#fff',
         borderBottom: '1px solid #F3F4F6', flexShrink: 0,
