@@ -158,10 +158,35 @@ export default function ParticipanteClient({
   const [ranking, setRanking] = useState<{ id: string; bird_name: string; user_name: string; cage_number: number | null; score: number; round_group: number | null }[]>([])
   const [historyTotal, setHistoryTotal] = useState<number | null>(null)
 
-  // Clock tick
+  // ── Sincronização de relógio: countdown roda em HORA DO SERVIDOR ──
+  // Cada aparelho mede o offset (servidor − local) compensando a latência (RTT/2)
+  // e usa a melhor amostra (menor RTT). Todos cruzam o 00:00 no mesmo instante
+  // real, independente do relógio do celular estar certo.
+  const serverOffsetRef = useRef(0)
+  useEffect(() => {
+    let on = true
+    ;(async () => {
+      try {
+        let best: { offset: number; rtt: number } | null = null
+        for (let i = 0; i < 3; i++) {
+          const t0 = Date.now()
+          const res = await fetch('/api/time', { cache: 'no-store' })
+          const { now: server } = await res.json() as { now: number }
+          const t1 = Date.now()
+          const rtt = t1 - t0
+          const offset = server + rtt / 2 - t1
+          if (!best || rtt < best.rtt) best = { offset, rtt }
+        }
+        if (on && best) serverOffsetRef.current = best.offset
+      } catch { /* sem sync: segue no relógio local */ }
+    })()
+    return () => { on = false }
+  }, [])
+
+  // Clock tick (250ms: início/fim da contagem alinham em ±125ms entre aparelhos)
   useEffect(() => {
     setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 500)
+    const id = setInterval(() => setNow(new Date(Date.now() + serverOffsetRef.current)), 250)
     return () => clearInterval(id)
   }, [])
 
@@ -242,22 +267,6 @@ export default function ParticipanteClient({
     const id = setInterval(load, 2000)
     return () => { active = false; clearInterval(id) }
   }, [participanteStatus, torneioStatus, participante.id, torneio.id])
-
-  // Sincronização pré-marcação: recarrega a página a 40s, 30s e 20s do início
-  // pra realinhar horário/estado de todos os participantes antes da contagem.
-  // Após cada reload o efeito re-agenda só os marcos ainda futuros.
-  useEffect(() => {
-    if (!startAt) return
-    if (participanteStatus !== 'approved') return
-    if (torneioStatus !== 'open' && torneioStatus !== 'running') return
-    if (divisions > 1 && roundGroup !== activeGroup) return // só quem vai participar
-    const start = new Date(startAt).getTime()
-    const timers = [40_000, 30_000, 20_000]
-      .map(offset => start - offset - Date.now())
-      .filter(ms => ms > 500) // marcos já passados não agendam
-      .map(ms => setTimeout(() => window.location.reload(), ms))
-    return () => timers.forEach(clearTimeout)
-  }, [startAt, participanteStatus, torneioStatus, divisions, roundGroup, activeGroup])
 
   const nowMs = now ? now.getTime() : null
   const startAtMs = startAt ? new Date(startAt).getTime() : null
