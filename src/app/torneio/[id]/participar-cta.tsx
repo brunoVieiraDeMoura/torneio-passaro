@@ -10,8 +10,11 @@ const base: React.CSSProperties = {
 }
 
 // CTA do espectador: "Participar" vira "Voltar ao torneio" se o usuário já está
-// neste torneio; desativa se ele participa de OUTRO (1 torneio por vez).
-export default function ParticiparCta({ tournamentId, qrToken }: { tournamentId: string; qrToken: string }) {
+// neste torneio; desativa se ele participa de OUTRO (1 torneio por vez) ou se a
+// primeira marcação já foi definida (closed — inscrições encerradas).
+export default function ParticiparCta({ tournamentId, qrToken, closed = false }: {
+  tournamentId: string; qrToken: string; closed?: boolean
+}) {
   const ativo = useTorneioAtivo()
 
   if (ativo?.tid === tournamentId) {
@@ -20,6 +23,14 @@ export default function ParticiparCta({ tournamentId, qrToken }: { tournamentId:
         style={{ ...base, background: '#0D8F41', color: '#fff' }}>
         ● Voltar ao torneio
       </Link>
+    )
+  }
+
+  if (closed) {
+    return (
+      <div style={{ ...base, background: '#F9FAFB', color: '#9CA3AF', border: '1px solid #F3F4F6', cursor: 'not-allowed' }}>
+        Inscrições encerradas — marcação já definida
+      </div>
     )
   }
 

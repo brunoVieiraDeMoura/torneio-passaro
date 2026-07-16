@@ -1,25 +1,21 @@
-eu acho que em algum momento eu fiz o path https://torneio-passaro.vercel.app/admin , da uma olhadinha nele pra mim, se tiver, refaça da maneira abaixo, se não crie-o.
+em https://torneio-passaro.vercel.app/torneio/15e5d900-874f-4094-aecb-8429e3738757 , remover o header navbar para desktop.
 
-abrir uma área com dashboar para admin central do webapp (adicionar o login/senha do admin no env)
-
-na dash do admin:
-
-1 - fazer uma parte para verificação de clubes, 
-(dentro do da dashboard do clube em :https://torneio-passaro.vercel.app/clube/dashboard , criar uma área para pedir a verificação de 2 selos
-1 verificação do selo verde = São clubes vinculados ao passaros.org
-1 verificação de integridade = São remetentes a validação do clube (se o clube é legalizado, tiver quantidade minima de participantes, e fizer sentido para as diretrizes[vou criar as diretrizes ainda]) ele pode participar
-
-o clube solicita ao admin, dentro da dash do admin, eu posso fazer a verificação, se vou dar o selo verde/integridade (dependendo de qual o clube requisitou), só os campeonatos que tiverem esse selo tem os cantos
-dos passaros registrados na liga do webapp ( para ser contabilizado na liga: https://torneio-passaro.vercel.app/liga [obss: mesmo os torneios sem verificação ficam no registro do passarinho em : https://torneio-passaro.vercel.app/meus-passarinhos/84fd2c5f-68f4-4456-80e2-bd4773ac3b57 embora fique marcado que não era um torneio verificado]) 
+em https://torneio-passaro.vercel.app/torneio/15e5d900-874f-4094-aecb-8429e3738757 da para adicionar o chat da live do youtube?
 
 
-2 - fazer uma parte para o report https://torneio-passaro.vercel.app/liga/passarinho/gen1345 , imagem ofensiva,
-suspeita de fraude, coligação com clubes
+depois de definir a primeira marcação, desativar os botões de "Participar deste torneio"
+https://torneio-passaro.vercel.app/torneio/abb4623f-e15b-419d-a3bd-8d2805b59a36
 
-3 - fazer uma parte para banir/excluir , usuário ou clube.
+
+em https://torneio-passaro.vercel.app/mestre/torneio/abb4623f-e15b-419d-a3bd-8d2805b59a36 ,
+o botão para remover marcações fraudulentas, não está subtraindo fraudes com numerações abaixo de 5,
+na hora de subtrair, subtraia todas até as abaixo de 5.
 
 
 
+re-ver ui de torneios não verificados em https://torneio-passaro.vercel.app/meus-passarinhos/0abc0bdf-d2c1-4d27-a283-c2c1affd40e4
 
-em :https://torneio-passaro.vercel.app/mestre/torneio/15e5d900-874f-4094-aecb-8429e3738757,
-botão de encerrar a live não remove a live, oferece edição dela. corrija. (abrir um chat, deseja encerrar a live? se sim, deletar o conteudo salvar e voltar o botão de iniciar a live)
+
+
+em :https://torneio-passaro.vercel.app/admin , bota um select com filtro para pesquisa do clube / reopport / usuario por nome
+em todos eles bota páginado com o máximo de vizualização "ex: 1/10" , na parte de verificação de clubes, separa todos os clubes, dos clubes que pediram a solicitação, em cards separados.

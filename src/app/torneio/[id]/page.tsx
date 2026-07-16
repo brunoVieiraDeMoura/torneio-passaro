@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
+import LiveChat from './live-chat'
 import { AnimatedRanking, AutoScrollMain, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
 
 type Club = { name: string; cidade: string; estado: string } | null
@@ -91,9 +92,14 @@ function fmtTime(iso: string | null) {
 
 // converte link do YouTube em URL de embed (autoplay mudo p/ o browser permitir)
 function toEmbedUrl(url: string): string {
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
-  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}?autoplay=1&mute=1&playsinline=1`
+  const yt = getYouTubeId(url)
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&mute=1&playsinline=1`
   return url
+}
+
+// id do vídeo do YouTube (p/ o chat da live) — null se não for link do YouTube
+function getYouTubeId(url: string): string | null {
+  return url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1] ?? null
 }
 
 const getTorneioData = async (id: string) => {
@@ -188,10 +194,12 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const competing: RankItem[] = ranked.filter(p => (p as RankItem).round_group === activeGroup)
   const nextGroupItems: RankItem[] = ranked.filter(p => (p as RankItem).round_group === activeGroup + 1)
   const isActive = torneio.status === 'open' || torneio.status === 'running'
-  const canJoin = isOpen
+  // primeira marcação definida (grupos das gaiolas atribuídos) → inscrições fecham
+  const canJoin = isOpen && !groupsAssigned
   const time = fmtTime(torneio.start_at)
   const streamUrl = ((torneio as Record<string, unknown>).stream_url as string | null) ?? null
   const embedUrl = streamUrl ? toEmbedUrl(streamUrl) : null
+  const chatVideoId = streamUrl ? getYouTubeId(streamUrl) : null
 
   /* "Encerrado" SÓ quando finalizado — entre marcações (running com janela
      expirada) o torneio segue em andamento */
@@ -249,9 +257,12 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               </div>
             )}
 
-            {canJoin && torneio.qr_token && (
+            {/* chat da live (só YouTube) */}
+            {chatVideoId && <LiveChat videoId={chatVideoId} className="sp-chat" />}
+
+            {isOpen && torneio.qr_token && (
               <div style={{ margin: '2px 0 -20px' }}>
-                <ParticiparCta tournamentId={torneio.id} qrToken={torneio.qr_token} />
+                <ParticiparCta tournamentId={torneio.id} qrToken={torneio.qr_token} closed={!canJoin} />
               </div>
             )}
 
@@ -339,13 +350,17 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         .sp-count { margin: 0; text-align: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); }
         .sp-main-inner { max-width: 680px; margin: 0 auto; padding: 24px 20px 48px; }
         .sp-panel-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
+        .sp-chat { height: 340px; }
 
-        /* ≥1024px: sidebar fixa + placar com scroll próprio (telão) */
+        /* ≥1024px: modo telão — sem navbar do site, tela inteira (100dvh),
+           sidebar fixa + placar com scroll próprio */
         @media (min-width: 1024px) {
+          .site-header { display: none !important; }
           .sp-shell {
             display: grid; grid-template-columns: clamp(300px, 30vw, 400px) 1fr;
-            height: calc(100dvh - 56px); overflow: hidden;
+            height: 100dvh; overflow: hidden;
           }
+          .sp-chat { height: auto; flex: 1; min-height: 260px; }
           .sp-side { overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.08); }
           .sp-side-inner { max-width: none; min-height: 100%; padding: 32px 28px; box-sizing: border-box; }
           .sp-count { margin-top: auto; padding-top: 20px; }

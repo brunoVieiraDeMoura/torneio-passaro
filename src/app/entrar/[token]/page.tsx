@@ -22,6 +22,17 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
   const clube = (torneio.clubs as unknown as Club)?.name
   const isLive = torneio.status === 'running'
 
+  // primeira marcação definida (grupos atribuídos) → auto-inscrição encerrada
+  // (quem já está inscrito neste torneio segue com o fluxo de "voltar")
+  const { data: grouped } = await supabase
+    .from('participants')
+    .select('id')
+    .eq('tournament_id', torneio.id)
+    .eq('status', 'approved')
+    .not('round_group', 'is', null)
+    .limit(1)
+  const inscricoesEncerradas = (grouped ?? []).length > 0
+
   const { data: { user } } = await supabase.auth.getUser()
 
   let profile: { name: string; email: string } | null = null
@@ -133,7 +144,24 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
             )}
           </div>
 
-          {/* form card */}
+          {/* form card — inscrições fecham quando a primeira marcação é definida */}
+          {inscricoesEncerradas && !existingPid ? (
+            <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '24px', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '1rem', color: '#111827' }}>
+                Inscrições encerradas
+              </p>
+              <p style={{ margin: '0 0 18px', fontSize: '0.8rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                A primeira marcação deste torneio já foi definida.
+              </p>
+              <Link href={`/torneio/${torneio.id}`} style={{
+                display: 'block', textAlign: 'center', fontWeight: 700, fontSize: '0.88rem',
+                textDecoration: 'none', padding: '12px', borderRadius: 10,
+                background: '#0D8F41', color: '#fff',
+              }}>
+                Acompanhar o placar ao vivo →
+              </Link>
+            </div>
+          ) : (
           <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, padding: '24px' }}>
             <h2 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.1rem', color: '#111827', letterSpacing: '-0.02em' }}>
               Inscrever pássaro
@@ -153,6 +181,7 @@ export default async function EntrarPage({ params }: { params: Promise<{ token: 
               outroTorneio={outroTorneio}
             />
           </div>
+          )}
 
         </div>
       </div>

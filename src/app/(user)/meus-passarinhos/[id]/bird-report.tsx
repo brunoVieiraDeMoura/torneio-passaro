@@ -239,8 +239,13 @@ export default function BirdReport({ bird, history }: Props) {
               </p>
               <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                 {totalTorneios} participação{totalTorneios !== 1 ? 'ções' : ''}
-                {history.some(h => !h.verified) && ' · torneios "não verificados" não contam para a Liga'}
               </p>
+              {history.some(h => !h.verified) && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '7px 10px', lineHeight: 1.45 }}>
+                  Torneios marcados com <strong>Fora da Liga</strong> são de clubes ainda sem selo de
+                  verificação: os cantos ficam registrados aqui, mas não somam no ranking da Liga.
+                </p>
+              )}
             </div>
 
             {history.length === 0 ? (
@@ -271,18 +276,29 @@ export default function BirdReport({ bird, history }: Props) {
                             Melhor
                           </span>
                         )}
+                      </p>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+                          color: h.tournament_status === 'finished' ? '#6B7280' : '#0D8F41',
+                        }}>
+                          {h.tournament_status === 'finished' ? 'Encerrado' : h.tournament_status === 'running' ? 'Ao vivo' : 'Aberto'}
+                        </span>
+                        {/* clube sem selo → cantos ficam no registro, mas fora da Liga */}
                         {!h.verified && (
-                          <span title="Torneio de clube sem selo de verificação — os cantos não contam na Liga"
-                            style={{ marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 20, padding: '1px 6px' }}>
-                            Não verificado
+                          <span title="Torneio de clube sem selo de verificação — os cantos ficam no seu registro, mas não contam para a Liga"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              fontSize: '0.6rem', fontWeight: 700, color: '#B45309',
+                              background: '#FFFBEB', border: '1px dashed #FCD34D',
+                              borderRadius: 20, padding: '2px 8px',
+                            }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="4" y1="4" x2="20" y2="20"/>
+                            </svg>
+                            Fora da Liga · não verificado
                           </span>
                         )}
-                      </p>
-                      <span style={{
-                        fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
-                        color: h.tournament_status === 'finished' ? '#6B7280' : '#0D8F41',
-                      }}>
-                        {h.tournament_status === 'finished' ? 'Encerrado' : h.tournament_status === 'running' ? 'Ao vivo' : 'Aberto'}
                       </span>
                     </div>
                     <p className="hist-local" style={{ margin: 0, fontSize: '0.78rem', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

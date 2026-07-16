@@ -1348,17 +1348,20 @@ export default function MestreClient({
             Participantes marcando rápido demais (cliques &lt; 1s). Verifique quem pode estar burlando.
           </p>
 
-          {/* desconta as suspeitas do total de todos (ex: 32 cantos − 9 fraudes = 23) e fecha a section.
+          {/* desconta as suspeitas do total de TODOS com fraude — inclusive quem tem
+              5 ou menos (a lista abaixo só destaca >5, mas a subtração pega todo mundo).
               Só ao FIM da marcação — durante a contagem o mestre acompanha sem mexer no placar */}
           {status !== 'finished' && roundPhase === 'done' && (
             <button
               disabled={loading}
               onClick={() => {
-                const totalSusp = fraudList.reduce((a, p) => a + (suspicious[p.id] ?? 0), 0)
+                const todosComFraude = participantes.filter(p =>
+                  p.status === 'approved' && (suspicious[p.id] ?? 0) > 0)
+                const totalSusp = todosComFraude.reduce((a, p) => a + (suspicious[p.id] ?? 0), 0)
                 ask(
-                  `Remover as contagens fraudulentas de ${fraudList.length} participante${fraudList.length !== 1 ? 's' : ''}? ` +
+                  `Remover as contagens fraudulentas de ${todosComFraude.length} participante${todosComFraude.length !== 1 ? 's' : ''} (inclui quem tem 5 ou menos)? ` +
                   `${totalSusp} canto${totalSusp !== 1 ? 's' : ''} suspeito${totalSusp !== 1 ? 's' : ''} ser${totalSusp !== 1 ? 'ão' : 'á'} subtraído${totalSusp !== 1 ? 's' : ''} do total (ex.: 32 cantos com 9 fraudes fica 23).`,
-                  () => descontarFraudes(fraudList),
+                  () => descontarFraudes(todosComFraude),
                 )
               }}
               style={{
