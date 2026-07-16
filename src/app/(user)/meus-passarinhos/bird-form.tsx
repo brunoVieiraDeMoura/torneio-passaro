@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { processBirdPhoto } from '@/lib/bird-photo'
 import { uploadBirdPhoto } from './actions'
+import FeedbackPopup, { type PopupMsg } from '@/components/ui/feedback-popup'
 
 const RACAS = [
   'Coleiro', 'Canário belga', 'Canário da terra', 'Curió', 'Bicudo',
@@ -162,6 +163,7 @@ export default function BirdForm({ userId }: { userId: string }) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [popup, setPopup] = useState<PopupMsg | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -183,7 +185,7 @@ export default function BirdForm({ userId }: { userId: string }) {
       setPhotoBlob(blob)
       setPhotoPreview(URL.createObjectURL(blob))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao processar a imagem.')
+      setPopup({ type: 'error', text: err instanceof Error ? err.message : 'Erro ao processar a imagem.' })
     }
   }
 
@@ -203,13 +205,18 @@ export default function BirdForm({ userId }: { userId: string }) {
       .single()
 
     // foto escolhida → sobe já reduzida e vincula ao pássaro criado
+    let fotoFalhou: string | null = null
     if (created && photoBlob) {
       const fd = new FormData()
       fd.set('birdId', created.id)
       fd.set('photo', new File([photoBlob], 'photo.jpg', { type: 'image/jpeg' }))
       const res = await uploadBirdPhoto(fd)
-      if (!res.ok) alert(`Pássaro criado, mas a foto falhou: ${res.error}`)
+      if (!res.ok) fotoFalhou = res.error
     }
+
+    if (!created) setPopup({ type: 'error', text: 'Não consegui criar o pássaro. Tente de novo.' })
+    else if (fotoFalhou) setPopup({ type: 'error', text: `Pássaro criado, mas a foto falhou: ${fotoFalhou}` })
+    else setPopup({ type: 'success', text: `Pássaro "${name}" criado!` })
 
     setName(''); setRaca(''); setEstilo(''); clearPhoto()
     setLoading(false); setOpen(false)
@@ -218,6 +225,7 @@ export default function BirdForm({ userId }: { userId: string }) {
 
   return (
     <>
+      <FeedbackPopup msg={popup} onClose={() => setPopup(null)} />
       <button
         onClick={() => setOpen(true)}
         style={{

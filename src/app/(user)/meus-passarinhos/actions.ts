@@ -32,9 +32,16 @@ export async function uploadBirdPhoto(formData: FormData): Promise<{ ok: true; u
   if (stale.length) await db.storage.from('logos').remove(stale)
 
   const path = `${dir}/${birdId}-${Date.now()}.jpg`
-  const { error: upErr } = await db.storage.from('logos')
+  const doUpload = () => db.storage.from('logos')
     .upload(path, photo, { contentType: 'image/jpeg', upsert: true })
-  if (upErr) return { ok: false, error: 'Erro no upload. Tente de novo.' }
+
+  let { error: upErr } = await doUpload()
+  // bucket ainda não existe no projeto → cria (público) e tenta de novo
+  if (upErr && /bucket.*not.*found/i.test(upErr.message)) {
+    await db.storage.createBucket('logos', { public: true })
+    ;({ error: upErr } = await doUpload())
+  }
+  if (upErr) return { ok: false, error: `Erro no upload: ${upErr.message}` }
 
   const { data: { publicUrl } } = db.storage.from('logos').getPublicUrl(path)
   const { error: dbErr } = await db.from('birds').update({ photo_url: publicUrl }).eq('id', birdId)

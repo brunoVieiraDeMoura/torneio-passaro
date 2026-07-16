@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { processBirdPhoto } from '@/lib/bird-photo'
 import { uploadBirdPhoto } from './actions'
+import FeedbackPopup, { type PopupMsg } from '@/components/ui/feedback-popup'
 
 const BREED_STYLE: Record<string, { color: string; bg: string; border: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC', border: '#94A3B8' },
@@ -99,6 +100,7 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
   const [imgError, setImgError] = useState(false)
   const [photoUrl, setPhotoUrl] = useState<string | null>(bird.photo_url ?? null)
   const [uploading, setUploading] = useState(false)
+  const [popup, setPopup] = useState<PopupMsg | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   // foto própria primeiro; sem ela, a foto padrão da raça
   const photo = photoUrl ?? BIRD_PHOTO[bird.raca ?? '']
@@ -115,10 +117,15 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
       fd.set('birdId', bird.id)
       fd.set('photo', new File([blob], 'photo.jpg', { type: 'image/jpeg' }))
       const res = await uploadBirdPhoto(fd)
-      if (res.ok) { setPhotoUrl(res.url); setImgError(false); router.refresh() }
-      else alert(res.error)
+      if (res.ok) {
+        setPhotoUrl(res.url); setImgError(false)
+        setPopup({ type: 'success', text: `Foto de "${bird.name}" atualizada!` })
+        router.refresh()
+      } else {
+        setPopup({ type: 'error', text: res.error })
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao processar a imagem.')
+      setPopup({ type: 'error', text: err instanceof Error ? err.message : 'Erro ao processar a imagem.' })
     }
     setUploading(false)
   }
@@ -155,6 +162,7 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
 
   return (
     <div style={{ position: 'relative', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 16, overflow: 'hidden' }}>
+      <FeedbackPopup msg={popup} onClose={() => setPopup(null)} />
 
       {/* ── top bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 16px 0' }}>
