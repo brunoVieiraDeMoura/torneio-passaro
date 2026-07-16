@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import PaginatedList from '@/components/ui/paginated-list'
+import { SeloShield, SELO_VERDE_COLOR, SELO_INTEGRIDADE_COLOR } from '@/components/ui/selo-shield'
 import {
   adminLogout, deleteClub, deleteUser, setClubBanned, setClubSelo,
   setClubStatus, setReportStatus, setUserBanned,
@@ -66,14 +67,14 @@ function norm(s: string | null | undefined) {
 type Run = (id: string, action: () => Promise<{ ok: boolean; error?: string }>) => void
 
 // linha de selo dentro do card do clube: estado + ações do admin
-function SeloRow({ nome, desc, has, request, onGrant, onRevoke, busy }: {
-  nome: string; desc: string; has: boolean; request: string
+function SeloRow({ icon, nome, desc, has, request, onGrant, onRevoke, busy }: {
+  icon: React.ReactNode; nome: string; desc: string; has: boolean; request: string
   onGrant: () => void; onRevoke: () => void; busy: boolean
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid #F3F4F6' }}>
       <div style={{ flex: 1, minWidth: 180 }}>
-        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700, color: '#111827' }}>{nome}</p>
+        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>{icon} {nome}</p>
         <p style={{ margin: '1px 0 0', fontSize: '0.68rem', color: '#9CA3AF' }}>{desc}</p>
       </div>
       {has ? (
@@ -105,8 +106,8 @@ function ClubCard({ c, busy, run }: { c: Club; busy: boolean; run: Run }) {
         <div style={{ flex: 1, minWidth: 160 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {c.name}
-            {c.selo_verde && <span title="Selo verde — vinculado ao passaros.org" style={chip('#0D8F41', '#F0FDF4', '#D1FAE5')}>🟢 Verde</span>}
-            {c.selo_integridade && <span title="Selo de integridade" style={chip('#1D4ED8', '#EFF6FF', '#BFDBFE')}>🛡 Integridade</span>}
+            {c.selo_verde && <span title="Selo verde — vinculado ao passaros.org" style={chip('#0D8F41', '#F0FDF4', '#D1FAE5')}><SeloShield color={SELO_VERDE_COLOR} size={13} /> Verde</span>}
+            {c.selo_integridade && <span title="Selo de integridade" style={chip('#92400E', '#FFFBEB', '#FDE68A')}><SeloShield color={SELO_INTEGRIDADE_COLOR} size={13} /> Integridade</span>}
             {c.banned && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#DC2626' }}>· BANIDO</span>}
           </p>
           <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
@@ -141,13 +142,15 @@ function ClubCard({ c, busy, run }: { c: Club; busy: boolean; run: Run }) {
 
       {/* selos de verificação */}
       <SeloRow
-        nome="🟢 Selo verde" desc="Clube vinculado ao passaros.org"
+        icon={<SeloShield color={SELO_VERDE_COLOR} />}
+        nome="Selo verde" desc="Clube vinculado ao passaros.org"
         has={c.selo_verde} request={c.selo_verde_request} busy={busy}
         onGrant={() => run(c.id, () => setClubSelo(c.id, 'verde', true))}
         onRevoke={() => run(c.id, () => setClubSelo(c.id, 'verde', false))}
       />
       <SeloRow
-        nome="🛡 Selo de integridade" desc="Legalizado, mínimo de participantes e dentro das diretrizes"
+        icon={<SeloShield color={SELO_INTEGRIDADE_COLOR} />}
+        nome="Selo de integridade" desc="Legalizado, mínimo de participantes e dentro das diretrizes"
         has={c.selo_integridade} request={c.selo_integridade_request} busy={busy}
         onGrant={() => run(c.id, () => setClubSelo(c.id, 'integridade', true))}
         onRevoke={() => run(c.id, () => setClubSelo(c.id, 'integridade', false))}

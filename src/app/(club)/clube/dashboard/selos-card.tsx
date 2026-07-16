@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { SeloShield, SELO_VERDE_COLOR, SELO_INTEGRIDADE_COLOR } from '@/components/ui/selo-shield'
 
 type Props = {
   clubId: string
@@ -35,12 +36,12 @@ export default function SelosCard({ clubId, seloVerde, seloIntegridade, verdeReq
 
   const rows = [
     {
-      key: 'verde' as const, icon: '🟢', nome: 'Selo verde',
-      desc: 'Para clubes vinculados ao passaros.org.',
+      key: 'verde' as const, color: SELO_VERDE_COLOR, nome: 'Selo verde',
+      desc: 'Para clubes vinculados ao passaros.org',
       has: seloVerde, request: reqs.verde,
     },
     {
-      key: 'integridade' as const, icon: '🛡', nome: 'Selo de integridade',
+      key: 'integridade' as const, color: SELO_INTEGRIDADE_COLOR, nome: 'Selo de integridade',
       desc: 'Clube legalizado, com quantidade mínima de participantes e dentro das diretrizes.',
       has: seloIntegridade, request: reqs.integridade,
     },
@@ -59,7 +60,9 @@ export default function SelosCard({ clubId, seloVerde, seloIntegridade, verdeReq
       {rows.map(r => (
         <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #F3F4F6' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>{r.icon} {r.nome}</p>
+            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <SeloShield color={r.color} /> {r.nome}
+            </p>
             <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>{r.desc}</p>
           </div>
 
