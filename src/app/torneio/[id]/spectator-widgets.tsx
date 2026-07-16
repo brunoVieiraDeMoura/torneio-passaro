@@ -28,20 +28,90 @@ function useNow(intervalMs = 1000): number | null {
   return now
 }
 
+/* ── coluna com auto-scroll de telão (só desktop): 5s parada no topo,
+      desce devagar até o fim, 2s no fim, volta ao topo e repete.
+      Interação do usuário (scroll/toque) pausa e retoma sozinha. ── */
+export function AutoScrollMain({ className, children }: { className?: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const mq = window.matchMedia('(min-width: 1024px)')
+
+    const SPEED = 40          // px/s — descida vagarosa
+    const PAUSE_TOP = 5000    // parada no topo
+    const PAUSE_BOTTOM = 2000 // respiro no fim antes de voltar
+    const RESUME = 8000       // retoma após interação do usuário
+
+    let raf = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
+
+    const clear = () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+    const wait = (ms: number, next: () => void) => { timer = setTimeout(next, ms) }
+
+    const descend = () => {
+      let last: number | undefined
+      const step = (t: number) => {
+        if (disposed) return
+        if (last === undefined) last = t
+        const dt = (t - last) / 1000
+        last = t
+        const max = el.scrollHeight - el.clientHeight
+        if (el.scrollTop >= max - 1) { wait(PAUSE_BOTTOM, ascend); return }
+        el.scrollTop = Math.min(max, el.scrollTop + SPEED * dt)
+        raf = requestAnimationFrame(step)
+      }
+      raf = requestAnimationFrame(step)
+    }
+
+    const ascend = () => {
+      el.scrollTo({ top: 0, behavior: 'smooth' })
+      wait(PAUSE_TOP, cycle)
+    }
+
+    const cycle = () => {
+      // fora do desktop ou conteúdo cabe na tela → só re-checa depois
+      if (!mq.matches || el.scrollHeight - el.clientHeight <= 4) { wait(PAUSE_TOP, cycle); return }
+      descend()
+    }
+
+    const onInput = () => { clear(); wait(RESUME, cycle) }
+    el.addEventListener('wheel', onInput, { passive: true })
+    el.addEventListener('touchstart', onInput, { passive: true })
+    el.addEventListener('pointerdown', onInput, { passive: true })
+
+    wait(PAUSE_TOP, cycle)
+
+    return () => {
+      disposed = true
+      clear()
+      el.removeEventListener('wheel', onInput)
+      el.removeEventListener('touchstart', onInput)
+      el.removeEventListener('pointerdown', onInput)
+    }
+  }, [])
+
+  return <main ref={ref} className={className}>{children}</main>
+}
+
 /* ── avisos de fraude: ⚠ + número ao lado dos cantos ── */
-export function WarnBadge({ n, big = false }: { n: number; big?: boolean }) {
+export function WarnBadge({ n }: { n: number }) {
   if (n <= 0) return null
   return (
     <span title={`${n} aviso${n !== 1 ? 's' : ''} de marcação`} style={{
       display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0,
       background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 20,
-      padding: big ? '4px 10px' : '3px 8px',
+      padding: 'var(--rk-warn-pad, 3px 8px)',
     }}>
-      <svg width={big ? 14 : 12} height={big ? 14 : 12} viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Avisos de marcação">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Avisos de marcação"
+        style={{ width: 'var(--rk-warn-ico, 12px)', height: 'var(--rk-warn-ico, 12px)' }}>
         <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
-      <span style={{ fontWeight: 800, fontSize: big ? '0.85rem' : '0.72rem', color: '#B91C1C' }}>{n}</span>
+      <span style={{ fontWeight: 800, fontSize: 'var(--rk-warn-fs, 0.72rem)', color: '#B91C1C' }}>{n}</span>
     </span>
   )
 }
@@ -74,7 +144,7 @@ export function SpectatorClock({ startAt, durationSecs, onDark = false }: {
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '14px 0' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '14px 0 0' }}>
       <div style={chip}>
         <p style={lbl}>Agora</p>
         <p style={val(onDark ? '#fff' : '#111827')}>{new Date(now).toLocaleTimeString('pt-BR')}</p>
@@ -132,32 +202,33 @@ const OVERTAKE_CSS = `
 .rank-row-down { animation: rank-down 1.6s ease; }
 `
 
-function Row({ p, i, moved, big }: { p: RankItem; i: number; moved?: 'up' | 'down'; big: boolean }) {
+/* tamanhos vêm de CSS vars (--rk-*) — o telão desktop define valores maiores */
+function Row({ p, i, moved }: { p: RankItem; i: number; moved?: 'up' | 'down' }) {
   return (
     <div
       className={moved === 'up' ? 'rank-row-up' : moved === 'down' ? 'rank-row-down' : undefined}
       style={{
-        display: 'flex', alignItems: 'center', gap: big ? 14 : 12,
+        display: 'flex', alignItems: 'center', gap: 'var(--rk-gap, 12px)',
         background: i < 3 ? RANK_BG[i] : '#FAFAFA',
-        borderRadius: 10, padding: big ? '11px 16px' : '10px 14px',
+        borderRadius: 10, padding: 'var(--rk-pad, 10px 14px)',
         border: `1px solid ${i < 3 ? 'rgba(0,0,0,0.06)' : '#F3F4F6'}`,
       }}
     >
-      <span style={{ minWidth: big ? 30 : 26, fontWeight: 800, fontSize: big ? '0.8rem' : '0.72rem', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+      <span style={{ minWidth: 'var(--rk-pos-w, 26px)', fontWeight: 800, fontSize: 'var(--rk-pos-fs, 0.72rem)', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
         {String(i + 1).padStart(2, '0')}
         {moved === 'up' && <span style={{ color: '#0D8F41', fontSize: '0.72rem' }}>▲</span>}
         {moved === 'down' && <span style={{ color: '#DC2626', fontSize: '0.72rem' }}>▼</span>}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: big ? '0.95rem' : '0.87rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 'var(--rk-name-fs, 0.87rem)', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
         </p>
-        <p style={{ margin: 0, fontSize: big ? '0.78rem' : '0.75rem', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ margin: 0, fontSize: 'var(--rk-sub-fs, 0.75rem)', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {p.user_name}
         </p>
       </div>
-      <WarnBadge n={p.warns} big={big} />
-      <span style={{ fontWeight: 800, fontSize: big ? '1.3rem' : '1rem', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
+      <WarnBadge n={p.warns} />
+      <span style={{ fontWeight: 800, fontSize: 'var(--rk-score-fs, 1rem)', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
         {p.score.toLocaleString('pt-BR')}
       </span>
     </div>
@@ -165,29 +236,28 @@ function Row({ p, i, moved, big }: { p: RankItem; i: number; moved?: 'up' | 'dow
 }
 
 /* ── lista de ranking com animação de ultrapassagem ── */
-export function AnimatedRanking({ items, big = false, emptyText = 'Nenhum participante.' }: {
-  items: RankItem[]; big?: boolean; emptyText?: string
+export function AnimatedRanking({ items, emptyText = 'Nenhum participante.' }: {
+  items: RankItem[]; emptyText?: string
 }) {
   const moved = useOvertakes(items)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <style>{OVERTAKE_CSS}</style>
       {items.length === 0 && <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>{emptyText}</p>}
-      {items.map((p, i) => <Row key={p.id} p={p} i={i} moved={moved[p.id]} big={big} />)}
+      {items.map((p, i) => <Row key={p.id} p={p} i={i} moved={moved[p.id]} />)}
     </div>
   )
 }
 
 /* ── Painel da marcação: "Próxima" antes de começar → "Marcação atual" na contagem →
       "Próxima marcação" de novo quando acabar (se houver outra) ── */
-export function MarcacaoPanel({ startAt, durationSecs, activeGroup, divisions, current, next, big = false }: {
+export function MarcacaoPanel({ startAt, durationSecs, activeGroup, divisions, current, next }: {
   startAt: string | null
   durationSecs: number
   activeGroup: number
   divisions: number
   current: RankItem[]
   next: RankItem[]
-  big?: boolean
 }) {
   const now = useNow(1000)
   if (now === null) return null
@@ -233,7 +303,7 @@ export function MarcacaoPanel({ startAt, durationSecs, activeGroup, divisions, c
         {titulo}
         {sub && <span style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#9CA3AF' }}>· {sub}</span>}
       </p>
-      <AnimatedRanking items={lista} big={big} emptyText="Aguardando definição das gaiolas." />
+      <AnimatedRanking items={lista} emptyText="Aguardando definição das gaiolas." />
     </div>
   )
 }

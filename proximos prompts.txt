@@ -1,14 +1,5 @@
-fazer teste forçado com 
-multiplos usuários
-multiplos torneios
-clicando simultaniamente e marcando simultaneamente,
-adicionar lives aleatórias em cada torneio, para forçar 
+abrir uma área de administrador e 
+fazer uma parte para o report https://torneio-passaro.vercel.app/liga/passarinho/gen1345 , imagem ofensiva,
+suspeita de fraude, coligação com clubes
 
-faça testes com 50 pessoas em 5 torneios, vá multiplicando por 2, para ver até onde aguenta.
-(obss: me informe se isso é correto ou viável)
-
-===============================================================
-
-se o participante cair, ou a internet cair, o webapp, continua contando em cache, para junto com o tempo limite de contar, 
-depois envia o resultado final para o servidor (enviar os alertas de punição também) [fazer apenas se fizer sentido e for viável]
-
+botão de remover a live não remove a live, oferece edição dela. corrija.

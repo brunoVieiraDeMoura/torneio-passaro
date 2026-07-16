@@ -72,7 +72,8 @@
       "Bash(cp animacao-final-torneio/animation-3.png public/anim/final-3.png)",
       "Bash(git add *)",
       "Bash(git commit -m '15-07-2026-anim-imgs *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(echo \"exit-filter: $?\")"
     ]
   },
   "enableAllProjectMcpServers": true,

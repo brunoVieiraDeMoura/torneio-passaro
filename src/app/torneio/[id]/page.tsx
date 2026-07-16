@@ -4,8 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
-import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
-import { AnimatedRanking, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
+import { AnimatedRanking, AutoScrollMain, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
 
 type Club = { name: string; cidade: string; estado: string } | null
 
@@ -20,6 +19,11 @@ const summaryStyle: CSSProperties = {
   fontSize: '0.75rem', fontWeight: 700, color: '#0D8F41', background: '#FAFAFA',
   borderTop: '1px solid #F3F4F6', userSelect: 'none',
 }
+
+const eyebrowStyle = (color: string): CSSProperties => ({
+  margin: '0 0 8px', fontSize: '0.62rem', fontWeight: 700,
+  letterSpacing: '0.18em', textTransform: 'uppercase', color,
+})
 
 function EliminadoRow({ p }: { p: Elim }) {
   return (
@@ -175,8 +179,8 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const withinWindow = startMs !== null && endMs !== null && Date.now() >= startMs && Date.now() <= endMs
   const isLive = torneio.status === 'running' || (torneio.status === 'open' && withinWindow)
   const isOpen = torneio.status === 'open'
-  // torneio dividido em grupos → tela dividida: painel da marcação
-  // (próxima/atual, controlado por relógio no cliente) + ranking geral
+  // torneio dividido em grupos → painel da marcação (próxima/atual, controlado
+  // por relógio no cliente) + ranking geral lado a lado em telas largas
   const divisions = (torneio as Record<string, unknown>).divisions as number ?? 1
   const activeGroup = (torneio as Record<string, unknown>).active_group as number ?? 1
   const groupsAssigned = ranked.some(p => (p as RankItem).round_group != null)
@@ -189,55 +193,36 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const streamUrl = ((torneio as Record<string, unknown>).stream_url as string | null) ?? null
   const embedUrl = streamUrl ? toEmbedUrl(streamUrl) : null
 
+  /* "Encerrado" SÓ quando finalizado — entre marcações (running com janela
+     expirada) o torneio segue em andamento */
+  const statusLabel = torneio.status === 'finished' ? 'Encerrado' : isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Em andamento'
+
   return (
     <>
       {isActive && <SpectatorRealtime tournamentId={id} />}
 
-      {/* ── DESKTOP BIG SCREEN ── */}
-      <div className="spectator-desktop" style={{ display: 'none', height: '100dvh', background: '#fff', color: '#fff', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', height: '100%' }}>
+      <div className="sp-shell">
+        {/* painel de info: hero escuro no mobile, sidebar fixa no desktop */}
+        <aside className="sp-side">
+          <div className="sp-side-inner">
+            <Link href="/torneios" className="sp-back">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              Torneios
+            </Link>
 
-          {/* left: QR + info */}
-          <div style={{
-            background: '#16382A',
-            borderRight: '1px solid rgba(255,255,255,0.08)',
-            display: 'flex', flexDirection: 'column',
-            padding: '36px 32px', overflow: 'hidden',
-          }}>
-            {/* logo + back */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'auto' }}>
-              <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-                <BirdMark size={36} />
-                <AveumWordmark onDark style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em' }} />
-              </Link>
-              <Link href="/torneios" style={{
-                fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)',
-                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4,
-                padding: '5px 10px', borderRadius: 7,
-                border: '1px solid rgba(255,255,255,0.1)',
-                transition: 'color 0.15s',
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6"/>
-                </svg>
-                Torneios
-              </Link>
-            </div>
-
-            {/* tournament name */}
-            <div style={{ marginBottom: 28 }}>
+            <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 {isLive && <span className="live-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />}
-                <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: isLive ? '#4ADE80' : '#6B7280' }}>
-                  {/* "Encerrado" SÓ quando finalizado — entre marcações (running com janela
-                      expirada) o torneio segue em andamento */}
-                  {torneio.status === 'finished' ? 'Encerrado' : isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Em andamento'}
+                <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: isLive ? '#4ADE80' : 'rgba(255,255,255,0.55)' }}>
+                  {statusLabel}
                 </span>
               </div>
-              <h1 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '1.3rem', color: '#fff', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+              <h1 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: 'clamp(1.3rem, 1.05rem + 1.2vw, 1.6rem)', color: '#fff', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
                 {torneio.name}
               </h1>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>
                 {[clube?.name, clube?.cidade && clube?.estado ? `${clube.cidade}, ${clube.estado}` : null].filter(Boolean).join(' · ')}
                 {time && ` · ${isLive ? 'Iniciado' : 'Previsto'} ${time}`}
               </p>
@@ -246,10 +231,10 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               {isActive && <SpectatorClock startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0} onDark />}
             </div>
 
-            {/* live ao vivo */}
+            {/* live ao vivo (iframe único — compartilhado entre mobile e desktop) */}
             {embedUrl && (
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: '#000' }}>
+              <div>
+                <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: '#000' }}>
                   <iframe
                     src={embedUrl}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -264,196 +249,120 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               </div>
             )}
 
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: '#4B5563' }}>
-                {canJoin
-                  ? `${ranked.length} participante${ranked.length !== 1 ? 's' : ''} inscrito${ranked.length !== 1 ? 's' : ''}`
-                  : 'Inscrições encerradas'}
-              </p>
-            </div>
-          </div>
+            {canJoin && torneio.qr_token && (
+              <div style={{ margin: '2px 0 -20px' }}>
+                <ParticiparCta tournamentId={torneio.id} qrToken={torneio.qr_token} />
+              </div>
+            )}
 
-          {/* right: ranking */}
-          <div style={{ display: 'flex', flexDirection: 'column', padding: '36px 40px', overflow: 'hidden', background: '#fff' }}>
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: '0 0 4px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#0D8F41' }}>
-                {isLive ? 'Placar ao vivo' : 'Participantes'}
+            <p className="sp-count">
+              {canJoin
+                ? `${ranked.length} participante${ranked.length !== 1 ? 's' : ''} inscrito${ranked.length !== 1 ? 's' : ''}`
+                : 'Inscrições encerradas'}
+            </p>
+          </div>
+        </aside>
+
+        {/* placar — no desktop rola sozinho em loop (telão) */}
+        <AutoScrollMain className="sp-main">
+          <div className="sp-main-inner">
+            <div style={{ marginBottom: 20 }}>
+              <p style={eyebrowStyle('#0D8F41')}>
+                {isLive ? 'Placar ao vivo' : eliminated.length > 0 ? 'Ainda participando' : 'Participantes'}
               </p>
-              <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.8rem', color: '#111827', letterSpacing: '-0.03em' }}>
+              <h2 style={{ margin: 0, fontWeight: 800, fontSize: 'clamp(1.3rem, 1.1rem + 1vw, 1.8rem)', color: '#111827', letterSpacing: '-0.03em' }}>
                 Ranking
               </h2>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {showPanel ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, alignItems: 'start' }}>
-                  <MarcacaoPanel
-                    startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0}
-                    activeGroup={activeGroup} divisions={divisions}
-                    current={competing} next={nextGroupItems} big
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0D8F41' }}>
-                      Ranking geral
-                    </p>
-                    <AnimatedRanking items={ranked as RankItem[]} big emptyText="Nenhum participante aprovado ainda." />
-                  </div>
+            {showPanel ? (
+              <div className="sp-panel-grid">
+                <MarcacaoPanel
+                  startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0}
+                  activeGroup={activeGroup} divisions={divisions}
+                  current={competing} next={nextGroupItems}
+                />
+                <div>
+                  <p style={eyebrowStyle('#0D8F41')}>Ranking geral</p>
+                  <AnimatedRanking items={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." />
                 </div>
-              ) : (
-                <AnimatedRanking items={ranked as RankItem[]} big emptyText="Nenhum participante aprovado ainda." />
-              )}
+              </div>
+            ) : ranked.length > 0 ? (
+              <AnimatedRanking items={ranked as RankItem[]} />
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>
+                <p style={{ margin: 0, fontSize: '0.75rem' }}>As inscrições aparecem aqui após aprovação.</p>
+              </div>
+            )}
 
-              {/* Eliminados */}
-              {eliminated.length > 0 && (
-                <div style={{ marginTop: 18 }}>
-                  <p style={{ margin: '0 0 8px', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#DC2626' }}>Eliminados ({eliminated.length})</p>
-                  <EliminadosLista eliminated={eliminated} />
-                </div>
-              )}
+            {/* Eliminados */}
+            {eliminated.length > 0 && (
+              <div style={{ marginTop: 28 }}>
+                <p style={eyebrowStyle('#DC2626')}>Eliminados ({eliminated.length})</p>
+                <EliminadosLista eliminated={eliminated} />
+              </div>
+            )}
 
-              {/* Histórico por rodada */}
-              {historyByRound.length > 0 && (
-                <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0D8F41' }}>Histórico por rodada</p>
+            {/* Histórico de cantos por rodada */}
+            {historyByRound.length > 0 && (
+              <div style={{ marginTop: 28 }}>
+                <p style={eyebrowStyle('#0D8F41')}>Histórico por rodada</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {historyByRound.map(rd => <HistoricoRodada key={rd.round} rd={rd} />)}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {isLive && (
-              <p style={{ margin: '16px 0 0', fontSize: '0.65rem', color: '#D1D5DB', textAlign: 'right' }}>
+              <p style={{ margin: '20px 0 0', fontSize: '0.65rem', color: '#D1D5DB', textAlign: 'right' }}>
                 Atualiza automaticamente a cada 5s
               </p>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* ── MOBILE ── */}
-      <div className="spectator-mobile" style={{ background: '#FAFAFA', minHeight: '100vh' }}>
-        <div style={{ background: '#fff', borderBottom: '1px solid #F3F4F6' }}>
-          <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 20px 24px' }}>
-            <Link href="/torneios" style={{ fontSize: '0.75rem', color: '#9CA3AF', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-              Torneios
-            </Link>
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <p style={{ margin: '0 0 6px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
-                  {torneio.status === 'finished' ? 'Encerrado' : isLive ? 'Ao vivo' : isOpen ? 'Aberto' : 'Em andamento'}
-                </p>
-                <h1 style={{ margin: '0 0 4px', fontWeight: 800, fontSize: '1.5rem', color: '#111827', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
-                  {torneio.name}
-                </h1>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#9CA3AF' }}>
-                  {[clube?.name, clube?.cidade && clube?.estado ? `${clube.cidade}, ${clube.estado}` : null].filter(Boolean).join(' · ')}
-                  {time && ` · ${isLive ? 'Iniciado' : 'Previsto'} ${time}`}
-                </p>
-              </div>
-              {isLive && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 4 }}>
-                  <span className="live-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                  <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#0D8F41' }}>Ao vivo</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px 40px' }}>
-          {/* horários: agora / próxima marcação / termina em */}
-          {isActive && <SpectatorClock startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0} />}
-
-          {/* live ao vivo */}
-          {embedUrl && (
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 12, overflow: 'hidden', border: '1px solid #E5E7EB', background: '#000' }}>
-                <iframe
-                  src={embedUrl}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
-                />
-              </div>
-              <p style={{ margin: '8px 0 0', fontSize: '0.7rem', color: '#0D8F41', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                Transmissão ao vivo
-              </p>
-            </div>
-          )}
-
-          {canJoin && torneio.qr_token && (
-            <ParticiparCta tournamentId={torneio.id} qrToken={torneio.qr_token} />
-          )}
-
-          <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
-            {eliminated.length > 0 ? 'Ainda participando' : isLive ? 'Placar ao vivo' : 'Participantes'}
-          </p>
-          <p style={{ margin: '0 0 16px', fontWeight: 800, fontSize: '1.25rem', color: '#111827', letterSpacing: '-0.02em' }}>
-            {ranked.length > 0 ? `${ranked.length} participante${ranked.length !== 1 ? 's' : ''}` : 'Nenhum participante ainda'}
-          </p>
-
-          {/* painel da marcação (próxima/atual) antes do geral */}
-          {showPanel && (
-            <div style={{ marginBottom: 20 }}>
-              <MarcacaoPanel
-                startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0}
-                activeGroup={activeGroup} divisions={divisions}
-                current={competing} next={nextGroupItems}
-              />
-            </div>
-          )}
-
-          {showPanel && (
-            <p style={{ margin: '0 0 8px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
-              Ranking geral
-            </p>
-          )}
-          {ranked.length > 0 ? (
-            <AnimatedRanking items={ranked as RankItem[]} />
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
-              <p style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>
-              <p style={{ margin: 0, fontSize: '0.75rem' }}>As inscrições aparecem aqui após aprovação.</p>
-            </div>
-          )}
-
-          {/* Eliminados */}
-          {eliminated.length > 0 && (
-            <div style={{ marginTop: 28 }}>
-              <p style={{ margin: '0 0 10px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#DC2626' }}>
-                Eliminados ({eliminated.length})
-              </p>
-              <EliminadosLista eliminated={eliminated} />
-            </div>
-          )}
-
-          {/* Histórico de cantos por rodada */}
-          {historyByRound.length > 0 && (
-            <div style={{ marginTop: 28 }}>
-              <p style={{ margin: '0 0 10px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
-                Histórico por rodada
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {historyByRound.map(rd => <HistoricoRodada key={rd.round} rd={rd} />)}
-              </div>
-            </div>
-          )}
-
-        </div>
+        </AutoScrollMain>
       </div>
 
       <style>{`
-        @media (min-width: 768px) {
-          .spectator-desktop { display: block !important; }
-          .spectator-mobile  { display: none  !important; }
+        .sp-shell { min-height: calc(100dvh - 56px); background: #fff; }
+        .sp-side { background: #16382A; }
+        .sp-side-inner {
+          max-width: 680px; margin: 0 auto; padding: 24px 20px 24px;
+          display: flex; flex-direction: column; gap: 18px;
         }
-        @media (max-width: 767px) {
-          .spectator-desktop { display: none  !important; }
-          .spectator-mobile  { display: block !important; }
+        .sp-back {
+          align-self: flex-start; display: inline-flex; align-items: center; gap: 4px;
+          font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.5);
+          text-decoration: none; padding: 5px 10px 5px 7px; border-radius: 7px;
+          border: 1px solid rgba(255,255,255,0.12);
+        }
+        .sp-count { margin: 0; text-align: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+        .sp-main-inner { max-width: 680px; margin: 0 auto; padding: 24px 20px 48px; }
+        .sp-panel-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
+
+        /* ≥1024px: sidebar fixa + placar com scroll próprio (telão) */
+        @media (min-width: 1024px) {
+          .sp-shell {
+            display: grid; grid-template-columns: clamp(300px, 30vw, 400px) 1fr;
+            height: calc(100dvh - 56px); overflow: hidden;
+          }
+          .sp-side { overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.08); }
+          .sp-side-inner { max-width: none; min-height: 100%; padding: 32px 28px; box-sizing: border-box; }
+          .sp-count { margin-top: auto; padding-top: 20px; }
+          .sp-main { overflow-y: auto; }
+          .sp-main-inner { max-width: 1100px; margin: 0; padding: 32px 40px 48px; }
+          /* ranking maior no telão (consumido pelas linhas do ranking) */
+          .sp-main {
+            --rk-gap: 14px; --rk-pad: 11px 16px;
+            --rk-pos-w: 30px; --rk-pos-fs: 0.8rem;
+            --rk-name-fs: 0.95rem; --rk-sub-fs: 0.78rem; --rk-score-fs: 1.3rem;
+            --rk-warn-pad: 4px 10px; --rk-warn-ico: 14px; --rk-warn-fs: 0.85rem;
+          }
+        }
+
+        /* ≥1280px: marcação atual e ranking geral lado a lado */
+        @media (min-width: 1280px) {
+          .sp-panel-grid { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
     </>
