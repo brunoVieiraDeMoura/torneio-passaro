@@ -241,6 +241,10 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
 
   const usersFiltered = profiles.filter(u => !q || norm(u.name).includes(q) || norm(u.email).includes(q))
 
+  // reports: abertos separados do histórico (resolvidos/descartados)
+  const reportsAbertos = reportsFiltered.filter(r => r.status === 'open')
+  const reportsHistorico = reportsFiltered.filter(r => r.status !== 'open')
+
   const pendingClubs = clubs.filter(c => c.status === 'pending').length
   const pendingSelos = clubs.filter(pediuSelo).length
   const openReports = reports.filter(r => r.status === 'open').length
@@ -257,6 +261,113 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
     tab === 'clubs' ? 'Buscar clube por nome ou cidade…'
     : tab === 'reports' ? 'Buscar report por alvo ou motivo…'
     : 'Buscar usuário por nome ou email…'
+
+  // card de report — usado na lista de abertos e no histórico
+  function renderReportCard(r: Report) {
+    const isOffense = r.reason === 'imagem_ofensiva' || r.reason === 'nome_ofensivo'
+    // ban liberado: fraude/coligação sempre; imagem/nome só com reincidência
+    // (imagem já removida OU nome já filtrado ao menos 1 vez)
+    const canBan = r.owner_id != null && !r.owner_banned &&
+      (r.reason === 'fraude' || r.reason === 'coligacao' || (isOffense && r.prior_moderations >= 1))
+    return (
+      <div key={r.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', marginBottom: 10, opacity: r.status === 'open' ? 1 : 0.65 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827' }}>
+              {REASON_LABEL[r.reason] ?? r.reason}
+              <span style={{ marginLeft: 8, fontWeight: 500, color: '#6B7280' }}>
+                {r.target_label ?? r.target_id}
+              </span>
+              {r.owner_banned && <span style={{ marginLeft: 8, fontSize: '0.68rem', fontWeight: 700, color: '#DC2626' }}>· DONO BANIDO</span>}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+              {fmt(r.created_at)}
+              {r.owner_name && <> · dono: {r.owner_name}</>}
+              {r.owner_id && r.prior_moderations > 0 && (
+                <span style={{ color: '#B45309', fontWeight: 700 }}> · {r.prior_moderations} moderação{r.prior_moderations !== 1 ? 'ções' : ''} anterior{r.prior_moderations !== 1 ? 'es' : ''}</span>
+              )}
+              {r.target_type === 'bird' && (
+                <> · <Link href={`/liga/passarinho/${encodeURIComponent(r.target_id)}`} target="_blank" style={{ color: '#0D8F41' }}>ver perfil na liga →</Link></>
+              )}
+            </p>
+            {r.details && (
+              <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#374151', background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 8, padding: '8px 10px' }}>
+                {r.details}
+              </p>
+            )}
+
+            {/* imagem reportada: mostra a foto própria do pássaro (se houver) */}
+            {r.reason === 'imagem_ofensiva' && (
+              r.bird_photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={r.bird_photo_url} alt="Imagem reportada"
+                  style={{ marginTop: 8, width: 120, height: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid #FECACA', display: 'block' }} />
+              ) : (
+                <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: '#9CA3AF', fontStyle: 'italic' }}>
+                  {r.owner_id ? 'Sem imagem própria — o perfil usa a foto padrão da raça.' : ''}
+                </p>
+              )
+            )}
+
+            {r.owner_id == null && (
+              <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: '#9CA3AF', fontStyle: 'italic' }}>
+                Perfil de demonstração — sem dono real para moderar.
+              </p>
+            )}
+          </div>
+
+          {r.status === 'open' ? (
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {/* ações de moderação por motivo */}
+              {r.reason === 'imagem_ofensiva' && r.owner_id && (
+                <button disabled={busy === r.id || !r.bird_photo_url}
+                  title={!r.bird_photo_url ? 'Este pássaro não tem imagem própria' : undefined}
+                  onClick={() => {
+                    if (window.confirm('Remover a imagem deste pássaro?\n\nO dono receberá um aviso de que imagens desse tipo podem resultar em banimento permanente.')) {
+                      run(r.id, () => moderateRemoveImage(r.id))
+                    }
+                  }}
+                  style={{ ...btn('#B45309', '#fff'), opacity: !r.bird_photo_url ? 0.45 : 1 }}>
+                  Remover imagem
+                </button>
+              )}
+              {r.reason === 'nome_ofensivo' && r.owner_id && (
+                <button disabled={busy === r.id}
+                  onClick={() => {
+                    if (window.confirm('Filtrar o nome deste pássaro?\n\nO nome vira "Nomefiltrado(id)" na liga, nos torneios e no cadastro, e o dono recebe um aviso.')) {
+                      run(r.id, () => moderateFilterName(r.id))
+                    }
+                  }}
+                  style={btn('#B45309', '#fff')}>
+                  Filtrar nome
+                </button>
+              )}
+              {canBan && (
+                <button disabled={busy === r.id}
+                  onClick={() => {
+                    if (window.confirm(`Banir "${r.owner_name ?? 'o dono'}"?\n\nA conta perde acesso à plataforma (reversível na aba Usuários).`)) {
+                      run(r.id, () => banReportedOwner(r.id))
+                    }
+                  }}
+                  style={btn('#DC2626', '#fff')}>
+                  Banir dono
+                </button>
+              )}
+              <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'resolved'))} style={btn('#0D8F41', '#fff')}>Resolver</button>
+              <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'dismissed'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Descartar</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <span style={chip(r.status === 'resolved' ? '#0D8F41' : '#6B7280', r.status === 'resolved' ? '#F0FDF4' : '#F3F4F6', r.status === 'resolved' ? '#D1FAE5' : '#E5E7EB')}>
+                {r.status === 'resolved' ? 'Resolvido' : 'Descartado'}
+              </span>
+              <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'open'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Reabrir</button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <main style={{ minHeight: '100dvh', background: '#FAFAFA' }}>
@@ -350,118 +461,27 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
           </div>
         )}
 
-        {/* ── reports ── */}
+        {/* ── reports: abertos separados do histórico (resolvidos/descartados) ── */}
         {tab === 'reports' && (
-          <div style={{ marginTop: 12 }}>
-            {reportsFiltered.length === 0 && (
-              <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>{q ? 'Nenhum report encontrado na busca.' : 'Nenhum report.'}</p>
+          <div>
+            <p style={sectionTitle}>⚑ Reports abertos ({reportsAbertos.length})</p>
+            {reportsAbertos.length === 0 && (
+              <p style={{ color: '#9CA3AF', fontSize: '0.8rem', margin: '0 0 4px' }}>
+                {q ? 'Nenhum report aberto encontrado na busca.' : 'Nenhum report aberto — tudo em dia.'}
+              </p>
             )}
-            <PaginatedList key={`rep-${q}`} pageSize={PAGE_SIZE}>
-              {reportsFiltered.map(r => {
-                const isOffense = r.reason === 'imagem_ofensiva' || r.reason === 'nome_ofensivo'
-                // ban liberado: fraude/coligação sempre; imagem/nome só com reincidência
-                // (imagem já removida OU nome já filtrado ao menos 1 vez)
-                const canBan = r.owner_id != null && !r.owner_banned &&
-                  (r.reason === 'fraude' || r.reason === 'coligacao' || (isOffense && r.prior_moderations >= 1))
-                return (
-                <div key={r.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', marginBottom: 10, opacity: r.status === 'open' ? 1 : 0.65 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827' }}>
-                        {REASON_LABEL[r.reason] ?? r.reason}
-                        <span style={{ marginLeft: 8, fontWeight: 500, color: '#6B7280' }}>
-                          {r.target_label ?? r.target_id}
-                        </span>
-                        {r.owner_banned && <span style={{ marginLeft: 8, fontSize: '0.68rem', fontWeight: 700, color: '#DC2626' }}>· DONO BANIDO</span>}
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
-                        {fmt(r.created_at)}
-                        {r.owner_name && <> · dono: {r.owner_name}</>}
-                        {r.owner_id && r.prior_moderations > 0 && (
-                          <span style={{ color: '#B45309', fontWeight: 700 }}> · {r.prior_moderations} moderação{r.prior_moderations !== 1 ? 'ções' : ''} anterior{r.prior_moderations !== 1 ? 'es' : ''}</span>
-                        )}
-                        {r.target_type === 'bird' && (
-                          <> · <Link href={`/liga/passarinho/${encodeURIComponent(r.target_id)}`} target="_blank" style={{ color: '#0D8F41' }}>ver perfil na liga →</Link></>
-                        )}
-                      </p>
-                      {r.details && (
-                        <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#374151', background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 8, padding: '8px 10px' }}>
-                          {r.details}
-                        </p>
-                      )}
+            <PaginatedList key={`rep-open-${q}`} pageSize={PAGE_SIZE}>
+              {reportsAbertos.map(renderReportCard)}
+            </PaginatedList>
 
-                      {/* imagem reportada: mostra a foto própria do pássaro (se houver) */}
-                      {r.reason === 'imagem_ofensiva' && (
-                        r.bird_photo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={r.bird_photo_url} alt="Imagem reportada"
-                            style={{ marginTop: 8, width: 120, height: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid #FECACA', display: 'block' }} />
-                        ) : (
-                          <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: '#9CA3AF', fontStyle: 'italic' }}>
-                            {r.owner_id ? 'Sem imagem própria — o perfil usa a foto padrão da raça.' : ''}
-                          </p>
-                        )
-                      )}
-
-                      {r.owner_id == null && (
-                        <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: '#9CA3AF', fontStyle: 'italic' }}>
-                          Perfil de demonstração — sem dono real para moderar.
-                        </p>
-                      )}
-                    </div>
-
-                    {r.status === 'open' ? (
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {/* ações de moderação por motivo */}
-                        {r.reason === 'imagem_ofensiva' && r.owner_id && (
-                          <button disabled={busy === r.id || !r.bird_photo_url}
-                            title={!r.bird_photo_url ? 'Este pássaro não tem imagem própria' : undefined}
-                            onClick={() => {
-                              if (window.confirm('Remover a imagem deste pássaro?\n\nO dono receberá um aviso de que imagens desse tipo podem resultar em banimento permanente.')) {
-                                run(r.id, () => moderateRemoveImage(r.id))
-                              }
-                            }}
-                            style={{ ...btn('#B45309', '#fff'), opacity: !r.bird_photo_url ? 0.45 : 1 }}>
-                            Remover imagem
-                          </button>
-                        )}
-                        {r.reason === 'nome_ofensivo' && r.owner_id && (
-                          <button disabled={busy === r.id}
-                            onClick={() => {
-                              if (window.confirm('Filtrar o nome deste pássaro?\n\nO nome vira "Nomefiltrado(id)" na liga, nos torneios e no cadastro, e o dono recebe um aviso.')) {
-                                run(r.id, () => moderateFilterName(r.id))
-                              }
-                            }}
-                            style={btn('#B45309', '#fff')}>
-                            Filtrar nome
-                          </button>
-                        )}
-                        {canBan && (
-                          <button disabled={busy === r.id}
-                            onClick={() => {
-                              if (window.confirm(`Banir "${r.owner_name ?? 'o dono'}"?\n\nA conta perde acesso à plataforma (reversível na aba Usuários).`)) {
-                                run(r.id, () => banReportedOwner(r.id))
-                              }
-                            }}
-                            style={btn('#DC2626', '#fff')}>
-                            Banir dono
-                          </button>
-                        )}
-                        <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'resolved'))} style={btn('#0D8F41', '#fff')}>Resolver</button>
-                        <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'dismissed'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Descartar</button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span style={chip(r.status === 'resolved' ? '#0D8F41' : '#6B7280', r.status === 'resolved' ? '#F0FDF4' : '#F3F4F6', r.status === 'resolved' ? '#D1FAE5' : '#E5E7EB')}>
-                          {r.status === 'resolved' ? 'Resolvido' : 'Descartado'}
-                        </span>
-                        <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'open'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Reabrir</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                )
-              })}
+            <p style={sectionTitle}>Histórico — resolvidos e descartados ({reportsHistorico.length})</p>
+            {reportsHistorico.length === 0 && (
+              <p style={{ color: '#9CA3AF', fontSize: '0.8rem', margin: 0 }}>
+                {q ? 'Nada no histórico encontrado na busca.' : 'Nenhum report resolvido ainda.'}
+              </p>
+            )}
+            <PaginatedList key={`rep-done-${q}`} pageSize={PAGE_SIZE}>
+              {reportsHistorico.map(renderReportCard)}
             </PaginatedList>
           </div>
         )}
