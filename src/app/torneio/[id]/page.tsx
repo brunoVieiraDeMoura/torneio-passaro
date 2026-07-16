@@ -350,7 +350,8 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         .sp-count { margin: 0; text-align: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); }
         .sp-main-inner { max-width: 680px; margin: 0 auto; padding: 24px 20px 48px; }
         .sp-panel-grid { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
-        .sp-chat { height: 340px; }
+        /* chat precisa de altura de sobra — curto demais corta o topo e a caixa de digitação */
+        .sp-chat { height: min(480px, 70dvh); }
 
         /* ≥1024px: modo telão — sem navbar do site, tela inteira (100dvh),
            sidebar fixa + placar com scroll próprio */
@@ -360,7 +361,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             display: grid; grid-template-columns: clamp(300px, 30vw, 400px) 1fr;
             height: 100dvh; overflow: hidden;
           }
-          .sp-chat { height: auto; flex: 1; min-height: 260px; }
+          .sp-chat { height: auto; flex: 1; min-height: 420px; }
           .sp-side { overflow-y: auto; border-right: 1px solid rgba(255,255,255,0.08); }
           .sp-side-inner { max-width: none; min-height: 100%; padding: 32px 28px; box-sizing: border-box; }
           .sp-count { margin-top: auto; padding-top: 20px; }
