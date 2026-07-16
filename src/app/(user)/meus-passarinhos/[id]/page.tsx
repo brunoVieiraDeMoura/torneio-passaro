@@ -21,7 +21,7 @@ export default async function BirdHistoryPage({ params }: { params: Promise<{ id
     .from('participants')
     .select(`
       id, bird_name, status, created_at,
-      tournaments(id, name, status, start_at, cidade, estado),
+      tournaments(id, name, status, start_at, cidade, estado, club_id),
       scores(count)
     `)
     .eq('user_id', user.id)
@@ -37,8 +37,18 @@ export default async function BirdHistoryPage({ params }: { params: Promise<{ id
   const roundSum: Record<string, number> = {}
   ;(roundRows ?? []).forEach(r => { roundSum[r.participant_id] = (roundSum[r.participant_id] ?? 0) + (r.count ?? 0) })
 
-  type TRow = { id: string; name: string; status: string; start_at: string | null; cidade: string | null; estado: string | null } | null
+  type TRow = { id: string; name: string; status: string; start_at: string | null; cidade: string | null; estado: string | null; club_id: string | null } | null
   type SRow = { count: number }[] | null
+
+  // torneio verificado = clube com selo (verde ou integridade) → conta na Liga.
+  // Sem selo o torneio segue no registro do pássaro, marcado como não verificado.
+  const clubIds = [...new Set((participations ?? [])
+    .map(p => (p.tournaments as unknown as TRow)?.club_id)
+    .filter((c): c is string => Boolean(c)))]
+  const { data: clubsSel } = clubIds.length > 0
+    ? await supabase.from('clubs').select('id, selo_verde, selo_integridade').in('id', clubIds)
+    : { data: [] }
+  const verifiedClubs = new Set((clubsSel ?? []).filter(c => c.selo_verde || c.selo_integridade).map(c => c.id))
 
   const history = (participations ?? []).map(p => {
     const t = p.tournaments as unknown as TRow
@@ -47,6 +57,7 @@ export default async function BirdHistoryPage({ params }: { params: Promise<{ id
     // todas as marcações somadas; fallback p/ contagem ao vivo se ainda sem histórico
     const total = roundSum[p.id] ?? 0
     return {
+      verified: t?.club_id ? verifiedClubs.has(t.club_id) : false,
       participant_id: p.id,
       tournament_id: t?.id ?? '',
       tournament_name: t?.name ?? '—',

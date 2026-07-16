@@ -40,6 +40,12 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Admin Central: a própria página se protege (login/senha do env + cookie
+  // assinado) — não depende de conta Supabase.
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    return supabaseResponse
+  }
+
   // not logged in: allow auth + public paths, redirect rest to login
   if (!user) {
     const allowed = [...AUTH_PATHS, ...PUBLIC_PATHS].some(p => pathname === p || pathname.startsWith(p + '/'))
@@ -59,16 +65,6 @@ export async function middleware(request: NextRequest) {
     .single()
 
   const admin = isAdmin(user.email)
-
-  // Admin Central: só o admin acessa /admin
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    if (!admin) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
-    return supabaseResponse
-  }
 
   // usuário banido → trava tudo (exceto a própria tela de banido)
   if (profile?.banned && !admin) {

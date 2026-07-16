@@ -269,6 +269,15 @@ export default function MestreClient({
     setShowStreamModal(false)
   }
 
+  // Encerrar live: apaga a stream e volta o botão "Iniciar live" (não abre edição).
+  async function encerrarLive() {
+    const supabase = createClient()
+    await supabase.from('tournaments').update({ stream_url: null }).eq('id', torneio.id)
+    setStreamUrl(null)
+    setStreamInput('')
+    setShowStreamModal(false)
+  }
+
   async function updateParticipante(id: string, update: Partial<Participante>) {
     setParticipantes(prev => prev.map(p => p.id === id ? { ...p, ...update } : p))
     const supabase = createClient()
@@ -706,7 +715,7 @@ export default function MestreClient({
 
           {/* Iniciar/Encerrar live — mesma altura do relógio, ocupa o resto da linha */}
           {streamUrl ? (
-            <button onClick={() => { setStreamInput(streamUrl ?? ''); setShowStreamModal(true) }}
+            <button onClick={() => ask('Deseja encerrar a live?', encerrarLive)}
               style={{
                 background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
                 borderRadius: 10, padding: '10px 18px', fontSize: '0.85rem', fontWeight: 700,

@@ -1,7 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import {
+  adminLogout, deleteClub, deleteUser, setClubBanned, setClubSelo,
+  setClubStatus, setReportStatus, setUserBanned,
+} from './actions'
 
 interface Profile {
   id: string; name: string | null; email: string | null
@@ -10,6 +14,13 @@ interface Profile {
 interface Club {
   id: string; name: string; cidade: string | null; estado: string | null
   status: string; banned: boolean
+  selo_verde: boolean; selo_integridade: boolean
+  selo_verde_request: string; selo_integridade_request: string
+  selo_requested_at: string | null
+}
+interface Report {
+  id: string; target_type: string; target_id: string; target_label: string | null
+  reason: string; details: string | null; status: string; created_at: string
 }
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -18,114 +29,238 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; b
   rejected: { label: 'Recusado',  color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
 }
 
-const btn =(bg: string, color: string, border = 'none'): React.CSSProperties => ({
+const REASON_LABEL: Record<string, string> = {
+  imagem_ofensiva: 'Imagem ofensiva',
+  fraude: 'Suspeita de fraude',
+  coligacao: 'Coligação com clubes',
+  outro: 'Outro',
+}
+
+const btn = (bg: string, color: string, border = 'none'): React.CSSProperties => ({
   background: bg, color, border, borderRadius: 8, padding: '7px 12px',
   fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
 })
 
-export default function AdminClient({ profiles: p0, clubs: c0 }: { profiles: Profile[]; clubs: Club[] }) {
-  const [profiles, setProfiles] = useState(p0)
-  const [clubs, setClubs] = useState(c0)
-  const [tab, setTab] = useState<'clubs' | 'users'>('clubs')
+const chip = (color: string, bg: string, border: string): React.CSSProperties => ({
+  fontSize: '0.68rem', fontWeight: 700, color, background: bg,
+  border: `1px solid ${border}`, borderRadius: 20, padding: '3px 10px',
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+})
+
+function fmt(date: string) {
+  return new Date(date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+// linha de selo dentro do card do clube: estado + ações do admin
+function SeloRow({ nome, desc, has, request, onGrant, onRevoke, busy }: {
+  nome: string; desc: string; has: boolean; request: string
+  onGrant: () => void; onRevoke: () => void; busy: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px solid #F3F4F6' }}>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700, color: '#111827' }}>{nome}</p>
+        <p style={{ margin: '1px 0 0', fontSize: '0.68rem', color: '#9CA3AF' }}>{desc}</p>
+      </div>
+      {has ? (
+        <>
+          <span style={chip('#0D8F41', '#F0FDF4', '#D1FAE5')}>✓ Concedido</span>
+          <button disabled={busy} onClick={onRevoke} style={btn('#fff', '#DC2626', '1px solid #FECACA')}>Revogar</button>
+        </>
+      ) : request === 'pending' ? (
+        <>
+          <span style={chip('#B45309', '#FFFBEB', '#FDE68A')}>● Solicitado</span>
+          <button disabled={busy} onClick={onGrant} style={btn('#0D8F41', '#fff')}>Conceder</button>
+          <button disabled={busy} onClick={onRevoke} style={btn('#FEF2F2', '#DC2626', '1px solid #FECACA')}>Recusar</button>
+        </>
+      ) : (
+        <>
+          {request === 'rejected' && <span style={chip('#DC2626', '#FEF2F2', '#FECACA')}>Recusado</span>}
+          <button disabled={busy} onClick={onGrant} style={btn('#fff', '#0D8F41', '1px solid #D1FAE5')}>Conceder</button>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default function AdminClient({ profiles, clubs, reports }: {
+  profiles: Profile[]; clubs: Club[]; reports: Report[]
+}) {
+  const [tab, setTab] = useState<'clubs' | 'reports' | 'users'>('clubs')
   const [busy, setBusy] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
 
-  async function toggleBanUser(id: string, banned: boolean) {
+  // roda a action, mostra erro se falhar; revalidatePath('/admin') na action
+  // atualiza os dados do server component sozinho.
+  function run(id: string, action: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('profiles').update({ banned }).eq('id', id)
-    if (!error) setProfiles(prev => prev.map(u => u.id === id ? { ...u, banned } : u))
-    setBusy(null)
+    startTransition(async () => {
+      const res = await action()
+      if (!res.ok && res.error) alert(res.error)
+      setBusy(null)
+    })
   }
 
-  async function setClubStatus(id: string, status: string) {
-    setBusy(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('clubs').update({ status }).eq('id', id)
-    if (!error) setClubs(prev => prev.map(c => c.id === id ? { ...c, status } : c))
-    setBusy(null)
-  }
+  const pendingClubs = clubs.filter(c => c.status === 'pending').length
+  const pendingSelos = clubs.filter(c => c.selo_verde_request === 'pending' || c.selo_integridade_request === 'pending').length
+  const openReports = reports.filter(r => r.status === 'open').length
 
-  async function toggleBanClub(id: string, banned: boolean) {
-    setBusy(id)
-    const supabase = createClient()
-    const { error } = await supabase.from('clubs').update({ banned }).eq('id', id)
-    if (!error) setClubs(prev => prev.map(c => c.id === id ? { ...c, banned } : c))
-    setBusy(null)
-  }
-
-  const pendingCount = clubs.filter(c => c.status === 'pending').length
+  const tabBtn = (active: boolean): React.CSSProperties => ({
+    ...btn(active ? '#111827' : '#fff', active ? '#fff' : '#6B7280', active ? 'none' : '1px solid #E5E7EB'),
+    padding: '9px 16px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: 6,
+  })
+  const badge = (bg: string): React.CSSProperties => ({
+    background: bg, color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800,
+  })
 
   return (
     <main style={{ minHeight: '100dvh', background: '#FAFAFA' }}>
       <div style={{ background: '#0A1F0E', padding: '20px 0' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px' }}>
-          <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4ADE80' }}>
-            Admin Central
-          </p>
-          <h1 style={{ margin: 0, fontWeight: 800, fontSize: '1.5rem', color: '#fff', letterSpacing: '-0.025em' }}>
-            Gerenciar usuários e clubes
-          </h1>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4ADE80' }}>
+              Admin Central
+            </p>
+            <h1 style={{ margin: 0, fontWeight: 800, fontSize: '1.5rem', color: '#fff', letterSpacing: '-0.025em' }}>
+              Gerenciar plataforma
+            </h1>
+          </div>
+          <button onClick={() => adminLogout()} style={{ ...btn('rgba(255,255,255,0.08)', 'rgba(255,255,255,0.6)', '1px solid rgba(255,255,255,0.15)'), flexShrink: 0 }}>
+            Sair
+          </button>
         </div>
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 16px 60px' }}>
         {/* tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <button onClick={() => setTab('clubs')} style={{
-            ...btn(tab === 'clubs' ? '#111827' : '#fff', tab === 'clubs' ? '#fff' : '#6B7280', tab === 'clubs' ? 'none' : '1px solid #E5E7EB'),
-            padding: '9px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6,
-          }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          <button onClick={() => setTab('clubs')} style={tabBtn(tab === 'clubs')}>
             Clubes
-            {pendingCount > 0 && (
-              <span style={{ background: '#F59E0B', color: '#fff', borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem' }}>{pendingCount}</span>
-            )}
+            {(pendingClubs + pendingSelos) > 0 && <span style={badge('#F59E0B')}>{pendingClubs + pendingSelos}</span>}
           </button>
-          <button onClick={() => setTab('users')} style={{
-            ...btn(tab === 'users' ? '#111827' : '#fff', tab === 'users' ? '#fff' : '#6B7280', tab === 'users' ? 'none' : '1px solid #E5E7EB'),
-            padding: '9px 16px', fontSize: '0.82rem',
-          }}>
+          <button onClick={() => setTab('reports')} style={tabBtn(tab === 'reports')}>
+            Reports
+            {openReports > 0 && <span style={badge('#DC2626')}>{openReports}</span>}
+          </button>
+          <button onClick={() => setTab('users')} style={tabBtn(tab === 'users')}>
             Usuários ({profiles.length})
           </button>
         </div>
 
-        {/* clubs */}
+        {/* ── clubes: status, selos, ban, exclusão ── */}
         {tab === 'clubs' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {clubs.length === 0 && <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>Nenhum clube.</p>}
             {clubs.map(c => {
               const s = STATUS_STYLE[c.status] ?? STATUS_STYLE.pending
               return (
-                <div key={c.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', opacity: c.banned ? 0.55 : 1 }}>
-                  <div style={{ flex: 1, minWidth: 160 }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: '#111827' }}>
-                      {c.name}
-                      {c.banned && <span style={{ marginLeft: 8, fontSize: '0.68rem', fontWeight: 700, color: '#DC2626' }}>· BANIDO</span>}
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
-                      {[c.cidade, c.estado].filter(Boolean).join(', ') || '—'}
-                    </p>
+                <div key={c.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', opacity: c.banned ? 0.55 : 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {c.name}
+                        {c.selo_verde && <span title="Selo verde — vinculado ao passaros.org" style={chip('#0D8F41', '#F0FDF4', '#D1FAE5')}>🟢 Verde</span>}
+                        {c.selo_integridade && <span title="Selo de integridade" style={chip('#1D4ED8', '#EFF6FF', '#BFDBFE')}>🛡 Integridade</span>}
+                        {c.banned && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#DC2626' }}>· BANIDO</span>}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                        {[c.cidade, c.estado].filter(Boolean).join(', ') || '—'}
+                        {c.selo_requested_at && (c.selo_verde_request === 'pending' || c.selo_integridade_request === 'pending') && ` · selo solicitado em ${fmt(c.selo_requested_at)}`}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: s.color, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 20, padding: '3px 10px' }}>
+                      {s.label}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                      {c.status !== 'approved' && (
+                        <button disabled={busy === c.id} onClick={() => run(c.id, () => setClubStatus(c.id, 'approved'))} style={btn('#0D8F41', '#fff')}>Aprovar</button>
+                      )}
+                      {c.status !== 'rejected' && (
+                        <button disabled={busy === c.id} onClick={() => run(c.id, () => setClubStatus(c.id, 'rejected'))} style={btn('#FEF2F2', '#DC2626', '1px solid #FECACA')}>Recusar</button>
+                      )}
+                      <button disabled={busy === c.id} onClick={() => run(c.id, () => setClubBanned(c.id, !c.banned))} style={btn(c.banned ? '#F3F4F6' : '#111827', c.banned ? '#374151' : '#fff')}>
+                        {c.banned ? 'Desbanir' : 'Banir'}
+                      </button>
+                      <button disabled={busy === c.id}
+                        onClick={() => {
+                          if (window.confirm(`Excluir DEFINITIVAMENTE o clube "${c.name}"?\n\nTodos os torneios, participantes e pontuações dele serão apagados. Não dá para desfazer.`)) {
+                            run(c.id, () => deleteClub(c.id))
+                          }
+                        }}
+                        style={btn('#DC2626', '#fff')}>
+                        Excluir
+                      </button>
+                    </div>
                   </div>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: s.color, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 20, padding: '3px 10px' }}>
-                    {s.label}
-                  </span>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    {c.status !== 'approved' && (
-                      <button disabled={busy === c.id} onClick={() => setClubStatus(c.id, 'approved')} style={btn('#0D8F41', '#fff')}>Aprovar</button>
-                    )}
-                    {c.status !== 'rejected' && (
-                      <button disabled={busy === c.id} onClick={() => setClubStatus(c.id, 'rejected')} style={btn('#FEF2F2', '#DC2626', '1px solid #FECACA')}>Recusar</button>
-                    )}
-                    <button disabled={busy === c.id} onClick={() => toggleBanClub(c.id, !c.banned)} style={btn(c.banned ? '#F3F4F6' : '#111827', c.banned ? '#374151' : '#fff')}>
-                      {c.banned ? 'Desbanir' : 'Banir'}
-                    </button>
-                  </div>
+
+                  {/* selos de verificação */}
+                  <SeloRow
+                    nome="🟢 Selo verde" desc="Clube vinculado ao passaros.org"
+                    has={c.selo_verde} request={c.selo_verde_request} busy={busy === c.id}
+                    onGrant={() => run(c.id, () => setClubSelo(c.id, 'verde', true))}
+                    onRevoke={() => run(c.id, () => setClubSelo(c.id, 'verde', false))}
+                  />
+                  <SeloRow
+                    nome="🛡 Selo de integridade" desc="Legalizado, mínimo de participantes e dentro das diretrizes"
+                    has={c.selo_integridade} request={c.selo_integridade_request} busy={busy === c.id}
+                    onGrant={() => run(c.id, () => setClubSelo(c.id, 'integridade', true))}
+                    onRevoke={() => run(c.id, () => setClubSelo(c.id, 'integridade', false))}
+                  />
                 </div>
               )
             })}
+            <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+              Só torneios de clubes com selo (verde ou integridade) têm os cantos contabilizados na Liga.
+            </p>
           </div>
         )}
 
-        {/* users */}
+        {/* ── reports ── */}
+        {tab === 'reports' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {reports.length === 0 && <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>Nenhum report.</p>}
+            {reports.map(r => (
+              <div key={r.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', opacity: r.status === 'open' ? 1 : 0.65 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827' }}>
+                      {REASON_LABEL[r.reason] ?? r.reason}
+                      <span style={{ marginLeft: 8, fontWeight: 500, color: '#6B7280' }}>
+                        {r.target_label ?? r.target_id}
+                      </span>
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                      {fmt(r.created_at)}
+                      {r.target_type === 'bird' && (
+                        <> · <Link href={`/liga/passarinho/${encodeURIComponent(r.target_id)}`} target="_blank" style={{ color: '#0D8F41' }}>ver perfil na liga →</Link></>
+                      )}
+                    </p>
+                    {r.details && (
+                      <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#374151', background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: 8, padding: '8px 10px' }}>
+                        {r.details}
+                      </p>
+                    )}
+                  </div>
+                  {r.status === 'open' ? (
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'resolved'))} style={btn('#0D8F41', '#fff')}>Resolver</button>
+                      <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'dismissed'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Descartar</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <span style={chip(r.status === 'resolved' ? '#0D8F41' : '#6B7280', r.status === 'resolved' ? '#F0FDF4' : '#F3F4F6', r.status === 'resolved' ? '#D1FAE5' : '#E5E7EB')}>
+                        {r.status === 'resolved' ? 'Resolvido' : 'Descartado'}
+                      </span>
+                      <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'open'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Reabrir</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── usuários: ban, exclusão ── */}
         {tab === 'users' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {profiles.length === 0 && <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>Nenhum usuário.</p>}
@@ -139,9 +274,20 @@ export default function AdminClient({ profiles: p0, clubs: c0 }: { profiles: Pro
                   </p>
                   <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>{u.email || '—'}</p>
                 </div>
-                <button disabled={busy === u.id} onClick={() => toggleBanUser(u.id, !u.banned)} style={btn(u.banned ? '#F3F4F6' : '#111827', u.banned ? '#374151' : '#fff')}>
-                  {u.banned ? 'Desbanir' : 'Banir'}
-                </button>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button disabled={busy === u.id} onClick={() => run(u.id, () => setUserBanned(u.id, !u.banned))} style={btn(u.banned ? '#F3F4F6' : '#111827', u.banned ? '#374151' : '#fff')}>
+                    {u.banned ? 'Desbanir' : 'Banir'}
+                  </button>
+                  <button disabled={busy === u.id}
+                    onClick={() => {
+                      if (window.confirm(`Excluir DEFINITIVAMENTE a conta de "${u.name || u.email}"?\n\nA conta, os pássaros e (se for clube) o clube com seus torneios serão apagados. Não dá para desfazer.`)) {
+                        run(u.id, () => deleteUser(u.id))
+                      }
+                    }}
+                    style={btn('#DC2626', '#fff')}>
+                    Excluir
+                  </button>
+                </div>
               </div>
             ))}
           </div>

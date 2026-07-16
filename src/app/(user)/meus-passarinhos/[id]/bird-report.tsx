@@ -57,6 +57,7 @@ interface HistoryItem {
   tournament_status: string; tournament_start_at: string | null
   tournament_cidade: string; tournament_estado: string
   score_count: number; joined_at: string; participant_status: string
+  verified: boolean
 }
 
 interface Props {
@@ -238,6 +239,7 @@ export default function BirdReport({ bird, history }: Props) {
               </p>
               <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                 {totalTorneios} participação{totalTorneios !== 1 ? 'ções' : ''}
+                {history.some(h => !h.verified) && ' · torneios "não verificados" não contam para a Liga'}
               </p>
             </div>
 
@@ -267,6 +269,12 @@ export default function BirdReport({ bird, history }: Props) {
                         {h.score_count === melhor && melhor > 0 && (
                           <span style={{ marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 20, padding: '1px 6px' }}>
                             Melhor
+                          </span>
+                        )}
+                        {!h.verified && (
+                          <span title="Torneio de clube sem selo de verificação — os cantos não contam na Liga"
+                            style={{ marginLeft: 6, fontSize: '0.6rem', fontWeight: 700, color: '#6B7280', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 20, padding: '1px 6px' }}>
+                            Não verificado
                           </span>
                         )}
                       </p>

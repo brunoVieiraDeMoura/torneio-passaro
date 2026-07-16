@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import SelosCard from './selos-card'
 
 export default async function ClubeDashboard() {
   const supabase = await createClient()
@@ -8,7 +9,9 @@ export default async function ClubeDashboard() {
   if (!user) redirect('/login')
 
   const { data: clube } = await supabase
-    .from('clubs').select('id, name, cidade, estado').eq('user_id', user.id).single()
+    .from('clubs')
+    .select('id, name, cidade, estado, selo_verde, selo_integridade, selo_verde_request, selo_integridade_request')
+    .eq('user_id', user.id).single()
 
   if (!clube) redirect('/login')
 
@@ -42,6 +45,15 @@ export default async function ClubeDashboard() {
           </p>
         )}
       </div>
+
+      {/* verificação: selo verde + selo de integridade */}
+      <SelosCard
+        clubId={clube.id}
+        seloVerde={clube.selo_verde ?? false}
+        seloIntegridade={clube.selo_integridade ?? false}
+        verdeRequest={clube.selo_verde_request ?? 'none'}
+        integridadeRequest={clube.selo_integridade_request ?? 'none'}
+      />
 
       {/* stats */}
       <div className="club-stats-4" style={{ marginBottom: 28 }}>

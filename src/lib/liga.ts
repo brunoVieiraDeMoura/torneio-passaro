@@ -18,15 +18,25 @@ export async function getRealLigaEntries(): Promise<LigaEntry[]> {
   const pids = [...new Set(rs.map(r => r.participant_id))]
 
   const [{ data: tours }, { data: parts }] = await Promise.all([
-    supabase.from('tournaments').select('id, tipo_ave, estilo_canto, cidade, estado').in('id', tids),
+    supabase.from('tournaments').select('id, tipo_ave, estilo_canto, cidade, estado, club_id').in('id', tids),
     supabase.from('participants').select('id, user_name').in('id', pids),
   ])
 
   const tourMap = new Map((tours ?? []).map(t => [t.id, t]))
   const nameMap = new Map((parts ?? []).map(p => [p.id, p.user_name]))
 
+  // só clube VERIFICADO (selo verde ou integridade) tem os cantos contados na liga
+  const clubIds = [...new Set((tours ?? []).map(t => t.club_id).filter(Boolean))]
+  const { data: clubsSel } = clubIds.length > 0
+    ? await supabase.from('clubs').select('id, selo_verde, selo_integridade').in('id', clubIds)
+    : { data: [] }
+  const verifiedClubs = new Set((clubsSel ?? []).filter(c => c.selo_verde || c.selo_integridade).map(c => c.id))
+
   const byBird = new Map<string, LigaEntry & { _lastAt: string }>()
   for (const r of rs) {
+    // torneio de clube sem selo: não entra na liga (mas segue no registro do pássaro)
+    const clubId = tourMap.get(r.tournament_id)?.club_id
+    if (!clubId || !verifiedClubs.has(clubId)) continue
     const key = `${r.user_id}::${r.bird_name.trim().toLowerCase()}`
     const tour = tourMap.get(r.tournament_id)
     const prev = byBird.get(key)

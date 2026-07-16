@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { LigaEntry } from '@/data/liga-mock'
+import ReportButton from './report-button'
 
 const BREED_STYLE: Record<string, { color: string; bg: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC' },
@@ -77,16 +78,20 @@ export default function LigaBirdProfile({ entry, position, total }: Props) {
 
       {/* header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #F3F4F6', padding: '14px 0' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px' }}>
-          <p style={{ margin: '0 0 3px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
-            Perfil · Liga 2025
-          </p>
-          <Link href="/liga" style={{ fontSize: '0.78rem', color: '#6B7280', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-            Voltar para a Liga
-          </Link>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <p style={{ margin: '0 0 3px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#0D8F41' }}>
+              Perfil · Liga 2025
+            </p>
+            <Link href="/liga" style={{ fontSize: '0.78rem', color: '#6B7280', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              Voltar para a Liga
+            </Link>
+          </div>
+          {/* imagem ofensiva / suspeita de fraude / coligação com clubes */}
+          <ReportButton targetId={entry.id} targetLabel={`${entry.bird_name} (${entry.user_name})`} />
         </div>
       </div>
 
