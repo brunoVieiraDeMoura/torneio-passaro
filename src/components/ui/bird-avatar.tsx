@@ -33,9 +33,12 @@ function BirdSvg({ size }: { size: number }) {
   )
 }
 
-export default function BirdAvatar({ tipoAve, size = 40, radius = 10 }: { tipoAve: string; size?: number; radius?: number }) {
+export default function BirdAvatar({ tipoAve, photoUrl = null, size = 40, radius = 10 }: {
+  tipoAve: string; photoUrl?: string | null; size?: number; radius?: number
+}) {
   const [err, setErr] = useState(false)
-  const photo = BIRD_PHOTO[tipoAve]
+  // foto própria do pássaro primeiro; sem ela, a foto padrão da raça
+  const photo = photoUrl ?? BIRD_PHOTO[tipoAve]
   return (
     <div style={{
       width: size, height: size, borderRadius: radius, flexShrink: 0,

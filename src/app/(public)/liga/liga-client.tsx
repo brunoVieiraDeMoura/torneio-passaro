@@ -269,7 +269,7 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
                     {PODIUM_EMOJI[i]} {PODIUM_LABEL[i]}
                   </Typography>
                   <Box sx={{ mb: 1 }}>
-                    <BirdAvatar tipoAve={item.tipo_ave} size={52} radius={14} />
+                    <BirdAvatar tipoAve={item.tipo_ave} photoUrl={item.photo_url} size={52} radius={14} />
                   </Box>
                   <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.78rem', sm: '0.88rem' }, lineHeight: 1.25, color: isMine(item.id) ? '#0D8F41' : '#111827', mb: 0.25, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.bird_name}{isMine(item.id) ? ' (você)' : ''}
@@ -311,7 +311,7 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
                     {i < 3 ? PODIUM_EMOJI[i] : String(i + 1).padStart(2, '0')}
                   </Typography>
 
-                  <BirdAvatar tipoAve={item.tipo_ave} size={40} radius={10} />
+                  <BirdAvatar tipoAve={item.tipo_ave} photoUrl={item.photo_url} size={40} radius={10} />
 
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontWeight: 700, fontSize: '0.87rem', color: isMine(item.id) ? '#0D8F41' : '#111827', lineHeight: 1.3, mb: 0.2 }}>

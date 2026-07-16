@@ -15,7 +15,9 @@ function loadImage(file: File): Promise<HTMLImageElement> {
 
 export async function processBirdPhoto(file: File): Promise<Blob> {
   if (!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
-  if (file.size > 10 * 1024 * 1024) throw new Error('Imagem muito grande. Máximo 10MB.')
+  // limite só da ENTRADA (foto 4K de câmera passa) — a saída sempre vira
+  // JPEG 256x256 leve; o teto evita travar celular fraco decodificando gigante
+  if (file.size > 20 * 1024 * 1024) throw new Error('Imagem muito grande. Máximo 20MB.')
 
   const img = await loadImage(file)
   const w = img.naturalWidth

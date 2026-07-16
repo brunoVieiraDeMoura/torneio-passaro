@@ -1,6 +1,7 @@
 export interface LigaEntry {
   id: string; count: number; user_name: string; bird_name: string
   tipo_ave: string; estilo_canto: string; estado: string; cidade: string
+  photo_url?: string | null // foto própria do pássaro (só entradas reais)
 }
 
 export const LIGA_MOCK: LigaEntry[] = [

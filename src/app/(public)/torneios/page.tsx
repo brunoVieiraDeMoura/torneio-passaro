@@ -54,19 +54,19 @@ export default async function TorneiosPage({
               <Box key={label} component={Link} href={slug ? `/torneios/${slug}` : '/torneios'}
                 sx={{
                   display: 'inline-flex', alignItems: 'center', gap: 0.75,
-                  px: '12px', py: '6px', borderRadius: '20px',
-                  fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap',
+                  px: '12px', py: '7px', borderRadius: '8px',
+                  fontSize: '0.75rem', fontWeight: isActive ? 700 : 600, whiteSpace: 'nowrap',
                   textDecoration: 'none', flexShrink: 0, border: '1px solid',
-                  bgcolor: isActive ? '#111827' : '#fff',
-                  borderColor: isActive ? '#111827' : '#E5E7EB',
+                  bgcolor: isActive ? '#0D8F41' : '#fff',
+                  borderColor: isActive ? '#0D8F41' : '#E5E7EB',
                   color: isActive ? '#fff' : '#6B7280',
                   transition: 'all 0.15s',
-                  '&:hover': isActive ? {} : { borderColor: '#9CA3AF', color: '#374151' },
+                  '&:hover': isActive ? {} : { borderColor: '#0D8F41', color: '#0D8F41' },
                 }}
               >
                 {label}
                 {count != null && (
-                  <Box component="span" sx={{ fontSize: '0.65rem', fontWeight: 700, px: '5px', py: '1px', borderRadius: '10px', bgcolor: '#F3F4F6', color: '#9CA3AF' }}>
+                  <Box component="span" sx={{ fontSize: '0.65rem', fontWeight: 700, px: '5px', py: '1px', borderRadius: '6px', bgcolor: isActive ? 'rgba(255,255,255,0.2)' : '#F3F4F6', color: isActive ? '#fff' : '#9CA3AF' }}>
                     {count}
                   </Box>
                 )}

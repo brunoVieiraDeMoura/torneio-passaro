@@ -58,6 +58,8 @@ interface HistoryItem {
   tournament_cidade: string; tournament_estado: string
   score_count: number; joined_at: string; participant_status: string
   verified: boolean
+  position: number | null // colocação no total geral do torneio
+  field: number           // nº de participantes com pontuação
 }
 
 interface Props {
@@ -285,6 +287,20 @@ export default function BirdReport({ bird, history }: Props) {
                         }}>
                           {h.tournament_status === 'finished' ? 'Encerrado' : h.tournament_status === 'running' ? 'Ao vivo' : 'Aberto'}
                         </span>
+                        {/* colocação no torneio (parcial se ainda não encerrou) */}
+                        {h.position != null && h.field > 0 && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            fontSize: '0.62rem', fontWeight: 800, borderRadius: 20, padding: '2px 8px',
+                            color: h.position === 1 ? '#B45309' : h.position <= 3 ? '#92400E' : '#374151',
+                            background: h.position === 1 ? '#FFFBEB' : h.position <= 3 ? '#FEF3C7' : '#F3F4F6',
+                            border: `1px solid ${h.position <= 3 ? '#FDE68A' : '#E5E7EB'}`,
+                          }}>
+                            {h.position === 1 ? '🏆 ' : h.position === 2 ? '🥈 ' : h.position === 3 ? '🥉 ' : ''}
+                            {h.position}º de {h.field}
+                            {h.tournament_status !== 'finished' && <span style={{ fontWeight: 600, color: '#9CA3AF' }}> (parcial)</span>}
+                          </span>
+                        )}
                         {/* clube sem selo → cantos ficam no registro, mas fora da Liga */}
                         {!h.verified && (
                           <span title="Torneio de clube sem selo de verificação — os cantos ficam no seu registro, mas não contam para a Liga"

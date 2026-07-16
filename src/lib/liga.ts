@@ -27,10 +27,19 @@ export async function getRealLigaEntries(): Promise<LigaEntry[]> {
 
   // só clube VERIFICADO (selo verde ou integridade) tem os cantos contados na liga
   const clubIds = [...new Set((tours ?? []).map(t => t.club_id).filter(Boolean))]
-  const { data: clubsSel } = clubIds.length > 0
-    ? await supabase.from('clubs').select('id, selo_verde, selo_integridade').in('id', clubIds)
-    : { data: [] }
+  const uids = [...new Set(rs.map(r => r.user_id).filter(Boolean))] as string[]
+  const [{ data: clubsSel }, { data: ownerBirds }] = await Promise.all([
+    clubIds.length > 0
+      ? supabase.from('clubs').select('id, selo_verde, selo_integridade').in('id', clubIds)
+      : Promise.resolve({ data: [] as { id: string; selo_verde: boolean; selo_integridade: boolean }[] }),
+    // foto própria do pássaro (upload do dono) — casa por dono + slug do nome
+    uids.length > 0
+      ? supabase.from('birds').select('user_id, name, photo_url').in('user_id', uids).not('photo_url', 'is', null)
+      : Promise.resolve({ data: [] as { user_id: string; name: string; photo_url: string | null }[] }),
+  ])
   const verifiedClubs = new Set((clubsSel ?? []).filter(c => c.selo_verde || c.selo_integridade).map(c => c.id))
+  const slugOf = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const photoMap = new Map((ownerBirds ?? []).map(b => [`${b.user_id}::${slugOf(b.name)}`, b.photo_url]))
 
   const byBird = new Map<string, LigaEntry & { _lastAt: string }>()
   for (const r of rs) {
@@ -61,6 +70,7 @@ export async function getRealLigaEntries(): Promise<LigaEntry[]> {
         estilo_canto: tour?.estilo_canto ?? 'Outro',
         estado: tour?.estado ?? '',
         cidade: tour?.cidade ?? '',
+        photo_url: photoMap.get(`${r.user_id}::${slug}`) ?? null,
         _lastAt: r.created_at,
       })
     }

@@ -398,8 +398,8 @@ export default async function LandingPage() {
         </Container>
       </Box>
 
-      {/* ── FOOTER ── */}
-      <Box component="footer" sx={{ bgcolor: '#111827', pt: 6, pb: 5 }}>
+      {/* ── FOOTER ── (mesmo verde da sidebar do telão) */}
+      <Box component="footer" sx={{ bgcolor: '#16382A', pt: 6, pb: 5 }}>
         <Container maxWidth={false} sx={{ maxWidth: 680 }}>
           {/* top grid: brand full + explorar/conta side-by-side mobile / 3 col desktop */}
           <Box
@@ -419,21 +419,21 @@ export default async function LandingPage() {
                   <AveumWordmark onDark />
                 </Typography>
               </Box>
-              <Typography sx={{ fontSize: '0.78rem', color: '#6B7280', lineHeight: 1.6, maxWidth: 220 }}>
+              <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, maxWidth: 220 }}>
                 Torneios de canto de pássaro com placar em tempo real.
               </Typography>
             </Box>
 
             {/* explorar */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: { xs: 'center', sm: 'flex-start' } }}>
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#4B5563', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#4ADE80', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Explorar
               </Typography>
               {[
                 { href: '/torneios', label: 'Torneios' },
                 { href: '/liga',     label: 'Liga' },
               ].map(l => (
-                <Link key={l.href} href={l.href} style={{ fontSize: '0.82rem', color: '#9CA3AF', textDecoration: 'none' }}>
+                <Link key={l.href} href={l.href} style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>
                   {l.label}
                 </Link>
               ))}
@@ -441,7 +441,7 @@ export default async function LandingPage() {
 
             {/* conta */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: { xs: 'center', sm: 'flex-start' } }}>
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#4B5563', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#4ADE80', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Conta
               </Typography>
               {[
@@ -449,7 +449,7 @@ export default async function LandingPage() {
                 { href: '/cadastro',      label: 'Criar conta' },
                 { href: '/configuracoes', label: 'Configurações' },
               ].map(l => (
-                <Link key={l.href} href={l.href} style={{ fontSize: '0.82rem', color: '#9CA3AF', textDecoration: 'none' }}>
+                <Link key={l.href} href={l.href} style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>
                   {l.label}
                 </Link>
               ))}
@@ -458,7 +458,7 @@ export default async function LandingPage() {
 
           {/* bottom row */}
           <Box sx={{
-            borderTop: '1px solid #1F2937',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
             pt: 3,
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
@@ -467,10 +467,10 @@ export default async function LandingPage() {
             gap: 1.5,
             textAlign: { xs: 'center', sm: 'left' },
           }}>
-            <Typography sx={{ fontSize: '0.72rem', color: '#4B5563' }}>
+            <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
               © 2025 aveum. Todos os direitos reservados.
             </Typography>
-            <Link href="mailto:contato@aveum.com.br" style={{ fontSize: '0.72rem', color: '#4B5563', textDecoration: 'none' }}>
+            <Link href="mailto:contato@aveum.com.br" style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', textDecoration: 'none' }}>
               contato@aveum.com.br
             </Link>
           </Box>

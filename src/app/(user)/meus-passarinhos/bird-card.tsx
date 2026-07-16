@@ -66,6 +66,7 @@ interface HistoryItem {
   tournament_start_at: string | null
   score_count: number
   joined_at: string
+  won?: boolean // 1º lugar em torneio finalizado
 }
 
 interface Props {
@@ -300,18 +301,21 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
 
         {/* stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-          {[
-            { label: 'Cantos', value: totalFor(history, period).toLocaleString('pt-BR') },
-            { label: 'Torneios', value: history.filter(h => {
+          {(() => {
+            const inPeriod = (h: HistoryItem) => {
               if (period === 'total') return true
               const now = new Date(); const date = new Date(h.tournament_start_at ?? h.joined_at)
               if (period === 'semana') { const w = new Date(now); w.setDate(now.getDate()-7); return date >= w }
               if (period === 'mês') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
               if (period === 'ano') return date.getFullYear() === now.getFullYear()
               return true
-            }).length.toString() },
-            { label: 'Vitórias', value: '—' },
-          ].map(s => (
+            }
+            return [
+              { label: 'Cantos', value: totalFor(history, period).toLocaleString('pt-BR') },
+              { label: 'Torneios', value: history.filter(inPeriod).length.toString() },
+              { label: 'Vitórias', value: history.filter(h => h.won && inPeriod(h)).length.toString() },
+            ]
+          })().map(s => (
             <div key={s.label} style={{ background: '#F9FAFB', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
               <p style={{ margin: '0 0 2px', fontWeight: 800, fontSize: '1.1rem', color: '#111827', letterSpacing: '-0.02em' }}>{s.value}</p>
               <p style={{ margin: 0, fontSize: '0.62rem', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</p>

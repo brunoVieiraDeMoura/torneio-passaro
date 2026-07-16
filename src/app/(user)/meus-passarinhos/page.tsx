@@ -44,6 +44,41 @@ export default async function MeusPassarinhos() {
   type TRow = { id: string; name: string; status: string; start_at: string | null } | null
   type SRow = { count: number }[] | null
 
+  // ── vitórias: 1º lugar (maior total de cantos) em torneio FINALIZADO ──
+  const finishedTids = [...new Set((participations ?? [])
+    .map(p => p.tournaments as unknown as TRow)
+    .filter((t): t is NonNullable<TRow> => t?.status === 'finished')
+    .map(t => t.id))]
+
+  const [{ data: finRounds }, { data: finScores }] = finishedTids.length > 0
+    ? await Promise.all([
+        supabase.from('round_scores').select('participant_id, tournament_id, count').in('tournament_id', finishedTids),
+        supabase.from('scores').select('participant_id, tournament_id, count').in('tournament_id', finishedTids),
+      ])
+    : [{ data: [] }, { data: [] }]
+
+  // total por participante em cada torneio (round_scores; sem histórico → scores)
+  const totals = new Map<string, Map<string, number>>()
+  for (const r of finRounds ?? []) {
+    const per = totals.get(r.tournament_id) ?? new Map<string, number>()
+    per.set(r.participant_id, (per.get(r.participant_id) ?? 0) + (r.count ?? 0))
+    totals.set(r.tournament_id, per)
+  }
+  for (const s of finScores ?? []) {
+    if (totals.get(s.tournament_id)?.size) continue // já tem histórico
+    const per = totals.get(s.tournament_id) ?? new Map<string, number>()
+    per.set(s.participant_id, s.count ?? 0)
+    totals.set(s.tournament_id, per)
+  }
+
+  const winners = new Set<string>() // participant_ids campeões
+  for (const per of totals.values()) {
+    let max = 0
+    for (const v of per.values()) max = Math.max(max, v)
+    if (max <= 0) continue
+    for (const [pid, v] of per) if (v === max) winners.add(pid)
+  }
+
   function historyForBird(birdName: string) {
     if (!participations) return []
     return participations
@@ -59,6 +94,7 @@ export default async function MeusPassarinhos() {
           tournament_start_at: t?.start_at ?? null,
           score_count: total > 0 ? total : (scores?.[0]?.count ?? 0),
           joined_at: p.created_at,
+          won: winners.has(p.id),
         }
       })
   }
