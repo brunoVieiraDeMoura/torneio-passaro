@@ -61,7 +61,7 @@ interface HistoryItem {
 }
 
 interface Props {
-  bird: { id: string; name: string; raca: string | null; estilo_canto: string | null; created_at: string }
+  bird: { id: string; name: string; raca: string | null; estilo_canto: string | null; created_at: string; photo_url?: string | null }
   history: HistoryItem[]
 }
 
@@ -72,7 +72,8 @@ function fmt(date: string | null) {
 
 export default function BirdReport({ bird, history }: Props) {
   const bs = BREED_STYLE[bird.raca ?? ''] ?? DEFAULT_BS
-  const photo = BIRD_PHOTO[bird.raca ?? '']
+  // foto própria primeiro; sem ela, a foto padrão da raça
+  const photo = bird.photo_url ?? BIRD_PHOTO[bird.raca ?? '']
   const [imgError, setImgError] = useState(false)
   const totalCantos  = history.reduce((s, h) => s + h.score_count, 0)
   const totalTorneios = history.length

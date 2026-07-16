@@ -1,21 +1,6 @@
-em https://torneio-passaro.vercel.app/torneio/15e5d900-874f-4094-aecb-8429e3738757 , remover o header navbar para desktop.
-
-em https://torneio-passaro.vercel.app/torneio/15e5d900-874f-4094-aecb-8429e3738757 da para adicionar o chat da live do youtube?
-
-
-depois de definir a primeira marcação, desativar os botões de "Participar deste torneio"
-https://torneio-passaro.vercel.app/torneio/abb4623f-e15b-419d-a3bd-8d2805b59a36
+adicionar um tamanho pequeno para a foto do passarinho
+em https://torneio-passaro.vercel.app/meus-passarinhos , deixar inserir essa foto pequena
+ou foto grande com crop pequeno, para que a imagem nao fique pesada
+em https://torneio-passaro.vercel.app/meus-passarinhos ,  os passarinhos que já estão criados, se você clicar em cima da foto deles, você pode substituir as fotos, com as mesmas diretrizes.
 
 
-em https://torneio-passaro.vercel.app/mestre/torneio/abb4623f-e15b-419d-a3bd-8d2805b59a36 ,
-o botão para remover marcações fraudulentas, não está subtraindo fraudes com numerações abaixo de 5,
-na hora de subtrair, subtraia todas até as abaixo de 5.
-
-
-
-re-ver ui de torneios não verificados em https://torneio-passaro.vercel.app/meus-passarinhos/0abc0bdf-d2c1-4d27-a283-c2c1affd40e4
-
-
-
-em :https://torneio-passaro.vercel.app/admin , bota um select com filtro para pesquisa do clube / reopport / usuario por nome
-em todos eles bota páginado com o máximo de vizualização "ex: 1/10" , na parte de verificação de clubes, separa todos os clubes, dos clubes que pediram a solicitação, em cards separados.

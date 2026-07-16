@@ -5,6 +5,7 @@ import { reportLigaBird } from './actions'
 
 const REASONS = [
   { value: 'imagem_ofensiva', label: 'Imagem ofensiva' },
+  { value: 'nome_ofensivo', label: 'Nome ofensivo' },
   { value: 'fraude', label: 'Suspeita de fraude' },
   { value: 'coligacao', label: 'Coligação com clubes' },
 ]

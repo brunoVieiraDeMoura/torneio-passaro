@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { processBirdPhoto } from '@/lib/bird-photo'
+import { uploadBirdPhoto } from './actions'
 
 const BREED_STYLE: Record<string, { color: string; bg: string; border: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC', border: '#94A3B8' },
@@ -68,6 +70,7 @@ interface HistoryItem {
 interface Props {
   bird: {
     id: string; name: string; raca: string | null; estilo_canto: string | null; created_at: string
+    photo_url?: string | null
   }
   history: HistoryItem[]
   RACAS: string[]
@@ -93,8 +96,32 @@ function totalFor(history: HistoryItem[], period: Period): number {
 export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
   const router = useRouter()
   const bs = BREED_STYLE[bird.raca ?? ''] ?? DEFAULT_STYLE
-  const photo = BIRD_PHOTO[bird.raca ?? '']
   const [imgError, setImgError] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(bird.photo_url ?? null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  // foto própria primeiro; sem ela, a foto padrão da raça
+  const photo = photoUrl ?? BIRD_PHOTO[bird.raca ?? '']
+
+  // clicar na foto → escolher imagem → crop/reduz no cliente → upload
+  async function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite escolher o mesmo arquivo de novo
+    if (!file) return
+    setUploading(true)
+    try {
+      const blob = await processBirdPhoto(file)
+      const fd = new FormData()
+      fd.set('birdId', bird.id)
+      fd.set('photo', new File([blob], 'photo.jpg', { type: 'image/jpeg' }))
+      const res = await uploadBirdPhoto(fd)
+      if (res.ok) { setPhotoUrl(res.url); setImgError(false); router.refresh() }
+      else alert(res.error)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao processar a imagem.')
+    }
+    setUploading(false)
+  }
   const [period, setPeriod]       = useState<Period>('total')
   const [editing, setEditing]       = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -132,19 +159,41 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
       {/* ── top bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 16px 0' }}>
 
-        {/* avatar */}
-        <div style={{
-          width: 56, height: 56, borderRadius: 14, flexShrink: 0,
-          overflow: 'hidden',
-          background: (photo && !imgError) ? 'transparent' : '#fff',
-          border: (photo && !imgError) ? 'none' : `1.5px solid ${bs.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+        {/* avatar — clicar troca a foto (crop pequeno automático) */}
+        <button
+          type="button"
+          onClick={() => !uploading && fileRef.current?.click()}
+          title="Trocar foto do pássaro"
+          aria-label="Trocar foto do pássaro"
+          style={{
+            position: 'relative', width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+            overflow: 'hidden', padding: 0, cursor: uploading ? 'wait' : 'pointer',
+            background: (photo && !imgError) ? 'transparent' : '#fff',
+            border: (photo && !imgError) ? 'none' : `1.5px solid ${bs.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'inherit',
+          }}>
           {(photo && !imgError)
-            ? <img src={photo} alt={bird.raca ?? ''} onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ? <img src={photo} alt={bird.raca ?? ''} onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: uploading ? 0.4 : 1 }} />
             : <BirdSvg color={bs.color} size={30} />
           }
-        </div>
+          {/* badge de câmera */}
+          <span style={{
+            position: 'absolute', right: 2, bottom: 2, width: 18, height: 18,
+            borderRadius: '50%', background: 'rgba(17,24,39,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {uploading ? (
+              <span style={{ color: '#fff', fontSize: '0.55rem', fontWeight: 800 }}>…</span>
+            ) : (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            )}
+          </span>
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           {editing ? (

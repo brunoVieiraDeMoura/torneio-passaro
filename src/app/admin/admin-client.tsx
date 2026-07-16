@@ -5,8 +5,9 @@ import Link from 'next/link'
 import PaginatedList from '@/components/ui/paginated-list'
 import { SeloShield, SELO_VERDE_COLOR, SELO_INTEGRIDADE_COLOR } from '@/components/ui/selo-shield'
 import {
-  adminLogout, deleteClub, deleteUser, setClubBanned, setClubSelo,
-  setClubStatus, setReportStatus, setUserBanned,
+  adminLogout, banReportedOwner, deleteClub, deleteUser, moderateFilterName,
+  moderateRemoveImage, setClubBanned, setClubSelo, setClubStatus,
+  setReportStatus, setUserBanned,
 } from './actions'
 
 interface Profile {
@@ -23,6 +24,54 @@ interface Club {
 interface Report {
   id: string; target_type: string; target_id: string; target_label: string | null
   reason: string; details: string | null; status: string; created_at: string
+  // enriquecido no server: dono do perfil reportado + reincidência de moderação
+  owner_id: string | null; owner_name: string | null; owner_banned: boolean
+  bird_photo_url: string | null; prior_moderations: number
+}
+
+// retorno da RPC admin_usage (null se a migration ainda não rodou)
+interface Usage {
+  db_bytes: number; storage_bytes: number; storage_files: number
+  users: number; birds: number; bird_photos: number; clubs: number
+  tournaments: number; participants: number; round_scores: number; reports: number
+}
+
+// limites do plano FREE do Supabase — ajustar aqui se mudar de plano
+const FREE_DB_BYTES = 500 * 1024 * 1024        // 500 MB de banco
+const FREE_STORAGE_BYTES = 1024 * 1024 * 1024  // 1 GB de storage
+const FREE_MAU = 50_000                        // 50 mil usuários ativos/mês
+
+function fmtBytes(n: number): string {
+  if (n >= 1024 * 1024 * 1024) return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`
+  if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${n} B`
+}
+
+// barra de uso com % — verde <70, âmbar 70–90, vermelho >90
+function UsageBar({ label, sub, used, limit, usedLabel, limitLabel }: {
+  label: string; sub?: string; used: number; limit: number
+  usedLabel: string; limitLabel: string
+}) {
+  const pct = Math.min(100, (used / limit) * 100)
+  const color = pct < 70 ? '#0D8F41' : pct < 90 ? '#D97706' : '#DC2626'
+  return (
+    <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', color: '#111827' }}>{label}</p>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color, letterSpacing: '-0.02em' }}>
+          {pct < 1 && used > 0 ? '<1' : Math.round(pct)}%
+        </p>
+      </div>
+      {sub && <p style={{ margin: '0 0 8px', fontSize: '0.68rem', color: '#9CA3AF' }}>{sub}</p>}
+      <div style={{ height: 10, background: '#F3F4F6', borderRadius: 20, overflow: 'hidden', margin: '8px 0 8px' }}>
+        <div style={{ width: `${Math.max(pct, used > 0 ? 2 : 0)}%`, height: '100%', background: color, borderRadius: 20, transition: 'width 0.4s' }} />
+      </div>
+      <p style={{ margin: 0, fontSize: '0.72rem', color: '#6B7280' }}>
+        <strong style={{ color: '#111827' }}>{usedLabel}</strong> de {limitLabel}
+      </p>
+    </div>
+  )
 }
 
 const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -33,6 +82,7 @@ const STATUS_STYLE: Record<string, { label: string; color: string; bg: string; b
 
 const REASON_LABEL: Record<string, string> = {
   imagem_ofensiva: 'Imagem ofensiva',
+  nome_ofensivo: 'Nome ofensivo',
   fraude: 'Suspeita de fraude',
   coligacao: 'Coligação com clubes',
   outro: 'Outro',
@@ -159,10 +209,10 @@ function ClubCard({ c, busy, run }: { c: Club; busy: boolean; run: Run }) {
   )
 }
 
-export default function AdminClient({ profiles, clubs, reports }: {
-  profiles: Profile[]; clubs: Club[]; reports: Report[]
+export default function AdminClient({ profiles, clubs, reports, usage }: {
+  profiles: Profile[]; clubs: Club[]; reports: Report[]; usage: Usage | null
 }) {
-  const [tab, setTab] = useState<'clubs' | 'reports' | 'users'>('clubs')
+  const [tab, setTab] = useState<'clubs' | 'reports' | 'users' | 'settings'>('clubs')
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [, startTransition] = useTransition()
@@ -240,9 +290,13 @@ export default function AdminClient({ profiles, clubs, reports }: {
           <button onClick={() => { setTab('users'); setQuery('') }} style={tabBtn(tab === 'users')}>
             Usuários ({profiles.length})
           </button>
+          <button onClick={() => { setTab('settings'); setQuery('') }} style={tabBtn(tab === 'settings')}>
+            ⚙ Settings
+          </button>
         </div>
 
         {/* busca por nome */}
+        {tab !== 'settings' && (
         <div style={{ position: 'relative', marginBottom: 6 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
             style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
@@ -259,6 +313,7 @@ export default function AdminClient({ profiles, clubs, reports }: {
             }}
           />
         </div>
+        )}
 
         {/* ── clubes: solicitações de selo separadas dos demais ── */}
         {tab === 'clubs' && (
@@ -302,7 +357,13 @@ export default function AdminClient({ profiles, clubs, reports }: {
               <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>{q ? 'Nenhum report encontrado na busca.' : 'Nenhum report.'}</p>
             )}
             <PaginatedList key={`rep-${q}`} pageSize={PAGE_SIZE}>
-              {reportsFiltered.map(r => (
+              {reportsFiltered.map(r => {
+                const isOffense = r.reason === 'imagem_ofensiva' || r.reason === 'nome_ofensivo'
+                // ban liberado: fraude/coligação sempre; imagem/nome só com reincidência
+                // (imagem já removida OU nome já filtrado ao menos 1 vez)
+                const canBan = r.owner_id != null && !r.owner_banned &&
+                  (r.reason === 'fraude' || r.reason === 'coligacao' || (isOffense && r.prior_moderations >= 1))
+                return (
                 <div key={r.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 16px', marginBottom: 10, opacity: r.status === 'open' ? 1 : 0.65 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 180 }}>
@@ -311,9 +372,14 @@ export default function AdminClient({ profiles, clubs, reports }: {
                         <span style={{ marginLeft: 8, fontWeight: 500, color: '#6B7280' }}>
                           {r.target_label ?? r.target_id}
                         </span>
+                        {r.owner_banned && <span style={{ marginLeft: 8, fontSize: '0.68rem', fontWeight: 700, color: '#DC2626' }}>· DONO BANIDO</span>}
                       </p>
                       <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
                         {fmt(r.created_at)}
+                        {r.owner_name && <> · dono: {r.owner_name}</>}
+                        {r.owner_id && r.prior_moderations > 0 && (
+                          <span style={{ color: '#B45309', fontWeight: 700 }}> · {r.prior_moderations} moderação{r.prior_moderations !== 1 ? 'ções' : ''} anterior{r.prior_moderations !== 1 ? 'es' : ''}</span>
+                        )}
                         {r.target_type === 'bird' && (
                           <> · <Link href={`/liga/passarinho/${encodeURIComponent(r.target_id)}`} target="_blank" style={{ color: '#0D8F41' }}>ver perfil na liga →</Link></>
                         )}
@@ -323,9 +389,64 @@ export default function AdminClient({ profiles, clubs, reports }: {
                           {r.details}
                         </p>
                       )}
+
+                      {/* imagem reportada: mostra a foto própria do pássaro (se houver) */}
+                      {r.reason === 'imagem_ofensiva' && (
+                        r.bird_photo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.bird_photo_url} alt="Imagem reportada"
+                            style={{ marginTop: 8, width: 120, height: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid #FECACA', display: 'block' }} />
+                        ) : (
+                          <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: '#9CA3AF', fontStyle: 'italic' }}>
+                            {r.owner_id ? 'Sem imagem própria — o perfil usa a foto padrão da raça.' : ''}
+                          </p>
+                        )
+                      )}
+
+                      {r.owner_id == null && (
+                        <p style={{ margin: '6px 0 0', fontSize: '0.72rem', color: '#9CA3AF', fontStyle: 'italic' }}>
+                          Perfil de demonstração — sem dono real para moderar.
+                        </p>
+                      )}
                     </div>
+
                     {r.status === 'open' ? (
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {/* ações de moderação por motivo */}
+                        {r.reason === 'imagem_ofensiva' && r.owner_id && (
+                          <button disabled={busy === r.id || !r.bird_photo_url}
+                            title={!r.bird_photo_url ? 'Este pássaro não tem imagem própria' : undefined}
+                            onClick={() => {
+                              if (window.confirm('Remover a imagem deste pássaro?\n\nO dono receberá um aviso de que imagens desse tipo podem resultar em banimento permanente.')) {
+                                run(r.id, () => moderateRemoveImage(r.id))
+                              }
+                            }}
+                            style={{ ...btn('#B45309', '#fff'), opacity: !r.bird_photo_url ? 0.45 : 1 }}>
+                            Remover imagem
+                          </button>
+                        )}
+                        {r.reason === 'nome_ofensivo' && r.owner_id && (
+                          <button disabled={busy === r.id}
+                            onClick={() => {
+                              if (window.confirm('Filtrar o nome deste pássaro?\n\nO nome vira "Nomefiltrado(id)" na liga, nos torneios e no cadastro, e o dono recebe um aviso.')) {
+                                run(r.id, () => moderateFilterName(r.id))
+                              }
+                            }}
+                            style={btn('#B45309', '#fff')}>
+                            Filtrar nome
+                          </button>
+                        )}
+                        {canBan && (
+                          <button disabled={busy === r.id}
+                            onClick={() => {
+                              if (window.confirm(`Banir "${r.owner_name ?? 'o dono'}"?\n\nA conta perde acesso à plataforma (reversível na aba Usuários).`)) {
+                                run(r.id, () => banReportedOwner(r.id))
+                              }
+                            }}
+                            style={btn('#DC2626', '#fff')}>
+                            Banir dono
+                          </button>
+                        )}
                         <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'resolved'))} style={btn('#0D8F41', '#fff')}>Resolver</button>
                         <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'dismissed'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Descartar</button>
                       </div>
@@ -339,7 +460,8 @@ export default function AdminClient({ profiles, clubs, reports }: {
                     )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </PaginatedList>
           </div>
         )}
@@ -378,6 +500,71 @@ export default function AdminClient({ profiles, clubs, reports }: {
                 </div>
               ))}
             </PaginatedList>
+          </div>
+        )}
+
+        {/* ── settings: uso do plano free do Supabase ── */}
+        {tab === 'settings' && (
+          <div style={{ marginTop: 12 }}>
+            {!usage ? (
+              <p style={{ color: '#B45309', fontSize: '0.85rem', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 14px' }}>
+                Sem dados de uso — rode a migration <code>20260716_admin_usage.sql</code> no Supabase.
+              </p>
+            ) : (
+              <>
+                <p style={sectionTitle}>Uso do plano free do Supabase</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 12 }}>
+                  <UsageBar
+                    label="Banco de dados"
+                    sub="Torneios, contas, pontuações, histórico…"
+                    used={usage.db_bytes} limit={FREE_DB_BYTES}
+                    usedLabel={fmtBytes(usage.db_bytes)} limitLabel={fmtBytes(FREE_DB_BYTES)}
+                  />
+                  <UsageBar
+                    label="Storage (imagens)"
+                    sub={`${usage.storage_files} arquivo${usage.storage_files !== 1 ? 's' : ''} — fotos de pássaros e logos de clubes`}
+                    used={usage.storage_bytes} limit={FREE_STORAGE_BYTES}
+                    usedLabel={fmtBytes(usage.storage_bytes)} limitLabel={fmtBytes(FREE_STORAGE_BYTES)}
+                  />
+                  <UsageBar
+                    label="Contas registradas"
+                    sub="Limite do free: 50 mil usuários ativos por mês"
+                    used={usage.users} limit={FREE_MAU}
+                    usedLabel={usage.users.toLocaleString('pt-BR')} limitLabel={FREE_MAU.toLocaleString('pt-BR')}
+                  />
+                </div>
+
+                <p style={sectionTitle}>Registros no banco</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+                  {[
+                    { label: 'Contas', value: usage.users },
+                    { label: 'Clubes', value: usage.clubs },
+                    { label: 'Pássaros', value: usage.birds },
+                    { label: 'Fotos de pássaro', value: usage.bird_photos },
+                    { label: 'Torneios', value: usage.tournaments },
+                    { label: 'Participações', value: usage.participants },
+                    { label: 'Marcações (histórico)', value: usage.round_scores },
+                    { label: 'Reports', value: usage.reports },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
+                      <p style={{ margin: 0, fontWeight: 800, fontSize: '1.25rem', color: '#111827', letterSpacing: '-0.02em' }}>
+                        {s.value.toLocaleString('pt-BR')}
+                      </p>
+                      <p style={{ margin: '3px 0 0', fontSize: '0.62rem', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {s.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <p style={{ margin: '14px 0 0', fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.5 }}>
+                  Egress (banda de 5 GB/mês do free) não dá pra medir por aqui — acompanhe em{' '}
+                  <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ color: '#0D8F41' }}>
+                    supabase.com/dashboard → Usage
+                  </a>. Limites acima são do plano free; mudou de plano, ajuste as constantes no topo do admin-client.
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>

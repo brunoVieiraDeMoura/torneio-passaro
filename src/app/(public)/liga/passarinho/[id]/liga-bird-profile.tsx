@@ -60,11 +60,13 @@ interface Props {
   entry: LigaEntry
   position: number
   total: number
+  photoUrl?: string | null
 }
 
-export default function LigaBirdProfile({ entry, position, total }: Props) {
+export default function LigaBirdProfile({ entry, position, total, photoUrl = null }: Props) {
   const bs = BREED_STYLE[entry.tipo_ave] ?? DEFAULT_BS
-  const photo = BIRD_PHOTO[entry.tipo_ave]
+  // foto própria do pássaro primeiro; sem ela, a foto padrão da raça
+  const photo = photoUrl ?? BIRD_PHOTO[entry.tipo_ave]
   const [imgError, setImgError] = useState(false)
 
   useEffect(() => { window.scrollTo(0, 0) }, [])

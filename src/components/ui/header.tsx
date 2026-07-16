@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
+import UserAlerts from '@/components/ui/user-alerts'
 
 const navLinks = [
   {
@@ -222,6 +223,9 @@ export default function Header({ initialUser }: { initialUser?: User | null }) {
 
   return (
     <>
+      {/* avisos de moderação da Admin Central (não lidos) */}
+      {user && <UserAlerts userId={user.id} />}
+
       <header className="site-header" style={{ position: 'sticky', top: 0, zIndex: 200, background: '#fff', borderBottom: '1px solid #F3F4F6' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', gap: 8 }}>
 

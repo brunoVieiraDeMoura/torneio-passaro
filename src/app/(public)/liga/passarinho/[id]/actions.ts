@@ -5,7 +5,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const REASONS = ['imagem_ofensiva', 'fraude', 'coligacao'] as const
+const REASONS = ['imagem_ofensiva', 'nome_ofensivo', 'fraude', 'coligacao'] as const
 export type ReportReason = typeof REASONS[number]
 
 export async function reportLigaBird(input: {

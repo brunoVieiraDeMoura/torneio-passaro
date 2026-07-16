@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { processBirdPhoto } from '@/lib/bird-photo'
+import { uploadBirdPhoto } from './actions'
 
 const RACAS = [
   'Coleiro', 'Canário belga', 'Canário da terra', 'Curió', 'Bicudo',
@@ -156,9 +158,12 @@ export default function BirdForm({ userId }: { userId: string }) {
   const [name, setName] = useState('')
   const [raca, setRaca] = useState('')
   const [estilo, setEstilo] = useState('')
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -167,12 +172,46 @@ export default function BirdForm({ userId }: { userId: string }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
 
+  // foto opcional: já reduz no cliente (crop central 256px) e mostra o preview
+  async function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const blob = await processBirdPhoto(file)
+      if (photoPreview) URL.revokeObjectURL(photoPreview)
+      setPhotoBlob(blob)
+      setPhotoPreview(URL.createObjectURL(blob))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao processar a imagem.')
+    }
+  }
+
+  function clearPhoto() {
+    if (photoPreview) URL.revokeObjectURL(photoPreview)
+    setPhotoBlob(null); setPhotoPreview(null)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     const supabase = createClient()
-    await supabase.from('birds').insert({ user_id: userId, name, raca, estilo_canto: estilo })
-    setName(''); setRaca(''); setEstilo('')
+    const { data: created } = await supabase
+      .from('birds')
+      .insert({ user_id: userId, name, raca, estilo_canto: estilo })
+      .select('id')
+      .single()
+
+    // foto escolhida → sobe já reduzida e vincula ao pássaro criado
+    if (created && photoBlob) {
+      const fd = new FormData()
+      fd.set('birdId', created.id)
+      fd.set('photo', new File([photoBlob], 'photo.jpg', { type: 'image/jpeg' }))
+      const res = await uploadBirdPhoto(fd)
+      if (!res.ok) alert(`Pássaro criado, mas a foto falhou: ${res.error}`)
+    }
+
+    setName(''); setRaca(''); setEstilo(''); clearPhoto()
     setLoading(false); setOpen(false)
     router.refresh()
   }
@@ -244,6 +283,43 @@ export default function BirdForm({ userId }: { userId: string }) {
               <div>
                 <label style={labelStyle}>Estilo de canto</label>
                 <CustomSelect value={estilo} onChange={setEstilo} options={ESTILOS} placeholder="Selecionar estilo..." />
+              </div>
+
+              {/* foto opcional — reduzida no cliente p/ ficar leve */}
+              <div>
+                <label style={labelStyle}>Foto (opcional)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button type="button" onClick={() => fileRef.current?.click()} style={{
+                    width: 56, height: 56, borderRadius: 14, flexShrink: 0, padding: 0,
+                    border: '1.5px dashed #D1D5DB', background: '#F9FAFB', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                  }}>
+                    {photoPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photoPreview} alt="Foto escolhida" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                      </svg>
+                    )}
+                  </button>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#9CA3AF', lineHeight: 1.45 }}>
+                      Pode mandar foto grande — a gente corta e reduz sozinho pra ficar leve.
+                    </p>
+                    {photoPreview && (
+                      <button type="button" onClick={clearPhoto} style={{
+                        marginTop: 4, background: 'none', border: 'none', padding: 0,
+                        fontSize: '0.72rem', fontWeight: 700, color: '#DC2626',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}>
+                        Remover foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
               </div>
 
               <button
