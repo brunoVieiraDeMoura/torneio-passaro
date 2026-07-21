@@ -84,7 +84,7 @@ const REASON_LABEL: Record<string, string> = {
   imagem_ofensiva: 'Imagem ofensiva',
   nome_ofensivo: 'Nome ofensivo',
   fraude: 'Suspeita de fraude',
-  coligacao: 'Coligação com clubes',
+  coligacao: 'Suspeita de coligação com clubes',
   outro: 'Outro',
 }
 
@@ -168,7 +168,7 @@ function ClubCard({ c, busy, run }: { c: Club; busy: boolean; run: Run }) {
         <span style={{ fontSize: '0.7rem', fontWeight: 700, color: s.color, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 20, padding: '3px 10px' }}>
           {s.label}
         </span>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div className="admin-actions" style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
           {c.status !== 'approved' && (
             <button disabled={busy} onClick={() => run(c.id, () => setClubStatus(c.id, 'approved'))} style={btn('#0D8F41', '#fff')}>Aprovar</button>
           )}
@@ -317,7 +317,7 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
           </div>
 
           {r.status === 'open' ? (
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div className="admin-actions" style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {/* ações de moderação por motivo */}
               {r.reason === 'imagem_ofensiva' && r.owner_id && (
                 <button disabled={busy === r.id || !r.bird_photo_url}
@@ -357,7 +357,7 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
               <button disabled={busy === r.id} onClick={() => run(r.id, () => setReportStatus(r.id, 'dismissed'))} style={btn('#fff', '#6B7280', '1px solid #E5E7EB')}>Descartar</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <div className="admin-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <span style={chip(r.status === 'resolved' ? '#0D8F41' : '#6B7280', r.status === 'resolved' ? '#F0FDF4' : '#F3F4F6', r.status === 'resolved' ? '#D1FAE5' : '#E5E7EB')}>
                 {r.status === 'resolved' ? 'Resolvido' : 'Descartado'}
               </span>
@@ -371,8 +371,18 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
 
   return (
     <main style={{ minHeight: '100dvh', background: '#FAFAFA' }}>
+      {/* Responsividade mobile do /admin — grupos de ação viram largura total (tappable),
+          header empilha e o título encolhe. */}
+      <style>{`
+        @media (max-width: 640px) {
+          .admin-header { flex-wrap: wrap; align-items: flex-start !important; }
+          .admin-header h1 { font-size: 1.2rem !important; }
+          .admin-actions { width: 100%; }
+          .admin-actions button { flex: 1 1 auto; min-width: 0; }
+        }
+      `}</style>
       <div style={{ background: '#0A1F0E', padding: '20px 0' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+        <div className="admin-header" style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <p style={{ margin: '0 0 4px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4ADE80' }}>
               Admin Central
@@ -503,7 +513,7 @@ export default function AdminClient({ profiles, clubs, reports, usage }: {
                     </p>
                     <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>{u.email || '—'}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div className="admin-actions" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <button disabled={busy === u.id} onClick={() => run(u.id, () => setUserBanned(u.id, !u.banned))} style={btn(u.banned ? '#F3F4F6' : '#111827', u.banned ? '#374151' : '#fff')}>
                       {u.banned ? 'Desbanir' : 'Banir'}
                     </button>

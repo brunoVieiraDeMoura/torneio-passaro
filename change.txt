@@ -1,4 +1,6 @@
-em https://torneio-passaro.vercel.app/torneio/202360ca-d3ce-4e72-8a4f-7887025df1ca/participante?pid=87366667-5140-4552-8238-0a481ed10bd4
-a responsividade do aplicativo para o usuário no Internet explore está quebrada, o container está em baixo do banner, corrija o comportamento (deveria estar baner, em baixo do baner começar o resto do container.
->>> [FEITO] Causa: banner era position:fixed com padding-top fixo (84px), mas a imagem real do anuncio eh mais alta (~150px no mobile) -> conteudo passava por baixo. Fix: AdBanner agora fica EM FLUXO (inline) no topo do <main>, conteudo comeca abaixo dele. Removido o hack de padding-top. participante-client.tsx
-    obs: a stack (Next 15 + React 19) nao suporta IE11 de verdade; o overlap foi corrigido pra todos os navegadores.
+deixa toda a parte de /admin responsiva para mobile
+>>> [FEITO] Adicionado <style> com media query (<=640px) + classes: header empilha/encolhe titulo; grupos de botoes de acao (clubes, reports, usuarios) viram largura total e crescem (tappable). Login/settings/grids ja eram responsivos. admin-client.tsx
+
+em https://torneio-passaro.vercel.app/liga/passarinho/gen1345, no reportar
+mudar "Coligação com clubes" para "Suspeita de coligação com clubes" (mantenha responsividade)
+>>> [FEITO] Label trocado no form de report (report-button.tsx) e no admin (admin-client REASON_LABEL). O texto fica em <span> que quebra linha — responsividade mantida.
