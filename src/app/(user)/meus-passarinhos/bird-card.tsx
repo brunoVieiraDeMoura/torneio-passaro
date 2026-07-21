@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { processBirdPhoto } from '@/lib/bird-photo'
 import { uploadBirdPhoto } from './actions'
 import FeedbackPopup, { type PopupMsg } from '@/components/ui/feedback-popup'
+import { formatDuration } from '@/lib/duration'
 
 const BREED_STYLE: Record<string, { color: string; bg: string; border: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC', border: '#94A3B8' },
@@ -310,8 +311,11 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
               if (period === 'ano') return date.getFullYear() === now.getFullYear()
               return true
             }
+            // Canto Fibra pontua por TEMPO (ms) → total é tempo somado (mm:ss), não nº de cantos
+            const isFibra = bird.estilo_canto === 'Canto Fibra'
+            const totalScore = totalFor(history, period)
             return [
-              { label: 'Cantos', value: totalFor(history, period).toLocaleString('pt-BR') },
+              { label: isFibra ? 'Tempo de canto' : 'Cantos', value: isFibra ? formatDuration(totalScore) : totalScore.toLocaleString('pt-BR') },
               { label: 'Torneios', value: history.filter(inPeriod).length.toString() },
               { label: 'Vitórias', value: history.filter(h => h.won && inPeriod(h)).length.toString() },
             ]

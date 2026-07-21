@@ -1,6 +1,9 @@
-deixa toda a parte de /admin responsiva para mobile
->>> [FEITO] Adicionado <style> com media query (<=640px) + classes: header empilha/encolhe titulo; grupos de botoes de acao (clubes, reports, usuarios) viram largura total e crescem (tappable). Login/settings/grids ja eram responsivos. admin-client.tsx
+dentro da modalidade de canto clássico, tem um sistema para o usuário quando está marcando o canto que salva em cash o resultado dos cantos (para previnir se o usuário cair a internet, quando ele volta, ainda possa contabilizar os pontos no qual seriam perdidos)
+confere se isso também funciona para o canto fibra.
+>>> [VERIFICADO + REFORCADO] Fibra JA tinha cache offline (localStorage aveum_pending_fibra_<id>), espelhando o classico: salva intervalos ao soltar, restaura no reload, reenvia ao voltar a net, limpa em nova marcacao. Queda de internet = coberto.
+    Nuance fechada: agora persiste tambem o aperto EM ANDAMENTO (pressStartedAt + pressLastAt atualizado a cada tick). Crash no meio do segurar recupera ate o ultimo instante vivo (erro max = 1 tick), sem perder nem supervalorizar. participante-client.tsx
 
-em https://torneio-passaro.vercel.app/liga/passarinho/gen1345, no reportar
-mudar "Coligação com clubes" para "Suspeita de coligação com clubes" (mantenha responsividade)
->>> [FEITO] Label trocado no form de report (report-button.tsx) e no admin (admin-client REASON_LABEL). O texto fica em <span> que quebra linha — responsividade mantida.
+reseta todos registros no bd de clubes / usuários / pássaros fakes / pássaros criados (deletar para recriar novamente, um teste live para ver o funcionamento no real.)
+>>> [PREPARADO — NAO EXECUTADO] Delecao no banco de producao e irreversivel; NAO rodei. Entregue:
+    1. supabase/reset_dev_data.sql — script pronto (truncate das 10 tabelas + delete auth.users). VOCE roda no Supabase SQL Editor (confirme o projeto certo). Mantem schema/policies/functions.
+    2. "Passaros fakes" NAO estao no banco — sao mock em codigo (ALL_LIGA, src/data/liga-*.ts). Agora escondidos por default via flag: getMergedLiga so mostra dados REAIS a menos que NEXT_PUBLIC_SHOW_LIGA_MOCK=true. src/lib/liga.ts

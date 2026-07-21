@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import PaginatedList from '@/components/ui/paginated-list'
+import { formatDuration } from '@/lib/duration'
 
 const BREED_STYLE: Record<string, { color: string; bg: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC' },
@@ -77,6 +78,10 @@ export default function BirdReport({ bird, history }: Props) {
   // foto própria primeiro; sem ela, a foto padrão da raça
   const photo = bird.photo_url ?? BIRD_PHOTO[bird.raca ?? '']
   const [imgError, setImgError] = useState(false)
+  // Canto Fibra pontua por TEMPO (score_count em ms) → renderiza mm:ss em vez de nº bruto
+  const isFibra = bird.estilo_canto === 'Canto Fibra'
+  const fmtScore = (n: number) => isFibra ? formatDuration(n) : n.toLocaleString('pt-BR')
+  const cantosLabel = isFibra ? 'Tempo de canto' : 'Cantos'
   const totalCantos  = history.reduce((s, h) => s + h.score_count, 0)
   const totalTorneios = history.length
   const melhor = history.reduce((best, h) => h.score_count > best ? h.score_count : best, 0)
@@ -198,7 +203,7 @@ export default function BirdReport({ bird, history }: Props) {
             {/* cantos por período */}
             <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '20px' }}>
               <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9CA3AF' }}>
-                Cantos por período
+                {cantosLabel} por período
               </p>
               {[
                 { label: 'Esta semana', value: cantosFrom(startOfWeek) },
@@ -209,7 +214,7 @@ export default function BirdReport({ bird, history }: Props) {
                 <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
                   <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>{s.label}</span>
                   <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
-                    {s.value.toLocaleString('pt-BR')}
+                    {fmtScore(s.value)}
                   </span>
                 </div>
               ))}
@@ -221,10 +226,10 @@ export default function BirdReport({ bird, history }: Props) {
                 Resumo geral
               </p>
               {[
-                { label: 'Total de cantos',    value: totalCantos.toLocaleString('pt-BR') },
+                { label: isFibra ? 'Tempo total de canto' : 'Total de cantos', value: fmtScore(totalCantos) },
                 { label: 'Campeonatos',        value: totalTorneios.toString() },
-                { label: 'Melhor pontuação',   value: melhor.toLocaleString('pt-BR') },
-                { label: 'Média por torneio',  value: totalTorneios > 0 ? Math.round(totalCantos / totalTorneios).toLocaleString('pt-BR') : '—' },
+                { label: isFibra ? 'Melhor tempo' : 'Melhor pontuação',   value: fmtScore(melhor) },
+                { label: 'Média por torneio',  value: totalTorneios > 0 ? fmtScore(Math.round(totalCantos / totalTorneios)) : '—' },
               ].map(s => (
                 <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #F9FAFB' }}>
                   <span style={{ fontSize: '0.8rem', color: '#6B7280' }}>{s.label}</span>
@@ -259,8 +264,8 @@ export default function BirdReport({ bird, history }: Props) {
               <>
                 {/* table header */}
                 <div className="hist-head">
-                  {['Torneio', 'Local', 'Data', 'Cantos'].map(h => (
-                    <p key={h} style={{ margin: 0, fontSize: '0.6rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: h === 'Cantos' ? 'right' : 'left' }}>
+                  {['Torneio', 'Local', 'Data', cantosLabel].map(h => (
+                    <p key={h} style={{ margin: 0, fontSize: '0.6rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: h === cantosLabel ? 'right' : 'left' }}>
                       {h}
                     </p>
                   ))}
@@ -327,7 +332,8 @@ export default function BirdReport({ bird, history }: Props) {
                       {fmt(h.tournament_start_at)}
                     </p>
                     <p className="hist-cantos" style={{ margin: 0, fontWeight: 800, fontSize: '0.92rem', color: h.score_count === melhor && melhor > 0 ? '#B45309' : '#111827', letterSpacing: '-0.02em' }}>
-                      {h.score_count.toLocaleString('pt-BR')}
+                      <span className="hist-label">{cantosLabel}:</span>
+                      {fmtScore(h.score_count)}
                     </p>
                   </div>
                 ))}

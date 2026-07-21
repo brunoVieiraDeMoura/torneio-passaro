@@ -83,8 +83,11 @@ export async function getRealLigaEntries(): Promise<LigaEntry[]> {
   })
 }
 
-// Liga completa: pássaros reais + entradas de demonstração (mock)
+// Liga completa: pássaros reais + entradas de demonstração (mock).
+// Os mocks (ALL_LIGA, em src/data/liga-*.ts) só aparecem com NEXT_PUBLIC_SHOW_LIGA_MOCK=true.
+// Default = só dados REAIS (pro teste live). Pra trazer a demo de volta, setar a env.
+const SHOW_LIGA_MOCK = process.env.NEXT_PUBLIC_SHOW_LIGA_MOCK === 'true'
 export async function getMergedLiga(): Promise<LigaEntry[]> {
   const real = await getRealLigaEntries()
-  return [...real, ...ALL_LIGA]
+  return SHOW_LIGA_MOCK ? [...real, ...ALL_LIGA] : real
 }

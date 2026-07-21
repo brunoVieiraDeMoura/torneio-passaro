@@ -196,9 +196,10 @@ export default function BirdForm({ userId }: { userId: string }) {
     e.preventDefault()
     setLoading(true)
     const supabase = createClient()
+    // padrão quando a pessoa não escolhe raça/estilo: Bicudo · Canto Fibra
     const { data: created } = await supabase
       .from('birds')
-      .insert({ user_id: userId, name, raca, estilo_canto: estilo })
+      .insert({ user_id: userId, name, raca: raca || 'Bicudo', estilo_canto: estilo || 'Canto Fibra' })
       .select('id')
       .single()
 

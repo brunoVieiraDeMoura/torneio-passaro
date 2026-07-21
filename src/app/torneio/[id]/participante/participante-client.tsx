@@ -141,10 +141,16 @@ export default function ParticipanteClient({
 
   const persistPendingFibra = useCallback(() => {
     try {
-      if (pendingIntervalsRef.current.length > 0) {
+      const pressing = pressStartRef.current !== null
+      if (pendingIntervalsRef.current.length > 0 || pressing) {
         localStorage.setItem(fibraStorageKey, JSON.stringify({
           startAt: marcacaoKeyRef.current,
           intervals: pendingIntervalsRef.current,
+          // aperto EM ANDAMENTO: início + "último visto" (atualizado a cada tick).
+          // se o app cair no meio do segurar, recupera até o último instante confirmado
+          // vivo — não perde e não supervaloriza (erro máx = 1 tick).
+          pressStartedAt: pressing ? new Date(pressStartRef.current!).toISOString() : null,
+          pressLastAt: pressing ? new Date().toISOString() : null,
         }))
       } else {
         localStorage.removeItem(fibraStorageKey)
@@ -199,11 +205,30 @@ export default function ParticipanteClient({
     try {
       const raw = localStorage.getItem(fibraStorageKey)
       if (!raw) return
-      const saved = JSON.parse(raw) as { startAt: string | null; intervals: { startedAt: string; endedAt: string }[] }
-      if (saved.startAt === torneio.start_at && saved.intervals?.length > 0) {
-        pendingIntervalsRef.current.push(...saved.intervals)
-        const somaMs = saved.intervals.reduce((a, iv) => a + (new Date(iv.endedAt).getTime() - new Date(iv.startedAt).getTime()), 0)
-        setCount(c => c + somaMs)
+      const saved = JSON.parse(raw) as {
+        startAt: string | null
+        intervals: { startedAt: string; endedAt: string }[]
+        pressStartedAt?: string | null; pressLastAt?: string | null
+      }
+      if (saved.startAt === torneio.start_at) {
+        let somaMs = 0
+        if (saved.intervals?.length > 0) {
+          pendingIntervalsRef.current.push(...saved.intervals)
+          somaMs += saved.intervals.reduce((a, iv) => a + (new Date(iv.endedAt).getTime() - new Date(iv.startedAt).getTime()), 0)
+        }
+        // aperto que estava em andamento no crash → fecha no "último visto" (não agora,
+        // pra não contar tempo em que o app estava morto)
+        if (saved.pressStartedAt) {
+          const s = new Date(saved.pressStartedAt).getTime()
+          const e = saved.pressLastAt ? new Date(saved.pressLastAt).getTime() : s
+          if (e > s) {
+            pendingIntervalsRef.current.push({ startedAt: saved.pressStartedAt, endedAt: new Date(e).toISOString() })
+            somaMs += e - s
+          }
+        }
+        if (somaMs > 0) setCount(c => c + somaMs)
+        // regrava sem o pressStartedAt (já virou intervalo) — evita recontar num 2º reload
+        persistPendingFibra()
       } else if (saved.startAt !== torneio.start_at) {
         localStorage.removeItem(fibraStorageKey)
       }
@@ -485,9 +510,11 @@ export default function ParticipanteClient({
     pressStartRef.current = null
     setPressing(false)
     const end = endMsOverride ?? Date.now()
-    if (end <= start) return
-    setCount(c => c + (end - start))
-    pendingIntervalsRef.current.push({ startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
+    if (end > start) {
+      setCount(c => c + (end - start))
+      pendingIntervalsRef.current.push({ startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
+    }
+    // sempre grava: enfileira o intervalo (se houve) E limpa o pressStartedAt do storage
     persistPendingFibra()
   }, [persistPendingFibra])
 
@@ -499,9 +526,17 @@ export default function ParticipanteClient({
     if (pressStartRef.current !== null) return
     pressStartRef.current = Date.now()
     setPressing(true)
-  }, [isRunning, isCountingDown, participanteStatus, isMyTurn])
+    persistPendingFibra() // grava o início na hora — crash 1ms depois já é recuperável
+  }, [isRunning, isCountingDown, participanteStatus, isMyTurn, persistPendingFibra])
 
   const handleFibraPressEnd = useCallback(() => { closeFibraInterval() }, [closeFibraInterval])
+
+  // enquanto o marcador está pressionado, atualiza o "último visto" no storage a cada
+  // tick (250ms) — assim um crash no meio do aperto recupera até o instante mais recente
+  useEffect(() => {
+    if (!isFibra || !pressing) return
+    persistPendingFibra()
+  }, [isFibra, pressing, now, persistPendingFibra])
 
   // bateria acabou com o botão pressionado → fecha sozinho, cravando o fim da janela
   useEffect(() => {
@@ -978,12 +1013,15 @@ export default function ParticipanteClient({
             </p>
           </div>
 
-          {/* aviso da vassourada — destaque leve, logo abaixo do texto */}
-          <div style={{ width: '100%', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px' }}>
-            <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#92400E', textAlign: 'center', lineHeight: 1.5 }}>
-              🧹 Aguarde as próximas marcações. Se você passar na vassourada, sua vez volta automaticamente.
-            </p>
-          </div>
+          {/* aviso da vassourada — só quando há mais de uma marcação (com 1 só não há
+              próximas marcações nem vassourada) */}
+          {divisions > 1 && (
+            <div style={{ width: '100%', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px' }}>
+              <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#92400E', textAlign: 'center', lineHeight: 1.5 }}>
+                🧹 Aguarde as próximas marcações. Se você passar na vassourada, sua vez volta automaticamente.
+              </p>
+            </div>
+          )}
 
           {/* destaque do PRÓPRIO passarinho (remetente) — não o que ele marca */}
           {markTarget ? (
