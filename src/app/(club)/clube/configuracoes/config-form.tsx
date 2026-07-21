@@ -11,6 +11,9 @@ const inp: React.CSSProperties = {
   width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
   padding: '10px 12px', fontSize: '0.85rem', outline: 'none',
   fontFamily: 'inherit', color: '#111827', background: '#fff', boxSizing: 'border-box',
+  // ao focar no mobile, o browser rola o input pra vista — deixa folga pra barra fixa
+  // do topo do painel do clube (56px) não cobrir o campo
+  scrollMarginTop: 72,
 }
 const lbl: React.CSSProperties = {
   display: 'block', fontSize: '0.68rem', fontWeight: 700, color: '#6B7280',

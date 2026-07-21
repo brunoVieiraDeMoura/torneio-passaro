@@ -1,10 +1,4 @@
-Login de clube (Google no ?from=clube ia pra usuario) + separar logins + 1 email pode ser user E clube + criar clube auto com nome placeholder e mandar pras configuracoes
->>> [FEITO] Reorganizacao do login:
-    - Separados em /login/participante e /login/clubes (form compartilhado login-form.tsx com prop mode). /login vira redirect (compat: ?from=clube->clubes, senao participante; preserva ?redirect do QR).
-    - Roteamento por INTENCAO (o caminho do login decide), nao so por role. 1 email serve os dois modos: entra como clube pelo /login/clubes, como user pelo /login/participante.
-    - Google no /login/clubes: next=/clube/dashboard. Callback: se a conta ja tem clube -> dashboard; se NAO tem -> /clube/setup.
-    - /clube/setup (server, auto-create SEM form): cria clube com nome "NomeFiltrado(<8 chars do user id>)", marca role=club, e redireciona pras CONFIGURACOES pro usuario ajustar o nome/dados. Idempotente (se ja tem clube -> dashboard). So alcancado por navegacao (login/callback), nunca por prefetch.
-    - Login por senha no /login/clubes: mesma logica (tem clube->dashboard, senao->/clube/setup).
-    - Middleware: bypass do /clube/setup pra qualquer logado; clube PENDENTE agora alcanca /clube/configuracoes (pra preencher o nome do clube recem-criado).
-    - CTAs da home apontam direto: participante->/login/participante, clube->/login/clubes.
-    Arquivos: (auth)/login/{page,login-form,participante/page,clubes/page}.tsx, auth/callback/route.ts, clube/setup/page.tsx, middleware.ts, page.tsx
+em /clube/torneios ao clicar em criar torneio no mobile o teclado prejudica a visibilidade do input, responsividade errada. Na configuracao da dashboard do clube tambem, nos campos de nome.
+>>> [FEITO]
+    - Modal "Criar torneio" (criar-torneio-form): mesmo fix do bird-form. Overlay virou scroll container (alignItems flex-start + overflowY auto) e o box usa margin:auto -> com teclado aberto (viewport encolhe) o modal continua acessivel/rolavel, nao fica atras do teclado.
+    - Configuracoes do clube (config-form): a barra fixa do topo do painel (.club-topbar, 56px) cobria o input quando o browser rolava ele pra vista no foco. Adicionado scroll-margin-top:72 nos campos -> ao focar, sobra espaco pra barra nao tapar.

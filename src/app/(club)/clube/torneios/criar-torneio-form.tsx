@@ -84,11 +84,13 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
       style={{
         position: 'fixed', inset: 0, zIndex: 400,
         background: 'rgba(0,0,0,0.45)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16,
+        // scroll container: com teclado aberto (viewport encolhe) o modal continua
+        // acessível — centraliza quando cabe (margin auto), rola quando não.
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        padding: 16, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}
     >
-      <div style={{ background: '#fff', borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 460, boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 460, margin: 'auto', boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Novo torneio</p>
           <button type="button" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, lineHeight: 0 }}>
