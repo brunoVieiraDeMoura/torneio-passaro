@@ -1,3 +1,7 @@
-o login por https://torneio-passaro.vercel.app/login?from=clube , está direcionando para como se fosse um usuário normal, e não um clube que leva para dashboard do clube.
->>> [FEITO] O login decidia o destino so por profiles.role === 'club'. Se a role nao estivesse 'club' (conta criada por outro caminho), caia no fluxo de participante (/torneios). Agora detecta clube por role='club' OU posse de clube (clubs.user_id = usuario) — sinal mais confiavel. Sendo clube -> /clube/dashboard. login/page.tsx
-    obs: cadastro de clube JA seta role='club' no metadata (trigger grava). O reforco cobre contas antigas/criadas manualmente. O param from=clube nao e usado pra rotear de proposito (inseguro — participante poderia forjar). Roteamento e por role/posse.
+o login no login de clube pelo google, também redireciona para o usuário normal
++ (msg) 1 email pode ser usuario OU clube: login do clube -> conta do clube; login do participante -> usuario
+>>> [FEITO] Roteamento agora e por INTENCAO do login (nao so por role), pra suportar 1 email nos dois modos:
+    - Login page le ?from=clube. Senha: redirect(QR) vence > clube-login+é clube -> /clube/dashboard > clube-login sem clube -> /torneios > participante-login -> /torneios (mesmo tendo clube).
+    - Google: GoogleButton recebe next = /clube/dashboard (clube-login) ou /torneios (participante). Passa no OAuth redirectTo -> callback.
+    - Callback: destino vem do next. Guard: se next e area do clube mas a conta nao e clube (role OU posse), cai em /torneios.
+    Arquivos: (auth)/login/page.tsx, auth/callback/route.ts

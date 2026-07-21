@@ -47,6 +47,22 @@ export async function GET(request: Request) {
       // clube novo entra pendente de aprovação do admin
       return NextResponse.redirect(`${origin}/aprovacao-pendente`)
     }
+
+    // Login normal (Google): o destino vem da INTENÇÃO carregada em `next`
+    //  • login de clube  → next = /clube/dashboard
+    //  • login de participante → next = /torneios
+    // 1 email pode ser user E clube: quem entra como participante segue no fluxo de
+    // user (mesmo tendo clube). Guard: se `next` aponta pra área do clube mas a conta
+    // não é clube, cai no fluxo de participante (evita bounce no guard do dashboard).
+    if (user && next.startsWith('/clube')) {
+      const [{ data: prof }, { data: ownsClub }] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', user.id).maybeSingle(),
+        supabase.from('clubs').select('id').eq('user_id', user.id).maybeSingle(),
+      ])
+      if (!(prof?.role === 'club' || ownsClub)) {
+        return NextResponse.redirect(`${origin}/torneios`)
+      }
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`)

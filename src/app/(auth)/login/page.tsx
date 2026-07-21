@@ -24,6 +24,10 @@ function LoginForm() {
   const params = useSearchParams()
   // fluxo do QR code: /login?redirect=/entrar/<token> volta pra inscrição após logar
   const redirect = params.get('redirect')
+  // intenção de login: /login?from=clube entra como CLUBE (dashboard); sem isso, como
+  // participante. 1 email pode ser os dois — o caminho do login decide onde cai.
+  const isClubLogin = params.get('from') === 'clube'
+  const googleNext = redirect ?? (isClubLogin ? '/clube/dashboard' : '/torneios')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -40,15 +44,21 @@ function LoginForm() {
       setLoading(false)
       return
     }
-    // Detecta clube de forma robusta: role='club' OU posse de um clube (a role pode
-    // não ter sido gravada em contas criadas por outro caminho). Se for clube, vai
-    // pro dashboard do clube — nunca pro fluxo de participante.
+    // Roteamento por INTENÇÃO do login (não só por role):
+    //  • redirect (QR) sempre vence;
+    //  • login de clube (from=clube) + a conta é clube (role OU posse) → dashboard;
+    //  • login de clube sem clube de verdade → fluxo de participante;
+    //  • login de participante → sempre fluxo de participante (mesmo tendo clube).
     const [{ data: profile }, { data: ownsClub }] = await Promise.all([
       supabase.from('profiles').select('role').eq('id', data.user.id).single(),
       supabase.from('clubs').select('id').eq('user_id', data.user.id).maybeSingle(),
     ])
     const isClub = profile?.role === 'club' || !!ownsClub
-    const dest = isClub ? '/clube/dashboard' : (redirect ?? '/torneios')
+    const dest = redirect
+      ? redirect
+      : isClubLogin
+        ? (isClub ? '/clube/dashboard' : '/torneios')
+        : '/torneios'
     router.push(dest)
     router.refresh()
   }
@@ -72,7 +82,7 @@ function LoginForm() {
         </Link>
       </p>
 
-      <GoogleButton next={redirect ?? '/torneios'} label="Entrar com Google" />
+      <GoogleButton next={googleNext} label="Entrar com Google" />
       <OrDivider />
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
