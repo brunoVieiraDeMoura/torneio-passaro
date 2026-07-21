@@ -1,9 +1,6 @@
-dentro da modalidade de canto clássico, tem um sistema para o usuário quando está marcando o canto que salva em cash o resultado dos cantos (para previnir se o usuário cair a internet, quando ele volta, ainda possa contabilizar os pontos no qual seriam perdidos)
-confere se isso também funciona para o canto fibra.
->>> [VERIFICADO + REFORCADO] Fibra JA tinha cache offline (localStorage aveum_pending_fibra_<id>), espelhando o classico: salva intervalos ao soltar, restaura no reload, reenvia ao voltar a net, limpa em nova marcacao. Queda de internet = coberto.
-    Nuance fechada: agora persiste tambem o aperto EM ANDAMENTO (pressStartedAt + pressLastAt atualizado a cada tick). Crash no meio do segurar recupera ate o ultimo instante vivo (erro max = 1 tick), sem perder nem supervalorizar. participante-client.tsx
-
-reseta todos registros no bd de clubes / usuários / pássaros fakes / pássaros criados (deletar para recriar novamente, um teste live para ver o funcionamento no real.)
->>> [PREPARADO — NAO EXECUTADO] Delecao no banco de producao e irreversivel; NAO rodei. Entregue:
-    1. supabase/reset_dev_data.sql — script pronto (truncate das 10 tabelas + delete auth.users). VOCE roda no Supabase SQL Editor (confirme o projeto certo). Mantem schema/policies/functions.
-    2. "Passaros fakes" NAO estao no banco — sao mock em codigo (ALL_LIGA, src/data/liga-*.ts). Agora escondidos por default via flag: getMergedLiga so mostra dados REAIS a menos que NEXT_PUBLIC_SHOW_LIGA_MOCK=true. src/lib/liga.ts
+na página inicial, tem "Melhores da temporada" , mas não tem nenhum pássaro registrado ainda, embora estaja mostrando um mock, ou algo do tipo. reveja isso, e bota para mostrar apenas pássaros rankeados em cantos especificos, e tente mostrar por padrão ao invés de Coleiro-canto clássico, Bicudo-canto fibra
+>>> [FEITO]
+    - RankingPreview (home) usava ALL_LIGA (mock) hardcoded -> por isso mostrava fake sem ninguem registrado. Agora recebe entries REAIS do servidor (getMergedLiga, que so traz mock com NEXT_PUBLIC_SHOW_LIGA_MOCK=true). Sem passaro rankeado -> "Sem dados para ...". page.tsx + ranking-preview.tsx
+    - Default trocado de Coleiro/Canto classico para Bicudo/Canto Fibra.
+    - Fibra ranqueia por tempo (ms) -> agora renderiza formatDuration (mm:ss) no lugar do numero bruto.
+    - Ordena por count desc.

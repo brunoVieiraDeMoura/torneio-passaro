@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createPublicClient } from '@/lib/supabase/public'
 import { unstable_cache } from 'next/cache'
 import type { Item } from '@/app/(public)/torneios/_utils'
+import { getMergedLiga } from '@/lib/liga'
 
 const steps = [
   { n: '01', title: 'Clube cria o torneio',   desc: 'Configura nome, duração e gera o código QR de entrada.' },
@@ -75,9 +76,10 @@ export default async function LandingPage() {
     if (birds && birds.length > 0) userBirdEstilo = birds[0].estilo_canto ?? null
   }
 
-  const [{ totalParticipantes, totalTorneios, totalClubes }, torneios] = await Promise.all([
+  const [{ totalParticipantes, totalTorneios, totalClubes }, torneios, ligaEntries] = await Promise.all([
     getPublicStats(),
     getActiveTorneios(),
+    getMergedLiga(), // real (mock só com NEXT_PUBLIC_SHOW_LIGA_MOCK=true)
   ])
 
   return (
@@ -299,7 +301,7 @@ export default async function LandingPage() {
             <TorneiosPreview torneios={torneios} />
 
             {/* Ranking */}
-            <RankingPreview userBirdEstilo={userBirdEstilo} />
+            <RankingPreview userBirdEstilo={userBirdEstilo} entries={ligaEntries} />
 
           </Box>
         </Container>

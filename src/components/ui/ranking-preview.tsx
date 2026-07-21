@@ -5,17 +5,19 @@ import Link from 'next/link'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
-import { ALL_LIGA as LIGA_MOCK } from '@/data/liga-data'
+import type { LigaEntry } from '@/data/liga-data'
+import { formatDuration } from '@/lib/duration'
 
 const RANK_COLORS = ['#B45309', '#6B7280', '#92400E']
 
 function ls(k: string) { return typeof window !== 'undefined' ? localStorage.getItem(k) : null }
 
-interface Props { userBirdEstilo?: string | null }
+// entries = pássaros REAIS rankeados (vem do servidor); mock só se a flag ligar
+interface Props { userBirdEstilo?: string | null; entries?: LigaEntry[] }
 
-export default function RankingPreview({ userBirdEstilo }: Props) {
-  const [tipo,   setTipo]   = useState('Coleiro')
-  const [estilo, setEstilo] = useState('Canto clássico')
+export default function RankingPreview({ userBirdEstilo, entries = [] }: Props) {
+  const [tipo,   setTipo]   = useState('Bicudo')
+  const [estilo, setEstilo] = useState('Canto Fibra')
   const [estado, setEstado] = useState('')
   const [cidade, setCidade] = useState('')
 
@@ -32,7 +34,9 @@ export default function RankingPreview({ userBirdEstilo }: Props) {
   }, [userBirdEstilo])
 
   const { top5, scopeLabel } = useMemo(() => {
-    const base = LIGA_MOCK.filter(e => e.tipo_ave === tipo && e.estilo_canto === estilo)
+    const base = entries
+      .filter(e => e.tipo_ave === tipo && e.estilo_canto === estilo)
+      .sort((a, b) => b.count - a.count)
 
     if (cidade) {
       const byCidade = base.filter(e => e.cidade === cidade)
@@ -43,7 +47,7 @@ export default function RankingPreview({ userBirdEstilo }: Props) {
       if (byEstado.length > 0) return { top5: byEstado.slice(0, 5), scopeLabel: estado }
     }
     return { top5: base.slice(0, 5), scopeLabel: 'Nacional' }
-  }, [tipo, estilo, estado, cidade])
+  }, [entries, tipo, estilo, estado, cidade])
 
   return (
     <Box>
@@ -95,7 +99,7 @@ export default function RankingPreview({ userBirdEstilo }: Props) {
                 </Typography>
               </Box>
               <Typography sx={{ fontWeight: 800, fontSize: '0.88rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-                {item.count.toLocaleString('pt-BR')}
+                {estilo === 'Canto Fibra' ? formatDuration(item.count) : item.count.toLocaleString('pt-BR')}
               </Typography>
             </Box>
             {i < top5.length - 1 && <Divider sx={{ borderColor: '#F9FAFB' }} />}

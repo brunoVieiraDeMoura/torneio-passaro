@@ -89,9 +89,12 @@ export default function TorneiosPreview({ torneios }: { torneios: Item[] }) {
       </Typography>
 
       {sorted.length === 0 && (
-        <Typography sx={{ fontSize: '0.82rem', color: '#9CA3AF', py: 3, textAlign: 'center' }}>
-          Nenhum torneio aberto no momento.
-        </Typography>
+        // mesmo card do "Melhores da temporada" — padroniza o vazio com a UI dos torneios
+        <Box sx={{ bgcolor: '#fff', border: '1px solid #E5E7EB', borderRadius: 2, px: 2, py: 4, textAlign: 'center' }}>
+          <Typography sx={{ fontSize: '0.82rem', color: '#9CA3AF' }}>
+            Nenhum torneio aberto no momento.
+          </Typography>
+        </Box>
       )}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {sorted.map((t, i) => (
