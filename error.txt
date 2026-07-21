@@ -1,27 +1,7 @@
-m=root,base:231 
- GET https://googleads.g.doubleclick.net/pagead/id net::ERR_BLOCKED_BY_CLIENT
-yj	@	m=root,base:231
-_.Aj	@	m=root,base:235
-(anonymous)	@	m=root,base:785
-_.yf	@	m=root,base:145
-F2	@	m=root,base:785
-b0	@	m=root,base:788
-ata	@	m=root,base:789
-T2	@	m=root,base:793
-vua	@	m=root,base:861
-(anonymous)	@	7AqiZHuBhDA?autoplay=1:11
-
-
-
-esta mostrnado console no 
-
-parts 
-[{…}]
-VM10109:1 parts 
-(2) [{…}, {…}]
-VM10109:1 parts 
-[{…}]
-VM10109:1 parts 
-(6) [{…}, {…}, {…}, {…}, {…}, {…}]
-VM10109:1 parts 
-(6) [{…}, {…}, {…}, {…}, {…}, {…}]
+13:18:34.275 128:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+13:18:34.276 270:6  Warning: React Hook useEffect has a missing dependency: 'updateStatus'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+13:18:34.276 167:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+13:18:34.277 186:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+13:18:34.277 789:278  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+13:18:34.277 9:6  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+13:18:34.278 3:1  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').

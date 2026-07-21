@@ -6,7 +6,6 @@
 const PIC = (
   <picture>
     <source media="(min-width: 768px)" srcSet="/propaganda/desktop.png" width={1000} height={182} />
-    {/* eslint-disable-next-line @next/next/no-img-element */}
     <img
       src="/propaganda/mobile.png"
       alt="Anúncio"
