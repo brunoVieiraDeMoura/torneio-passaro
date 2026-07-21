@@ -205,9 +205,10 @@ const OVERTAKE_CSS = `
 `
 
 /* ── Canto Fibra: carrossel horizontal (loop contínuo, puro CSS) com o início–fim de cada intervalo ── */
+// slider de marcações: só minuto:segundo (sem hora/milésimos)
 function fmtClock(iso: string) {
   const d = new Date(iso)
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  return `${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_at: string }[] }) {

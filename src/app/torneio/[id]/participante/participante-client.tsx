@@ -386,7 +386,11 @@ export default function ParticipanteClient({
   const counting = isMyTurn && started && isCountingDown // minha marcação em contagem → botão
   const showRankingScreen = !isFinished && !preStart && !counting // entre marcações / aguardando vez → ranking
 
-  const myScore = ranking.find(r => r.id === participante.id)?.score ?? count
+  // próprio pássaro (remetente) no ranking — placar dele vem de QUEM o marca (não é count,
+  // que com sorteio é do ALVO). Sem sorteio, count é o próprio → fallback antigo.
+  const myRankEntry = ranking.find(r => r.id === participante.id)
+  const myScore = myRankEntry?.score ?? (markTarget ? 0 : count)
+  const myGroup = myRankEntry?.round_group ?? null
   const myPosition = ranking.findIndex(r => r.id === participante.id) + 1
   // quem está competindo agora (marcação/grupo ativo) — já vem ordenado por score
   const competingNow = ranking.filter(r => divisions <= 1 || r.round_group === activeGroup)
@@ -810,18 +814,30 @@ export default function ParticipanteClient({
         </div>
       )}
 
-      {/* Info do pássaro */}
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ margin: 0, color: '#6B7280', fontSize: '0.85rem' }}>{participante.bird_name}</p>
-        {participante.cage_number && (
-          <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#9CA3AF' }}>Gaiola {participante.cage_number}</p>
-        )}
-      </div>
+      {/* Info do próprio pássaro — só sem sorteio (fallback). Com sorteio, o
+          participante marca a gaiola de OUTRO, então o próprio pássaro some daqui. */}
+      {!markTarget && (
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ margin: 0, color: '#6B7280', fontSize: '0.85rem' }}>{participante.bird_name}</p>
+          {participante.cage_number && (
+            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#9CA3AF' }}>Gaiola {participante.cage_number}</p>
+          )}
+        </div>
+      )}
 
       {/* Banner no topo — aguardando início E tela de ranking entre marcações */}
       {(preStart || showRankingScreen) && <AdBanner />}
       {preStart && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%' }}>
+          {/* Anti-roubo: você marca a gaiola de OUTRA pessoa — só o número, bem grande */}
+          {markTarget && (
+            <div style={{ background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 16, padding: '16px 26px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#6D28D9', lineHeight: 1.35 }}>Você vai marcar a gaiola de número</p>
+              <p style={{ margin: '6px 0 0', fontFamily: 'monospace', fontSize: '4rem', fontWeight: 900, color: '#5B21B6', lineHeight: 1 }}>
+                {markTarget.cage_number ?? '—'}
+              </p>
+            </div>
+          )}
           {msUntilStart !== null && msUntilStart > 0 ? (
             <>
               <div style={{ background: '#FEF3C7', borderRadius: 14, padding: '14px 24px', textAlign: 'center' }}>
@@ -844,12 +860,12 @@ export default function ParticipanteClient({
       {/* Minha marcação em contagem */}
       {counting && (
         <>
-          {/* Anti-roubo: você marca o passarinho de OUTRA pessoa (nunca o seu) */}
+          {/* Anti-roubo: você marca a gaiola de OUTRA pessoa (nunca a sua) — só o número */}
           {markTarget && (
-            <div style={{ background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 14, padding: '10px 20px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7C3AED' }}>Você marca</p>
-              <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: '1.05rem', color: '#5B21B6' }}>
-                {markTarget.bird_name}{markTarget.cage_number != null ? ` · Gaiola ${markTarget.cage_number}` : ''}
+            <div style={{ background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 14, padding: '10px 22px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: '#6D28D9' }}>Você marca a gaiola de número</p>
+              <p style={{ margin: '2px 0 0', fontFamily: 'monospace', fontWeight: 900, fontSize: '2rem', color: '#5B21B6', lineHeight: 1.1 }}>
+                {markTarget.cage_number ?? '—'}
               </p>
             </div>
           )}
@@ -964,12 +980,31 @@ export default function ParticipanteClient({
             </p>
           </div>
 
-          <div style={{ background: '#F0FDF4', borderRadius: 12, padding: '10px 18px' }}>
-            <span style={{ fontWeight: 800, fontSize: '1.4rem', color: '#0D8F41' }}>{isFibra ? formatDuration(myScore) : myScore}</span>
-            <span style={{ marginLeft: 6, fontSize: '0.72rem', color: '#9CA3AF' }}>
-              {isFibra ? 'seu tempo cantado' : 'seus cantos'}{myPosition > 0 ? ` · ${myPosition}º lugar` : ''}
-            </span>
-          </div>
+          {/* destaque do PRÓPRIO passarinho (remetente) — não o que ele marca */}
+          {markTarget ? (
+            <div style={{ width: '100%', maxWidth: 420, background: '#F0FDF4', border: '2px solid #0D8F41', borderRadius: 14, padding: '14px 18px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0D8F41' }}>Seu passarinho</p>
+              <p style={{ margin: '4px 0 0', fontWeight: 800, fontSize: '1.05rem', color: '#065F46' }}>
+                {participante.bird_name}{participante.cage_number != null ? ` · Gaiola ${participante.cage_number}` : ''}
+              </p>
+              {divisions > 1 && myGroup != null && (
+                <p style={{ margin: '2px 0 0', fontSize: '0.72rem', fontWeight: 600, color: '#0D8F41' }}>{nomeMarcacao(myGroup, round)}</p>
+              )}
+              <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontWeight: 900, fontSize: '1.7rem', color: '#0D8F41' }}>{isFibra ? formatDuration(myScore) : myScore}</span>
+                <span style={{ fontSize: '0.72rem', color: '#6B7280' }}>
+                  {isFibra ? 'seu tempo cantado' : 'seus cantos'}{myPosition > 0 ? ` · ${myPosition}º lugar` : ''}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ background: '#F0FDF4', borderRadius: 12, padding: '10px 18px' }}>
+              <span style={{ fontWeight: 800, fontSize: '1.4rem', color: '#0D8F41' }}>{isFibra ? formatDuration(myScore) : myScore}</span>
+              <span style={{ marginLeft: 6, fontSize: '0.72rem', color: '#9CA3AF' }}>
+                {isFibra ? 'seu tempo cantado' : 'seus cantos'}{myPosition > 0 ? ` · ${myPosition}º lugar` : ''}
+              </span>
+            </div>
+          )}
 
           {/* competindo agora — grupo/marcação ativa, rank ao vivo */}
           {divisions > 1 && competingNow.length > 0 && (

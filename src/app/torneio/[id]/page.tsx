@@ -231,8 +231,6 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         {/* painel de info: hero escuro no mobile, sidebar fixa no desktop */}
         <aside className="sp-side">
           <div className="sp-side-inner">
-            {/* Anúncio no topo da tela do espectador */}
-            <AdBanner inline />
             <Link href="/torneios" className="sp-back">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6"/>
@@ -297,6 +295,10 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         {/* placar — no desktop rola sozinho em loop (telão) */}
         <AutoScrollMain className="sp-main">
           <div className="sp-main-inner">
+            {/* Anúncio — lado direito do container (coluna do placar) */}
+            <div style={{ marginBottom: 20 }}>
+              <AdBanner inline />
+            </div>
             <div style={{ marginBottom: 20 }}>
               <p style={eyebrowStyle('#0D8F41')}>
                 {isLive ? 'Placar ao vivo' : eliminated.length > 0 ? 'Ainda participando' : 'Participantes'}

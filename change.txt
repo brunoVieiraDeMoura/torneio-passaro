@@ -1,5 +1,12 @@
-em C:\Users\Bruno\Desktop\passarinho-torneio\propaganda , tem os anuncios para você colocar nas esperas do usuários participantes dos torneios
-e em https://torneio-passaro.vercel.app/torneio/d96d305e-8838-45bb-b801-de31ed3a4d50 ( no topo )
->>> [FEITO] Imagens copiadas pra public/propaganda/ (desktop.png 1000x182, mobile.png 380x123). AdBanner reescrito: usa o criativo real, responsivo (mobile.png <768px, desktop.png >=768px) via <picture>.
-    - Espera do participante: AdBanner (barra fixa no topo) ja aparecia em preStart + tela de ranking entre marcacoes — agora mostra a imagem real.
-    - Espectador /torneio/[id]: <AdBanner inline /> adicionado no topo do painel de info (sp-side-inner), antes do "Torneios".
+em https://torneio-passaro.vercel.app/torneio/d96d305e-8838-45bb-b801-de31ed3a4d50 , o anuncio deve ficar ao lado direito do container.
+>>> [FEITO] AdBanner movido do topo do painel (esquerda) pro topo do sp-main-inner (coluna do placar = lado direito no desktop). page.tsx
+
+em https://torneio-passaro.vercel.app/torneio/d96d305e-8838-45bb-b801-de31ed3a4d50, o registro das marcações que ficam passando em slider, devem mostrar apenas o minuto e segundo, sem milesimos.
+>>> [FEITO] fmtClock do IntervalTicker (slider) agora mm:ss (sem hora). spectator-widgets.tsx
+
+em https://torneio-passaro.vercel.app/torneio/202360ca-d3ce-4e72-8a4f-7887025df1ca/participante?pid=87366667-5140-4552-8238-0a481ed10bd4 , remover o nome do passarinho/gaiola que aparece enquanto o participante espera,
+e mostrar para ele apenas "Você vai marcar a gaiola de numero [e em baixo o numero bem grande, da gaiola que ele vai marcar] "
+>>> [FEITO] com sorteio, bloco do proprio passaro escondido; preStart mostra "Você vai marcar a gaiola de número" + numero gigante (4rem). Banner da contagem tambem so o numero. participante-client.tsx
+
+em https://torneio-passaro.vercel.app/torneio/202360ca-d3ce-4e72-8a4f-7887025df1ca/participante?pid=87366667-5140-4552-8238-0a481ed10bd4, enquanto o participante estiver esperando a outra marcação mostrar a marcação do próprio passarinho destacado (passaro remetente ao próprio usuário, não o que ele está marcando)
+>>> [FEITO] tela de espera (entre marcações) mostra card destacado "Seu passarinho": nome + gaiola + marcação (grupo) + placar/posição do PROPRIO passaro (remetente). Corrigido myScore pra vir do ranking (nao do count, que agora eh do alvo). participante-client.tsx
