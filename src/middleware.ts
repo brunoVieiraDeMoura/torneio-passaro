@@ -119,12 +119,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // club user trying to access non-club pages → dashboard
-  if (isClub && !isClubPath && !isAuthPath) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/clube/dashboard'
-    return NextResponse.redirect(url)
-  }
+  // 1 email pode ser clube E participante: um usuário-clube NÃO é mais forçado ao
+  // dashboard — pode navegar as páginas de participante (torneios, meus pássaros, etc.).
+  // O painel do clube continua acessível em /clube/*. O modo é escolhido pelo login.
 
   // normal user trying to access club pages → home
   if (!isClub && isClubPath) {

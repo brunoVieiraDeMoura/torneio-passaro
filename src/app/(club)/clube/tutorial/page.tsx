@@ -102,12 +102,34 @@ export default async function ClubeTutorial() {
           </Step>
         </div>
 
+        {/* ── 3b. Sorteio de gaiolas (anti-roubo) ── */}
+        <div style={card}>
+          <h2 style={h2}>🎲 Sortear as gaiolas (anti-roubo)</h2>
+          <Step n={1} title="Obrigatório antes de configurar a marcação">
+            Depois de aprovar, clique em &quot;Sortear Gaiolas&quot;. Ninguém marca o próprio passarinho —
+            cada participante recebe a gaiola de OUTRO para marcar. Isso evita o roubo de cantos.
+            É preciso no mínimo 2 participantes.
+          </Step>
+          <Step n={2} title="O que o sorteio faz">
+            Ao sortear, as inscrições fecham, o botão &quot;Adicionar Participante sem App&quot; some e o
+            botão &quot;Configuração da Marcação&quot; é liberado. Na lista, cada aprovado passa a mostrar
+            qual gaiola ele vai marcar (ex.: <span style={tag}>marca G123</span>).
+          </Step>
+          <Step n={3} title="Refazer após a vassourada">
+            Se a vassourada eliminar alguém, as duplas quebram — sorteie de novo
+            (&quot;Sortear Gaiolas — novo ciclo&quot;) antes de configurar a próxima marcação.
+            Vale para qualquer estilo (livre, clássico ou fibra).
+          </Step>
+        </div>
+
         {/* ── 4. Marcações ── */}
         <div style={card}>
           <h2 style={h2}>▶ Marcação (a contagem)</h2>
           <Step n={1} title="Configuração da Marcação">
-            É aqui que o torneio começa de fato. Escolha em quantas marcações (grupos de gaiolas) o ciclo será
+            Liberada após o sorteio das gaiolas. Escolha em quantas marcações (grupos de gaiolas) o ciclo será
             dividido — 1 marcação = todos cantam juntos; 2+ = as gaiolas são divididas e cada grupo canta na sua vez.
+            Se ligou &quot;Posição das gaiolas manual&quot; ao criar o torneio, você escolhe em qual marcação
+            cada gaiola entra (senão a divisão é automática).
           </Step>
           <Step n={2} title="Agendar horário e duração">
             Para cada marcação, defina a duração da contagem e o horário de início. A contagem começa sozinha
@@ -121,6 +143,23 @@ export default async function ClubeTutorial() {
           <Step n={4} title="Fim do ciclo">
             Quando todas as marcações do ciclo terminam, você pode: informar os cantos sem app, aplicar a vassourada,
             iniciar um novo ciclo de marcações ou finalizar o torneio.
+          </Step>
+        </div>
+
+        {/* ── 4b. Canto Fibra ── */}
+        <div style={card}>
+          <h2 style={h2}>🎵 Canto Fibra (marcação por tempo)</h2>
+          <Step n={1} title="Segurar, não tocar">
+            Se o estilo do torneio for Canto Fibra, o participante PRESSIONA E SEGURA o botão enquanto o
+            pássaro canta — a pontuação é o TEMPO cantado, não o número de cantos.
+          </Step>
+          <Step n={2} title="Ranking em tempo">
+            O ranking e o histórico mostram o tempo total (minuto:segundo). Não há alerta de fraude por
+            velocidade — não faz sentido quando se conta tempo.
+          </Step>
+          <Step n={3} title="Tempo cantado sem app">
+            Para quem participa sem celular, você informa o tempo em minutos:segundos ao fim de cada marcação
+            (botão &quot;Tempo cantado sem app&quot;).
           </Step>
         </div>
 
@@ -152,6 +191,24 @@ export default async function ClubeTutorial() {
           </Step>
           <Step n={3} title="É definitivo">
             Não dá pra reabrir. O torneio vai para o <Link href="/clube/historico" style={link}>Histórico</Link> do clube.
+          </Step>
+        </div>
+
+        {/* ── 6b. Verificação (selo) ── */}
+        <div style={card}>
+          <h2 style={h2}>🛡️ Verificação do clube (selo)</h2>
+          <Step n={1} title="Solicitar no Dashboard">
+            Em <Link href="/clube/dashboard" style={link}>Dashboard</Link>, no cartão &quot;Selos&quot;,
+            solicite o Selo verde (clubes vinculados ao passaros.org) ou o Selo de integridade
+            (clube legalizado, mínimo de participantes e dentro das diretrizes).
+          </Step>
+          <Step n={2} title="Por que importa">
+            Só torneios de clubes verificados têm os cantos contabilizados na Liga nacional. Sem selo,
+            os cantos ficam no registro do pássaro, mas fora do ranking da Liga.
+          </Step>
+          <Step n={3} title="Aprovação">
+            A concessão é feita pela equipe. Enquanto pendente aparece <span style={tag}>Solicitado</span>;
+            o selo passa a aparecer no seu clube e nos torneios assim que aprovado.
           </Step>
         </div>
 

@@ -152,7 +152,7 @@ export default function ClubSidebar({ clubName, userName }: Props) {
             display: 'flex', alignItems: 'center', gap: 8,
             width: '100%', padding: '8px 12px', borderRadius: 8,
             background: 'none', border: 'none', cursor: 'pointer',
-            color: '#9CA3AF', fontSize: '0.82rem', fontFamily: 'inherit',
+            color: '#DC2626', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit',
             transition: 'color 0.12s',
           }}
         >

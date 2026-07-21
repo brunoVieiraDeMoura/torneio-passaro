@@ -295,9 +295,11 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         {/* placar — no desktop rola sozinho em loop (telão) */}
         <AutoScrollMain className="sp-main">
           <div className="sp-main-inner">
-            {/* Anúncio — lado direito do container (coluna do placar) */}
-            <div style={{ marginBottom: 20 }}>
-              <AdBanner inline />
+            {/* Anúncio — centralizado no topo da coluna do placar */}
+            <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: '100%', maxWidth: 720 }}>
+                <AdBanner inline />
+              </div>
             </div>
             <div style={{ marginBottom: 20 }}>
               <p style={eyebrowStyle('#0D8F41')}>

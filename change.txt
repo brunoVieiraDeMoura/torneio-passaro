@@ -1,4 +1,15 @@
-em /clube/torneios ao clicar em criar torneio no mobile o teclado prejudica a visibilidade do input, responsividade errada. Na configuracao da dashboard do clube tambem, nos campos de nome.
->>> [FEITO]
-    - Modal "Criar torneio" (criar-torneio-form): mesmo fix do bird-form. Overlay virou scroll container (alignItems flex-start + overflowY auto) e o box usa margin:auto -> com teclado aberto (viewport encolhe) o modal continua acessivel/rolavel, nao fica atras do teclado.
-    - Configuracoes do clube (config-form): a barra fixa do topo do painel (.club-topbar, 56px) cobria o input quando o browser rolava ele pra vista no foco. Adicionado scroll-margin-top:72 nos campos -> ao focar, sobra espaco pra barra nao tapar.
+1) /clube/tutorial estava desatualizado (feito antes de sortear participante etc). Revisar torneio/verificacao/funcionamentos faltantes e adicionar.
+>>> [FEITO] Adicionados 3 cards + ajuste da Marcacao:
+    - "Sortear as gaiolas (anti-roubo)": obrigatorio antes da Config da Marcacao, ninguem marca o proprio, min 2, fecha inscricoes/some sem-app, badge "marca G123", re-sorteio apos vassourada.
+    - "Canto Fibra (marcacao por tempo)": pressionar/segurar, ranking em tempo mm:ss, sem alerta de fraude, tempo cantado sem app.
+    - "Verificacao do clube (selo)": solicitar no Dashboard (Selos), so verificados contam na Liga, aprovacao pela equipe.
+    - Marcacao passo 1 agora diz que so libera apos o sorteio + nota da posicao manual das gaiolas.
+
+2) (mid-turn) /clube botao Sair vermelho (texto + icone)
+>>> [FEITO] color #DC2626 + weight 600 no botao; icone usa currentColor -> fica vermelho. club-sidebar.tsx
+
+3) (mid-turn) conta registrada como clube nao conseguia logar como participante (era jogada pro dashboard mesmo entrando por /login/participante)
+>>> [FEITO] Middleware forcava TODO usuario role=club pro /clube/dashboard em qualquer pagina nao-clube. Removido esse redirect forcado -> 1 email pode ser clube E participante; painel do clube segue em /clube/*, modo decidido pelo login. middleware.ts
+
+4) (mid-turn) centralizar o anuncio no espectador /torneio/[id]
+>>> [FEITO] Anuncio agora em wrapper flex centralizado (max 720) no topo da coluna do placar. page.tsx
