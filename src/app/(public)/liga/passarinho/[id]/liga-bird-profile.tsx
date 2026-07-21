@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { LigaEntry } from '@/data/liga-mock'
 import ReportButton from './report-button'
+import { formatDuration } from '@/lib/duration'
 
 const BREED_STYLE: Record<string, { color: string; bg: string }> = {
   'Coleiro':          { color: '#1F2937', bg: '#F8FAFC' },
@@ -65,6 +66,7 @@ interface Props {
 
 export default function LigaBirdProfile({ entry, position, total, photoUrl = null }: Props) {
   const bs = BREED_STYLE[entry.tipo_ave] ?? DEFAULT_BS
+  const isFibra = entry.estilo_canto === 'Canto Fibra'
   // foto própria do pássaro primeiro; sem ela, a foto padrão da raça
   const photo = photoUrl ?? BIRD_PHOTO[entry.tipo_ave]
   const [imgError, setImgError] = useState(false)
@@ -152,10 +154,10 @@ export default function LigaBirdProfile({ entry, position, total, photoUrl = nul
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 12 }}>
           <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 14, padding: '18px 14px', textAlign: 'center' }}>
             <p style={{ margin: 0, fontSize: 'clamp(1.5rem, 6vw, 1.9rem)', fontWeight: 800, color: '#0D8F41', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-              {entry.count.toLocaleString('pt-BR')}
+              {isFibra ? formatDuration(entry.count) : entry.count.toLocaleString('pt-BR')}
             </p>
             <p style={{ margin: '4px 0 0', fontSize: '0.65rem', fontWeight: 700, color: '#065F46', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Cantos na temporada
+              {isFibra ? 'Tempo cantado na temporada' : 'Cantos na temporada'}
             </p>
           </div>
           <div style={{ background: position <= 3 ? '#FFFBEB' : '#fff', border: `1px solid ${position <= 3 ? '#FDE68A' : '#E5E7EB'}`, borderRadius: 14, padding: '18px 14px', textAlign: 'center' }}>
@@ -177,7 +179,7 @@ export default function LigaBirdProfile({ entry, position, total, photoUrl = nul
               Temporada 2025
             </p>
             {[
-              { label: 'Cantos na temporada', value: entry.count.toLocaleString('pt-BR') },
+              { label: isFibra ? 'Tempo cantado na temporada' : 'Cantos na temporada', value: isFibra ? formatDuration(entry.count) : entry.count.toLocaleString('pt-BR') },
               { label: 'Ranking nacional',    value: `${position}º de ${total}` },
               { label: 'Tipo de ave',         value: entry.tipo_ave },
               { label: 'Estilo de canto',     value: entry.estilo_canto },

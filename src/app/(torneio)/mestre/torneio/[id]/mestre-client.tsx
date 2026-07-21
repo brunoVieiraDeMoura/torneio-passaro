@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { formatDuration, parseDuration } from '@/lib/duration'
 
 interface Participante {
   id: string
@@ -16,11 +17,13 @@ interface Participante {
 }
 
 interface Score { participant_id: string; count: number }
+interface FibraInterval { participant_id: string; started_at: string; ended_at: string }
 interface Torneio {
   id: string; status: string; duration_secs: number; start_at: string | null
   round: number; divisions: number; active_group: number
   finished_at: string | null
   manual_groups?: boolean
+  estilo_canto?: string | null
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
@@ -85,10 +88,40 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
   )
 }
 
+function fmtClock(iso: string) {
+  const d = new Date(iso)
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+// Canto Fibra: carrossel horizontal (loop contínuo, puro CSS) com o início–fim de cada intervalo
+function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_at: string }[] }) {
+  if (intervals.length === 0) return null
+  const chips = intervals.map((iv, i) => (
+    <span key={i} style={{
+      flexShrink: 0, background: '#F3F4F6', borderRadius: 20, padding: '2px 8px',
+      fontSize: '0.62rem', fontWeight: 700, color: '#6B7280', whiteSpace: 'nowrap',
+    }}>
+      {fmtClock(iv.started_at)}–{fmtClock(iv.ended_at)}
+    </span>
+  ))
+  return (
+    <div style={{ overflow: 'hidden', width: '100%' }}>
+      <style>{`
+        @keyframes fibra-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .fibra-ticker-track { animation: fibra-ticker 18s linear infinite; }
+      `}</style>
+      <div className="fibra-ticker-track" style={{ display: 'flex', gap: 6, width: 'max-content' }}>
+        {chips}{chips}
+      </div>
+    </div>
+  )
+}
+
 export default function MestreClient({
   torneio,
   participantesInitial,
   scoresInitial,
+  fibraIntervalsInitial = [],
   qrDataUrl,
   qrUrl,
   streamUrlInitial,
@@ -97,17 +130,25 @@ export default function MestreClient({
   torneio: Torneio
   participantesInitial: Participante[]
   scoresInitial: Score[]
+  fibraIntervalsInitial?: FibraInterval[]
   qrDataUrl: string | null
   qrUrl: string
   streamUrlInitial: string | null
   clubLogoUrl: string | null
 }) {
   const router = useRouter()
+  const isFibra = torneio.estilo_canto === 'Canto Fibra'
   const [participantes, setParticipantes] = useState(participantesInitial)
   const [scores, setScores] = useState<Record<string, number>>(
     Object.fromEntries(scoresInitial.map(s => [s.participant_id, s.count]))
   )
-  // suspeitas de fraude por participante (scores.suspicious_count)
+  // Canto Fibra: intervalos (início/fim) de cada aperto, agrupados por participante
+  const [fibraIntervals, setFibraIntervals] = useState<Record<string, { started_at: string; ended_at: string }[]>>(() => {
+    const map: Record<string, { started_at: string; ended_at: string }[]> = {}
+    fibraIntervalsInitial.forEach(iv => { (map[iv.participant_id] ??= []).push({ started_at: iv.started_at, ended_at: iv.ended_at }) })
+    return map
+  })
+  // suspeitas de fraude por participante (scores.suspicious_count) — não se aplica ao Canto Fibra
   const [suspicious, setSuspicious] = useState<Record<string, number>>({})
   const [status, setStatus] = useState(torneio.status)
   const [finishedAt, setFinishedAt] = useState<string | null>(torneio.finished_at)
@@ -225,6 +266,11 @@ export default function MestreClient({
           if (payload.new.status !== undefined) setStatus(payload.new.status)
           if (payload.new.finished_at !== undefined) setFinishedAt(payload.new.finished_at)
         })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fibra_intervals', filter: `tournament_id=eq.${torneio.id}` },
+        payload => {
+          const iv = payload.new as FibraInterval
+          setFibraIntervals(prev => ({ ...prev, [iv.participant_id]: [...(prev[iv.participant_id] ?? []), { started_at: iv.started_at, ended_at: iv.ended_at }] }))
+        })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [torneio.id])
@@ -247,9 +293,12 @@ export default function MestreClient({
     if (status === 'draft' || status === 'finished') return
     const supabase = createClient()
     const poll = setInterval(async () => {
-      const [{ data: parts }, { data: scs }] = await Promise.all([
+      const [{ data: parts }, { data: scs }, fibraRes] = await Promise.all([
         supabase.from('participants').select('id, user_name, bird_name, cage_number, status, user_id, round_group').eq('tournament_id', torneio.id).order('created_at', { ascending: true }),
         supabase.from('scores').select('participant_id, count, suspicious_count').eq('tournament_id', torneio.id),
+        isFibra
+          ? supabase.from('fibra_intervals').select('participant_id, started_at, ended_at').eq('tournament_id', torneio.id).order('started_at', { ascending: true })
+          : Promise.resolve({ data: null }),
       ])
       if (parts) setParticipantes(parts as Participante[])
       if (scs) {
@@ -257,9 +306,14 @@ export default function MestreClient({
         setScores(Object.fromEntries(rows.map(s => [s.participant_id, s.count])))
         setSuspicious(Object.fromEntries(rows.map(s => [s.participant_id, s.suspicious_count ?? 0])))
       }
+      if (fibraRes.data) {
+        const map: Record<string, { started_at: string; ended_at: string }[]> = {}
+        ;(fibraRes.data as FibraInterval[]).forEach(iv => { (map[iv.participant_id] ??= []).push({ started_at: iv.started_at, ended_at: iv.ended_at }) })
+        setFibraIntervals(map)
+      }
     }, 5000)
     return () => clearInterval(poll)
-  }, [status, torneio.id])
+  }, [status, torneio.id, isFibra])
 
   async function saveStream() {
     const supabase = createClient()
@@ -519,15 +573,17 @@ export default function MestreClient({
     // sem router.refresh(): recarregar reiniciaria vassouradaDone e reexibiria o botão
   }
 
-  // Salva os cantos dos participantes sem app (contagem atribuída ao fim da marcação).
+  // Salva os cantos (ou o tempo cantado, em Canto Fibra) dos participantes sem app.
   async function saveCantosSemApp() {
     setCantosLoading(true)
     const supabase = createClient()
-    const entries = Object.entries(cantosInput).filter(([, v]) => v !== '' && !isNaN(parseInt(v)))
+    const entries = Object.entries(cantosInput)
+      .map(([pid, v]) => [pid, isFibra ? parseDuration(v) : (v !== '' && !isNaN(parseInt(v)) ? parseInt(v) : null)] as [string, number | null])
+      .filter((e): e is [string, number] => e[1] !== null)
     let failed = false
-    for (const [pid, v] of entries) {
+    for (const [pid, count] of entries) {
       const { error } = await supabase.from('scores').upsert(
-        { participant_id: pid, tournament_id: torneio.id, count: parseInt(v) },
+        { participant_id: pid, tournament_id: torneio.id, count },
         { onConflict: 'participant_id,tournament_id' },
       )
       if (error) failed = true
@@ -537,7 +593,7 @@ export default function MestreClient({
       alert('Não foi possível salvar os cantos. Aplique a migration de RLS de scores (20260710_scores_club_policy.sql).')
       return
     }
-    setScores(prev => { const n = { ...prev }; entries.forEach(([pid, v]) => { n[pid] = parseInt(v) }); return n })
+    setScores(prev => { const n = { ...prev }; entries.forEach(([pid, count]) => { n[pid] = count }); return n })
     setCantosInput({}); setCantosOpen(false); setCantosLoading(false)
     router.refresh()
   }
@@ -906,7 +962,7 @@ export default function MestreClient({
         {/* Participantes fora do app */}
         {(((status === 'draft' || status === 'open') && !groupsAssigned) ||
           (roundPhase === 'done' && semAppAtuais.length > 0)) && (
-          <CtrlCard title="👤 Participante sem App" desc="Adicione quem participa sem celular. Os cantos deles (catraca) são informados por você ao fim de cada marcação.">
+          <CtrlCard title="👤 Participante sem App" desc={isFibra ? 'Adicione quem participa sem celular. O tempo cantado deles é informado por você ao fim de cada marcação.' : 'Adicione quem participa sem celular. Os cantos deles (catraca) são informados por você ao fim de cada marcação.'}>
             {(status === 'draft' || status === 'open') && !groupsAssigned && (
               <button onClick={() => setAddOpen(true)}
                 style={ctrlBtn('#7C3AED', '#fff')}>
@@ -916,7 +972,7 @@ export default function MestreClient({
             {roundPhase === 'done' && semAppAtuais.length > 0 && (
               <button onClick={() => setCantosOpen(true)}
                 style={ctrlBtn('#F3E8FF', '#7C3AED', '1px solid #E9D5FF')}>
-                Cantos sem app · marcação {marcLabel}
+                {isFibra ? 'Tempo cantado sem app' : 'Cantos sem app'} · marcação {marcLabel}
               </button>
             )}
           </CtrlCard>
@@ -1224,7 +1280,7 @@ export default function MestreClient({
                       <p style={{ margin: '0 0 4px', fontSize: '0.68rem', fontWeight: 700, color: '#9CA3AF', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Serão eliminados:</p>
                       {eliminating.map(p => (
                         <p key={p.id} style={{ margin: 0, color: '#DC2626' }}>
-                          {p.bird_name} <span style={{ color: '#9CA3AF' }}>({p.user_name}) · {scores[p.id] ?? 0} cantos</span>
+                          {p.bird_name} <span style={{ color: '#9CA3AF' }}>({p.user_name}) · {isFibra ? formatDuration(scores[p.id] ?? 0) : `${scores[p.id] ?? 0} cantos`}</span>
                         </p>
                       ))}
                     </div>
@@ -1252,7 +1308,7 @@ export default function MestreClient({
           style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 440, boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Cantos sem app</p>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: '#111827' }}>{isFibra ? 'Tempo cantado sem app' : 'Cantos sem app'}</p>
               <button type="button" onClick={() => setCantosOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, lineHeight: 0 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -1260,7 +1316,9 @@ export default function MestreClient({
               </button>
             </div>
             <p style={{ margin: '0 0 16px', fontSize: '0.75rem', color: '#9CA3AF' }}>
-              Informe o número de cantos (catraca) de cada participante fora do app.
+              {isFibra
+                ? 'Informe o tempo total cantado (mm:ss) de cada participante fora do app.'
+                : 'Informe o número de cantos (catraca) de cada participante fora do app.'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {semAppAtuais.length === 0 && (
@@ -1274,10 +1332,17 @@ export default function MestreClient({
                       {p.user_name}{p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}{divisions > 1 && p.round_group ? ` · marcação ${round}-${p.round_group}` : ''}
                     </p>
                   </div>
-                  <input style={{ ...inp, width: 90, flexShrink: 0 }} type="number" min={0}
-                    placeholder={String(scores[p.id] ?? 0)}
-                    value={cantosInput[p.id] ?? ''}
-                    onChange={e => setCantosInput(prev => ({ ...prev, [p.id]: e.target.value }))} />
+                  {isFibra ? (
+                    <input style={{ ...inp, width: 90, flexShrink: 0 }} type="text" inputMode="numeric"
+                      placeholder={formatDuration(scores[p.id] ?? 0)}
+                      value={cantosInput[p.id] ?? ''}
+                      onChange={e => setCantosInput(prev => ({ ...prev, [p.id]: e.target.value }))} />
+                  ) : (
+                    <input style={{ ...inp, width: 90, flexShrink: 0 }} type="number" min={0}
+                      placeholder={String(scores[p.id] ?? 0)}
+                      value={cantosInput[p.id] ?? ''}
+                      onChange={e => setCantosInput(prev => ({ ...prev, [p.id]: e.target.value }))} />
+                  )}
                 </div>
               ))}
             </div>
@@ -1411,28 +1476,31 @@ export default function MestreClient({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>Ranking · Marcação {marcLabel}{divisions > 1 ? ` (${divisions} marcações)` : ''}</p>
           {ranking.map((p, i) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: i < 3 ? ['#B45309','#6B7280','#92400E'][i] : '#D1D5DB', width: 28, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {p.bird_name}
-                  {(suspicious[p.id] ?? 0) > 5 && (() => {
-                    const fc = fraudColor(suspicious[p.id])
-                    return (
-                      <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800 }}>
-                        ⚠ {suspicious[p.id]}
-                      </span>
-                    )
-                  })()}
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
-                  {p.user_name}
-                  {p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
-                  {!p.user_id && <span style={{ marginLeft: 6, color: '#7C3AED', fontWeight: 700 }}>· fora do app</span>}
-                </p>
+            <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: i < 3 ? ['#B45309','#6B7280','#92400E'][i] : '#D1D5DB', width: 28, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {p.bird_name}
+                    {(suspicious[p.id] ?? 0) > 5 && (() => {
+                      const fc = fraudColor(suspicious[p.id])
+                      return (
+                        <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800 }}>
+                          ⚠ {suspicious[p.id]}
+                        </span>
+                      )
+                    })()}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                    {p.user_name}
+                    {p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
+                    {!p.user_id && <span style={{ marginLeft: 6, color: '#7C3AED', fontWeight: 700 }}>· fora do app</span>}
+                  </p>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0D8F41', letterSpacing: '-0.02em' }}>{isFibra ? formatDuration(scores[p.id] ?? 0) : (scores[p.id] ?? 0)}</span>
               </div>
-              <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0D8F41', letterSpacing: '-0.02em' }}>{scores[p.id] ?? 0}</span>
+              {isFibra && <IntervalTicker intervals={fibraIntervals[p.id] ?? []} />}
             </div>
           ))}
         </div>
@@ -1443,29 +1511,32 @@ export default function MestreClient({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#111827' }}>Ranking geral</p>
           {rankingGeral.map((p, i) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: i < 3 ? ['#B45309','#6B7280','#92400E'][i] : '#D1D5DB', width: 28, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {p.bird_name}
-                  {(suspicious[p.id] ?? 0) > 5 && (() => {
-                    const fc = fraudColor(suspicious[p.id])
-                    return (
-                      <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800 }}>
-                        ⚠ {suspicious[p.id]}
-                      </span>
-                    )
-                  })()}
-                </p>
-                <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
-                  {p.user_name}
-                  {p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
-                  {divisions > 1 && p.round_group ? ` · marcação ${round}-${p.round_group}` : ''}
-                  {!p.user_id && <span style={{ marginLeft: 6, color: '#7C3AED', fontWeight: 700 }}>· fora do app</span>}
-                </p>
+            <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid #E5E7EB', borderRadius: 10, padding: '12px 14px', background: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: i < 3 ? ['#B45309','#6B7280','#92400E'][i] : '#D1D5DB', width: 28, textAlign: 'center', flexShrink: 0 }}>{i + 1}</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.88rem', color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {p.bird_name}
+                    {(suspicious[p.id] ?? 0) > 5 && (() => {
+                      const fc = fraudColor(suspicious[p.id])
+                      return (
+                        <span title={`${suspicious[p.id]} marcações suspeitas (cliques rápidos demais)`}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: fc.bg, color: fc.color, border: `1px solid ${fc.border}`, borderRadius: 20, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 800 }}>
+                          ⚠ {suspicious[p.id]}
+                        </span>
+                      )
+                    })()}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                    {p.user_name}
+                    {p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
+                    {divisions > 1 && p.round_group ? ` · marcação ${round}-${p.round_group}` : ''}
+                    {!p.user_id && <span style={{ marginLeft: 6, color: '#7C3AED', fontWeight: 700 }}>· fora do app</span>}
+                  </p>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0D8F41', letterSpacing: '-0.02em' }}>{isFibra ? formatDuration(scores[p.id] ?? 0) : (scores[p.id] ?? 0)}</span>
               </div>
-              <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0D8F41', letterSpacing: '-0.02em' }}>{scores[p.id] ?? 0}</span>
+              {isFibra && <IntervalTicker intervals={fibraIntervals[p.id] ?? []} />}
             </div>
           ))}
         </div>

@@ -9,9 +9,7 @@ const RACAS = [
   'Patativa', 'Galo campina', 'Sabiá laranjeira', 'Pintassilgo',
   'Trinca Ferro', 'Azulão', 'Bigodinho', 'Sanhaço', 'Tiziu',
 ]
-const ESTILOS = [
-  'Canto clássico', 'Canto rolado', 'Canto livre', 'Canto regional', 'Canto nativo',
-]
+const ESTILOS = ['Canto clássico', 'Canto Fibra']
 
 const inp: React.CSSProperties = {
   width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,

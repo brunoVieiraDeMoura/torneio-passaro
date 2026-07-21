@@ -27,6 +27,7 @@ export default function SpectatorRealtime({ tournamentId, pollMs = 5000 }: { tou
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `tournament_id=eq.${tournamentId}` }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${tournamentId}` }, refresh)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tournaments', filter: `id=eq.${tournamentId}` }, refresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fibra_intervals', filter: `tournament_id=eq.${tournamentId}` }, refresh)
       .subscribe()
 
     const poll = setInterval(() => router.refresh(), pollMs)

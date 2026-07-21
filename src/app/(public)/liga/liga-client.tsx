@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography'
 import MUNICIPIOS from '@/data/municipios.json'
 import type { LigaEntry } from '@/data/liga-data'
 import BirdAvatar from '@/components/ui/bird-avatar'
+import { formatDuration } from '@/lib/duration'
 
 const PODIUM_COLOR = ['#B45309', '#6B7280', '#92400E']
 const PODIUM_LABEL = ['Ouro', 'Prata', 'Bronze']
@@ -55,6 +56,7 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
   const [cidade,  setCidade]  = useState('')
   const [tipoAve, setTipoAve] = useState('Coleiro')
   const [estilo,  setEstilo]  = useState('Canto clássico')
+  const isFibra = estilo === 'Canto Fibra'
   const [geoStatus, setGeoStatus] = useState<'idle'|'loading'|'done'|'denied'>('idle')
   const [hydrated, setHydrated] = useState(false)
   const [userOverride, setUserOverride] = useState(false)
@@ -278,10 +280,10 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
                     {item.user_name}
                   </Typography>
                   <Typography sx={{ fontSize: { xs: '1.15rem', sm: '1.3rem' }, fontWeight: 800, letterSpacing: '-0.025em', color: PODIUM_COLOR[i], lineHeight: 1 }}>
-                    {item.count.toLocaleString('pt-BR')}
+                    {isFibra ? formatDuration(item.count) : item.count.toLocaleString('pt-BR')}
                   </Typography>
                   <Typography sx={{ fontSize: '0.58rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', mt: 0.4 }}>
-                    cantos
+                    {isFibra ? 'tempo cantado' : 'cantos'}
                   </Typography>
                 </Box>
               ))}
@@ -293,7 +295,7 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
                 <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>#</Typography>
                 <Box />
                 <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pássaro</Typography>
-                <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>Cantos</Typography>
+                <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>{isFibra ? 'Tempo' : 'Cantos'}</Typography>
               </Box>
 
               {filtered.map((item, i) => (
@@ -332,10 +334,10 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
 
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em', color: i === 0 ? '#B45309' : '#374151', lineHeight: 1.1 }}>
-                      {item.count.toLocaleString('pt-BR')}
+                      {isFibra ? formatDuration(item.count) : item.count.toLocaleString('pt-BR')}
                     </Typography>
                     <Typography sx={{ fontSize: '0.55rem', fontWeight: 700, color: '#D1D5DB', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      cantos
+                      {isFibra ? 'tempo cantado' : 'cantos'}
                     </Typography>
                   </Box>
                 </Box>

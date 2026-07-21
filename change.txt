@@ -1,3 +1,35 @@
-bota uma aba em https://torneio-passaro.vercel.app/admin , de settings ,
-para mostrar quanto espaço ainda tem no supabase até que eu precise botar o plano pago, de contas registradas/img etc..
-faz isso bem visual, com uma barra de "%"
+ao cadastrar uma ave tem estilos de canto, em modalidade deixa apenas o Canto classico e Canto Fibra
+
+Sendo o funcionamento do canto clássico exatamento o comportamento já existente, 
+
+E o funcionamento da marcação do canto fibra tem um compartamento diferente dentro do campeonato na marcação do usuário, e na pontuação da liga
+
+
+COMPORTAMENTO
+
+Objetivo: contabilizar o tempo total em que o pássaro permaneceu cantando durante a bateria.
+
+Comportamento
+
+Quando o usuário pressionar o botão o sistema começa a contar o tempo.
+Quando o usuário soltar o botão o intervalo é somado ao tempo acumulado.
+O processo pode ser repetido quantas vezes forem necessárias durante a bateria.
+Caso a bateria termine enquanto a marcação estiver ativa, o sistema deve encerrar automaticamente o intervalo e somar o tempo restante.
+Dados registrados
+Hora de início de cada intervalo.
+Hora de término de cada intervalo.
+Tempo acumulado.
+Resultado
+Tempo total cantado.
+Exemplo:
+Tempo da bateria: 15:00
+Tempo cantado: 09:30
+
+observações :
+
+no canto fibra, remover a penalidade existente do canto clássico !
+
+tempo cantado fica no lugar do numero de cantos
+e em baixo, deixar pequeninho o inicio e termino de cada intervalo, passando (provavelmente nao vai ter espaço, então deixa passando em baixo de cada usuário como se fosse um looping horizontal, mostrando)
+tanto para o chefe quanto para quem está assistindo no link do torneio ex: https://torneio-passaro.vercel.app/torneio/abb4623f-e15b-419d-a3bd-8d2805b59a36
+

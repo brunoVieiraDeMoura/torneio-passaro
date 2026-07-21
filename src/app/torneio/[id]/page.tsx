@@ -6,6 +6,7 @@ import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
 import LiveChat from './live-chat'
 import { AnimatedRanking, AutoScrollMain, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
+import { formatDuration } from '@/lib/duration'
 
 type Club = { name: string; cidade: string; estado: string } | null
 
@@ -26,7 +27,7 @@ const eyebrowStyle = (color: string): CSSProperties => ({
   letterSpacing: '0.18em', textTransform: 'uppercase', color,
 })
 
-function EliminadoRow({ p }: { p: Elim }) {
+function EliminadoRow({ p, timeMode = false }: { p: Elim; timeMode?: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', opacity: 0.8 }}>
       <span style={{ minWidth: 34, fontWeight: 800, fontSize: '0.8rem', color: '#DC2626' }}>{p.position}º</span>
@@ -34,32 +35,32 @@ function EliminadoRow({ p }: { p: Elim }) {
         <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.85rem', color: '#111827', textDecoration: 'line-through', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.bird_name}</p>
         <p style={{ margin: 0, fontSize: '0.7rem', color: '#9CA3AF' }}>{p.user_name}{p.lastRound ? ` · caiu na rodada ${p.lastRound}` : ''}</p>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#DC2626', flexShrink: 0 }}>{p.total.toLocaleString('pt-BR')}</span>
+      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#DC2626', flexShrink: 0 }}>{timeMode ? formatDuration(p.total) : p.total.toLocaleString('pt-BR')}</span>
     </div>
   )
 }
 
-function HistRow({ e, i }: { e: HistEntry; i: number }) {
+function HistRow({ e, i, timeMode = false }: { e: HistEntry; i: number; timeMode?: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 18px' }}>
       <span style={{ minWidth: 22, fontWeight: 800, fontSize: '0.7rem', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>{String(i + 1).padStart(2, '0')}</span>
       <p style={{ flex: 1, margin: 0, fontWeight: 600, fontSize: '0.82rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.bird_name}</p>
-      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0D8F41', flexShrink: 0 }}>{e.count.toLocaleString('pt-BR')}</span>
+      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0D8F41', flexShrink: 0 }}>{timeMode ? formatDuration(e.count) : e.count.toLocaleString('pt-BR')}</span>
     </div>
   )
 }
 
 // bloco de uma rodada: top 3 + dropdown p/ o resto
-function HistoricoRodada({ rd }: { rd: HistRound }) {
+function HistoricoRodada({ rd, timeMode = false }: { rd: HistRound; timeMode?: boolean }) {
   const rest = rd.entries.slice(3)
   return (
     <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
       <p style={{ margin: 0, padding: '10px 18px', background: '#F3F4F6', fontWeight: 700, fontSize: '0.78rem', color: '#374151' }}>Rodada {rd.round}</p>
-      {rd.entries.slice(0, 3).map((e, i) => <HistRow key={e.participant_id + '-' + i} e={e} i={i} />)}
+      {rd.entries.slice(0, 3).map((e, i) => <HistRow key={e.participant_id + '-' + i} e={e} i={i} timeMode={timeMode} />)}
       {rest.length > 0 && (
         <details>
           <summary style={summaryStyle}>Ver mais {rest.length}</summary>
-          {rest.map((e, i) => <HistRow key={e.participant_id + '-r' + i} e={e} i={i + 3} />)}
+          {rest.map((e, i) => <HistRow key={e.participant_id + '-r' + i} e={e} i={i + 3} timeMode={timeMode} />)}
         </details>
       )}
     </div>
@@ -67,15 +68,15 @@ function HistoricoRodada({ rd }: { rd: HistRound }) {
 }
 
 // lista de eliminados: top 3 + dropdown p/ o resto
-function EliminadosLista({ eliminated }: { eliminated: Elim[] }) {
+function EliminadosLista({ eliminated, timeMode = false }: { eliminated: Elim[]; timeMode?: boolean }) {
   const rest = eliminated.slice(3)
   return (
     <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
-      {eliminated.slice(0, 3).map(p => <EliminadoRow key={p.id} p={p} />)}
+      {eliminated.slice(0, 3).map(p => <EliminadoRow key={p.id} p={p} timeMode={timeMode} />)}
       {rest.length > 0 && (
         <details>
           <summary style={summaryStyle}>Ver mais {rest.length}</summary>
-          {rest.map(p => <EliminadoRow key={p.id} p={p} />)}
+          {rest.map(p => <EliminadoRow key={p.id} p={p} timeMode={timeMode} />)}
         </details>
       )}
     </div>
@@ -107,13 +108,15 @@ const getTorneioData = async (id: string) => {
 
   const { data: torneio } = await supabase
     .from('tournaments')
-    .select('id, name, status, start_at, duration_secs, qr_token, stream_url, active_group, divisions, clubs(name, cidade, estado)')
+    .select('id, name, status, start_at, duration_secs, qr_token, stream_url, active_group, divisions, estilo_canto, clubs(name, cidade, estado)')
     .eq('id', id)
     .single()
 
   if (!torneio) return null
 
-  const [{ data: participants }, { data: scores }, { data: history }] = await Promise.all([
+  const isFibra = torneio.estilo_canto === 'Canto Fibra'
+
+  const [{ data: participants }, { data: scores }, { data: history }, { data: fibraRows }] = await Promise.all([
     supabase
       .from('participants')
       .select('id, user_name, bird_name, cage_number, status, round_group')
@@ -128,6 +131,13 @@ const getTorneioData = async (id: string) => {
       .select('participant_id, bird_name, round, round_group, count')
       .eq('tournament_id', id)
       .order('round', { ascending: true }),
+    isFibra
+      ? supabase
+          .from('fibra_intervals')
+          .select('participant_id, started_at, ended_at')
+          .eq('tournament_id', id)
+          .order('started_at', { ascending: true })
+      : Promise.resolve({ data: null as { participant_id: string; started_at: string; ended_at: string }[] | null }),
   ])
 
   const scoreMap: Record<string, number> = {}
@@ -137,12 +147,17 @@ const getTorneioData = async (id: string) => {
     warnMap[s.participant_id] = (s as { suspicious_count?: number }).suspicious_count ?? 0
   }
 
+  const intervalsMap: Record<string, { started_at: string; ended_at: string }[]> = {}
+  for (const iv of fibraRows ?? []) {
+    (intervalsMap[iv.participant_id] ??= []).push({ started_at: iv.started_at, ended_at: iv.ended_at })
+  }
+
   const allParts = participants ?? []
 
   // ainda participando (aprovados) — placar do ciclo atual
   const ranked = allParts
     .filter(p => p.status === 'approved')
-    .map(p => ({ ...p, score: scoreMap[p.id] ?? 0, warns: warnMap[p.id] ?? 0 }))
+    .map(p => ({ ...p, score: scoreMap[p.id] ?? 0, warns: warnMap[p.id] ?? 0, intervals: intervalsMap[p.id] }))
     .sort((a, b) => b.score - a.score)
 
   // histórico por rodada (snapshots de round_scores)
@@ -169,7 +184,7 @@ const getTorneioData = async (id: string) => {
     .sort((a, b) => (b.lastRound ?? 0) - (a.lastRound ?? 0) || b.total - a.total)
     .map((p, idx) => ({ ...p, position: ranked.length + idx + 1 }))
 
-  return { torneio, ranked, eliminated, historyByRound }
+  return { torneio, ranked, eliminated, historyByRound, isFibra }
 }
 
 export default async function TorneioEspectadorPage({ params }: { params: Promise<{ id: string }> }) {
@@ -177,7 +192,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const data = await getTorneioData(id)
   if (!data) notFound()
 
-  const { torneio, ranked, eliminated, historyByRound } = data
+  const { torneio, ranked, eliminated, historyByRound, isFibra } = data
   const clube = torneio.clubs as unknown as Club
   // contagem dirigida pelo tempo: ao vivo se rodando OU aberto dentro da janela de start
   const startMs = torneio.start_at ? new Date(torneio.start_at).getTime() : null
@@ -291,15 +306,15 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
                 <MarcacaoPanel
                   startAt={torneio.start_at} durationSecs={torneio.duration_secs ?? 0}
                   activeGroup={activeGroup} divisions={divisions}
-                  current={competing} next={nextGroupItems}
+                  current={competing} next={nextGroupItems} timeMode={isFibra}
                 />
                 <div>
                   <p style={eyebrowStyle('#0D8F41')}>Ranking geral</p>
-                  <AnimatedRanking items={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." />
+                  <AnimatedRanking items={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." timeMode={isFibra} />
                 </div>
               </div>
             ) : ranked.length > 0 ? (
-              <AnimatedRanking items={ranked as RankItem[]} />
+              <AnimatedRanking items={ranked as RankItem[]} timeMode={isFibra} />
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
                 <p style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>
@@ -311,7 +326,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
             {eliminated.length > 0 && (
               <div style={{ marginTop: 28 }}>
                 <p style={eyebrowStyle('#DC2626')}>Eliminados ({eliminated.length})</p>
-                <EliminadosLista eliminated={eliminated} />
+                <EliminadosLista eliminated={eliminated} timeMode={isFibra} />
               </div>
             )}
 
@@ -320,7 +335,7 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
               <div style={{ marginTop: 28 }}>
                 <p style={eyebrowStyle('#0D8F41')}>Histórico por rodada</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {historyByRound.map(rd => <HistoricoRodada key={rd.round} rd={rd} />)}
+                  {historyByRound.map(rd => <HistoricoRodada key={rd.round} rd={rd} timeMode={isFibra} />)}
                 </div>
               </div>
             )}

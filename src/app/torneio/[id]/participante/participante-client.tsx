@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import MestreWalker from '@/components/ui/mestre-walker'
 import AdBanner from '@/components/ui/ad-banner'
 import { AmpulhetaAnim, FinalTorneioAnim } from '@/components/ui/frame-anim'
+import { formatDuration } from '@/lib/duration'
 
 interface Torneio {
   id: string
@@ -17,6 +18,7 @@ interface Torneio {
   active_group: number
   divisions: number
   round?: number
+  estilo_canto?: string | null
 }
 
 // "Primeira Marcação", "Segunda Marcação da Segunda Etapa"...
@@ -50,7 +52,7 @@ function formatMs(ms: number): string {
 
 const RANK_COLORS = ['#B45309', '#6B7280', '#92400E']
 
-function RankingList({ ranking, myId }: { ranking: { id: string; bird_name: string; user_name: string; cage_number: number | null; score: number }[]; myId: string }) {
+function RankingList({ ranking, myId, timeMode = false }: { ranking: { id: string; bird_name: string; user_name: string; cage_number: number | null; score: number }[]; myId: string; timeMode?: boolean }) {
   return (
     <div style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 6 }}>
       {ranking.length === 0 && <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '0.8rem', margin: 0 }}>Sem participantes ainda.</p>}
@@ -65,7 +67,7 @@ function RankingList({ ranking, myId }: { ranking: { id: string; bird_name: stri
               </p>
               <p style={{ margin: 0, fontSize: '0.7rem', color: '#9CA3AF' }}>{p.user_name}{p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}</p>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0D8F41' }}>{p.score}</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0D8F41' }}>{timeMode ? formatDuration(p.score) : p.score}</span>
           </div>
         )
       })}
@@ -84,6 +86,7 @@ export default function ParticipanteClient({
   initialCount: number
   initialSuspicious?: number
 }) {
+  const isFibra = torneio.estilo_canto === 'Canto Fibra'
   const [count, setCount] = useState(initialCount)
   // avisos de velocidade já contabilizados pro Chefe de Roda (servidor + sessão)
   const [warnCount, setWarnCount] = useState(initialSuspicious)
@@ -110,6 +113,26 @@ export default function ParticipanteClient({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fraudWarning, setFraudWarning] = useState(false)
   const [fraudFlash, setFraudFlash] = useState(false)   // troca o nº do botão por ⚠ por 0.5s
+
+  // ── Canto Fibra: marcação por tempo (pressionar/soltar), sem penalidade ──
+  const [pressing, setPressing] = useState(false)
+  const pressStartRef = useRef<number | null>(null)
+  const pendingIntervalsRef = useRef<{ startedAt: string; endedAt: string }[]>([])
+  const flushingFibraRef = useRef(false)
+  const fibraStorageKey = `aveum_pending_fibra_${participante.id}`
+
+  const persistPendingFibra = useCallback(() => {
+    try {
+      if (pendingIntervalsRef.current.length > 0) {
+        localStorage.setItem(fibraStorageKey, JSON.stringify({
+          startAt: marcacaoKeyRef.current,
+          intervals: pendingIntervalsRef.current,
+        }))
+      } else {
+        localStorage.removeItem(fibraStorageKey)
+      }
+    } catch { /* storage indisponível: segue só em memória */ }
+  }, [fibraStorageKey])
 
   // O número do botão é PURAMENTE LOCAL. O participante é a única fonte dos próprios
   // cliques, então cada toque incrementa o contador na hora e NADA externo (realtime/
@@ -153,17 +176,37 @@ export default function ParticipanteClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // restaura intervalos de Canto Fibra pendentes de um crash/reload DA MESMA marcação
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(fibraStorageKey)
+      if (!raw) return
+      const saved = JSON.parse(raw) as { startAt: string | null; intervals: { startedAt: string; endedAt: string }[] }
+      if (saved.startAt === torneio.start_at && saved.intervals?.length > 0) {
+        pendingIntervalsRef.current.push(...saved.intervals)
+        const somaMs = saved.intervals.reduce((a, iv) => a + (new Date(iv.endedAt).getTime() - new Date(iv.startedAt).getTime()), 0)
+        setCount(c => c + somaMs)
+      } else if (saved.startAt !== torneio.start_at) {
+        localStorage.removeItem(fibraStorageKey)
+      }
+    } catch { /* JSON corrompido: ignora */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (startAt !== marcacaoKeyRef.current) {
       marcacaoKeyRef.current = startAt
       if (startAt) {
         pendingRef.current = 0
+        pendingIntervalsRef.current = []
+        pressStartRef.current = null
+        setPressing(false)
         setCount(0)
         setWarnCount(0) // nova marcação: o mestre zera as suspeitas no servidor
-        try { localStorage.removeItem(storageKey) } catch {}
+        try { localStorage.removeItem(storageKey); localStorage.removeItem(fibraStorageKey) } catch {}
       }
     }
-  }, [startAt, storageKey])
+  }, [startAt, storageKey, fibraStorageKey])
 
   // ranking ao vivo + total do pássaro (soma das marcações) p/ telas de espera e final
   const [ranking, setRanking] = useState<{ id: string; bird_name: string; user_name: string; cage_number: number | null; score: number; round_group: number | null }[]>([])
@@ -368,6 +411,71 @@ export default function ParticipanteClient({
     return () => { clearInterval(id); void flush() }
   }, [flush])
 
+  // Canto Fibra: envia os intervalos pendentes (um por request) a cada 1s.
+  // Cada intervalo é raro (comparado a cliques), então não precisa de lote.
+  const flushFibra = useCallback(async () => {
+    if (flushingFibraRef.current) return
+    const interval = pendingIntervalsRef.current[0]
+    if (!interval) return
+    flushingFibraRef.current = true
+    try {
+      const res = await fetch('/api/score-fibra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantId: participante.id, tournamentId: torneio.id, ...interval }),
+      })
+      if (res.ok || res.status < 500) {
+        // sucesso OU 4xx (não recuperável, ex.: tempo esgotado) → descarta e segue
+        pendingIntervalsRef.current.shift()
+      }
+      // 5xx: mantém na fila pra tentar de novo no próximo tick
+    } catch {
+      // falha de rede: mantém na fila (persistido no localStorage)
+    } finally {
+      flushingFibraRef.current = false
+      persistPendingFibra()
+    }
+  }, [participante.id, torneio.id, persistPendingFibra])
+
+  useEffect(() => {
+    if (!isFibra) return
+    const id = setInterval(() => { void flushFibra() }, 1000)
+    return () => { clearInterval(id); void flushFibra() }
+  }, [isFibra, flushFibra])
+
+  // Canto Fibra: encerra o intervalo em curso, some ao acumulado local e enfileira pro servidor.
+  const closeFibraInterval = useCallback((endMsOverride?: number) => {
+    const start = pressStartRef.current
+    if (start === null) return
+    pressStartRef.current = null
+    setPressing(false)
+    const end = endMsOverride ?? Date.now()
+    if (end <= start) return
+    setCount(c => c + (end - start))
+    pendingIntervalsRef.current.push({ startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() })
+    persistPendingFibra()
+  }, [persistPendingFibra])
+
+  const handleFibraPressStart = useCallback((e: React.PointerEvent) => {
+    if (!e.isPrimary) return
+    if (!isRunning || !isCountingDown) return
+    if (participanteStatus !== 'approved') return
+    if (!isMyTurn) return
+    if (pressStartRef.current !== null) return
+    pressStartRef.current = Date.now()
+    setPressing(true)
+  }, [isRunning, isCountingDown, participanteStatus, isMyTurn])
+
+  const handleFibraPressEnd = useCallback(() => { closeFibraInterval() }, [closeFibraInterval])
+
+  // bateria acabou com o botão pressionado → fecha sozinho, cravando o fim da janela
+  useEffect(() => {
+    if (!isFibra) return
+    if (pressStartRef.current !== null && !isCountingDown && endMs !== null) {
+      closeFibraInterval(endMs)
+    }
+  }, [isFibra, isCountingDown, endMs, closeFibraInterval])
+
   // Busca ranking + total do pássaro (soma das marcações) a cada 5s enquanto aprovado
   useEffect(() => {
     if (participanteStatus !== 'approved' || torneioStatus === 'draft') return
@@ -571,12 +679,12 @@ export default function ParticipanteClient({
           </div>
         )}
         <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 14, padding: '16px 22px', textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: '0.78rem', color: '#065F46', fontWeight: 600 }}>Seu {participante.bird_name} fez</p>
-          <p style={{ margin: '4px 0', fontSize: '2rem', fontWeight: 900, color: '#0D8F41' }}>{total} cantos</p>
+          <p style={{ margin: 0, fontSize: '0.78rem', color: '#065F46', fontWeight: 600 }}>Seu {participante.bird_name} {isFibra ? 'cantou' : 'fez'}</p>
+          <p style={{ margin: '4px 0', fontSize: '2rem', fontWeight: 900, color: '#0D8F41' }}>{isFibra ? formatDuration(total) : `${total} cantos`}</p>
           <p style={{ margin: 0, fontSize: '0.72rem', color: '#6B7280' }}>somados ao histórico e ranking do pássaro</p>
         </div>
         <p style={{ margin: '8px 0 0', fontSize: '0.72rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Classificação final</p>
-        <RankingList ranking={ranking} myId={participante.id} />
+        <RankingList ranking={ranking} myId={participante.id} timeMode={isFibra} />
       </main>
     )
   }
@@ -714,8 +822,8 @@ export default function ParticipanteClient({
             </div>
           )}
 
-          {/* avisos de velocidade já enviados ao Chefe de Roda */}
-          {warnCount > 0 && (
+          {/* avisos de velocidade já enviados ao Chefe de Roda — Canto Fibra não tem penalidade */}
+          {!isFibra && warnCount > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, marginBottom: -12,
               background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 20,
@@ -732,22 +840,27 @@ export default function ParticipanteClient({
           )}
 
           <button
-            onPointerDown={handleClick}
+            onPointerDown={isFibra ? handleFibraPressStart : handleClick}
+            onPointerUp={isFibra ? handleFibraPressEnd : undefined}
+            onPointerCancel={isFibra ? handleFibraPressEnd : undefined}
+            onPointerLeave={isFibra ? handleFibraPressEnd : undefined}
             style={{
               width: 256, height: 256, borderRadius: '50%',
-              background: fraudFlash ? '#DC2626' : (clicking ? '#16A34A' : '#0D8F41'),
-              color: '#fff', fontWeight: 800, fontSize: '3rem',
+              background: fraudFlash ? '#DC2626' : (isFibra ? (pressing ? '#DC2626' : '#0D8F41') : (clicking ? '#16A34A' : '#0D8F41')),
+              color: '#fff', fontWeight: 800, fontSize: isFibra ? '2.2rem' : '3rem',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: fraudFlash
                 ? '0 12px 40px rgba(220,38,38,0.45)'
-                : clicking
-                  ? '0 4px 20px rgba(13,143,65,0.4)'
-                  : '0 12px 40px rgba(13,143,65,0.35)',
-              transform: clicking ? 'scale(0.94)' : 'scale(1)',
+                : isFibra
+                  ? (pressing ? '0 4px 20px rgba(220,38,38,0.4)' : '0 12px 40px rgba(13,143,65,0.35)')
+                  : clicking
+                    ? '0 4px 20px rgba(13,143,65,0.4)'
+                    : '0 12px 40px rgba(13,143,65,0.35)',
+              transform: (isFibra ? pressing : clicking) ? 'scale(0.94)' : 'scale(1)',
               transition: 'transform 0.1s, box-shadow 0.1s, background 0.1s',
               userSelect: 'none', WebkitUserSelect: 'none',
-              touchAction: 'manipulation',
+              touchAction: isFibra ? 'none' : 'manipulation',
             }}
           >
             {fraudFlash ? (
@@ -755,10 +868,12 @@ export default function ParticipanteClient({
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-            ) : count}
+            ) : isFibra ? formatDuration(count) : count}
           </button>
 
-          <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>Toque para contar o canto</p>
+          <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>
+            {isFibra ? 'Pressione e segure enquanto o pássaro canta' : 'Toque para contar o canto'}
+          </p>
         </>
       )}
 
@@ -787,9 +902,9 @@ export default function ParticipanteClient({
           </div>
 
           <div style={{ background: '#F0FDF4', borderRadius: 12, padding: '10px 18px' }}>
-            <span style={{ fontWeight: 800, fontSize: '1.4rem', color: '#0D8F41' }}>{myScore}</span>
+            <span style={{ fontWeight: 800, fontSize: '1.4rem', color: '#0D8F41' }}>{isFibra ? formatDuration(myScore) : myScore}</span>
             <span style={{ marginLeft: 6, fontSize: '0.72rem', color: '#9CA3AF' }}>
-              seus cantos{myPosition > 0 ? ` · ${myPosition}º lugar` : ''}
+              {isFibra ? 'seu tempo cantado' : 'seus cantos'}{myPosition > 0 ? ` · ${myPosition}º lugar` : ''}
             </span>
           </div>
 
@@ -804,14 +919,14 @@ export default function ParticipanteClient({
                   ? `Competindo agora · ${nomeMarcacao(activeGroup, round)}`
                   : `Resultados da ${nomeMarcacao(activeGroup, round)}`}
               </p>
-              <RankingList ranking={competingNow} myId={participante.id} />
+              <RankingList ranking={competingNow} myId={participante.id} timeMode={isFibra} />
             </div>
           )}
 
           <p style={{ margin: '4px 0 0', fontSize: '0.68rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             {divisions > 1 ? 'Ranking geral' : 'Ranking dos passarinhos'}
           </p>
-          <RankingList ranking={ranking} myId={participante.id} />
+          <RankingList ranking={ranking} myId={participante.id} timeMode={isFibra} />
 
         </div>
       )}

@@ -33,6 +33,15 @@ export default async function MestreTorneioPage({ params }: { params: Promise<{ 
     .select('participant_id, count')
     .eq('tournament_id', id)
 
+  const isFibra = torneio.estilo_canto === 'Canto Fibra'
+  const { data: fibraIntervals } = isFibra
+    ? await supabase
+        .from('fibra_intervals')
+        .select('participant_id, started_at, ended_at')
+        .eq('tournament_id', id)
+        .order('started_at', { ascending: true })
+    : { data: [] }
+
   const qrUrl = `${await getBaseUrl()}/entrar/${torneio.qr_token}`
   const qrDataUrl = torneio.qr_token ? await QRCode.toDataURL(qrUrl, { width: 256, margin: 2 }) : null
 
@@ -68,9 +77,11 @@ export default async function MestreTorneioPage({ params }: { params: Promise<{ 
           active_group: (torneio as Record<string, unknown>).active_group as number ?? 1,
           finished_at: (torneio as Record<string, unknown>).finished_at as string | null ?? null,
           manual_groups: (torneio as Record<string, unknown>).manual_groups as boolean ?? false,
+          estilo_canto: torneio.estilo_canto ?? null,
         }}
         participantesInitial={participantes ?? []}
         scoresInitial={scores ?? []}
+        fibraIntervalsInitial={fibraIntervals ?? []}
         qrDataUrl={qrDataUrl}
         qrUrl={qrUrl}
         streamUrlInitial={(torneio as Record<string, unknown>).stream_url as string | null ?? null}

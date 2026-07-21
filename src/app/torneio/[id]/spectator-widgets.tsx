@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { formatDuration } from '@/lib/duration'
 
 export type RankItem = {
   id: string; bird_name: string; user_name: string; cage_number: number | null
   score: number; warns: number; round_group?: number | null
+  intervals?: { started_at: string; ended_at: string }[]
 }
 
 const RANK_COLORS = ['#B45309', '#6B7280', '#92400E']
@@ -202,62 +204,95 @@ const OVERTAKE_CSS = `
 .rank-row-down { animation: rank-down 1.6s ease; }
 `
 
+/* ── Canto Fibra: carrossel horizontal (loop contínuo, puro CSS) com o início–fim de cada intervalo ── */
+function fmtClock(iso: string) {
+  const d = new Date(iso)
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_at: string }[] }) {
+  if (intervals.length === 0) return null
+  const chips = intervals.map((iv, i) => (
+    <span key={i} style={{
+      flexShrink: 0, background: '#F3F4F6', borderRadius: 20, padding: '2px 8px',
+      fontSize: '0.62rem', fontWeight: 700, color: '#6B7280', whiteSpace: 'nowrap',
+    }}>
+      {fmtClock(iv.started_at)}–{fmtClock(iv.ended_at)}
+    </span>
+  ))
+  return (
+    <div style={{ overflow: 'hidden', width: '100%', marginTop: 4 }}>
+      <style>{`
+        @keyframes fibra-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .fibra-ticker-track { animation: fibra-ticker 18s linear infinite; }
+      `}</style>
+      <div className="fibra-ticker-track" style={{ display: 'flex', gap: 6, width: 'max-content' }}>
+        {chips}{chips}
+      </div>
+    </div>
+  )
+}
+
 /* tamanhos vêm de CSS vars (--rk-*) — o telão desktop define valores maiores */
-function Row({ p, i, moved }: { p: RankItem; i: number; moved?: 'up' | 'down' }) {
+function Row({ p, i, moved, timeMode = false }: { p: RankItem; i: number; moved?: 'up' | 'down'; timeMode?: boolean }) {
   return (
     <div
       className={moved === 'up' ? 'rank-row-up' : moved === 'down' ? 'rank-row-down' : undefined}
       style={{
-        display: 'flex', alignItems: 'center', gap: 'var(--rk-gap, 12px)',
+        display: 'flex', flexDirection: 'column', gap: 4,
         background: i < 3 ? RANK_BG[i] : '#FAFAFA',
         borderRadius: 10, padding: 'var(--rk-pad, 10px 14px)',
         border: `1px solid ${i < 3 ? 'rgba(0,0,0,0.06)' : '#F3F4F6'}`,
       }}
     >
-      <span style={{ minWidth: 'var(--rk-pos-w, 26px)', fontWeight: 800, fontSize: 'var(--rk-pos-fs, 0.72rem)', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-        {String(i + 1).padStart(2, '0')}
-        {moved === 'up' && <span style={{ color: '#0D8F41', fontSize: '0.72rem' }}>▲</span>}
-        {moved === 'down' && <span style={{ color: '#DC2626', fontSize: '0.72rem' }}>▼</span>}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 'var(--rk-name-fs, 0.87rem)', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
-        </p>
-        <p style={{ margin: 0, fontSize: 'var(--rk-sub-fs, 0.75rem)', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {p.user_name}
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--rk-gap, 12px)' }}>
+        <span style={{ minWidth: 'var(--rk-pos-w, 26px)', fontWeight: 800, fontSize: 'var(--rk-pos-fs, 0.72rem)', letterSpacing: '0.06em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+          {String(i + 1).padStart(2, '0')}
+          {moved === 'up' && <span style={{ color: '#0D8F41', fontSize: '0.72rem' }}>▲</span>}
+          {moved === 'down' && <span style={{ color: '#DC2626', fontSize: '0.72rem' }}>▼</span>}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: 'var(--rk-name-fs, 0.87rem)', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p.bird_name}{p.cage_number != null ? ` · Gaiola ${p.cage_number}` : ''}
+          </p>
+          <p style={{ margin: 0, fontSize: 'var(--rk-sub-fs, 0.75rem)', fontWeight: 600, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p.user_name}
+          </p>
+        </div>
+        <WarnBadge n={p.warns} />
+        <span style={{ fontWeight: 800, fontSize: 'var(--rk-score-fs, 1rem)', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
+          {timeMode ? formatDuration(p.score) : p.score.toLocaleString('pt-BR')}
+        </span>
       </div>
-      <WarnBadge n={p.warns} />
-      <span style={{ fontWeight: 800, fontSize: 'var(--rk-score-fs, 1rem)', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-        {p.score.toLocaleString('pt-BR')}
-      </span>
+      {timeMode && p.intervals && p.intervals.length > 0 && <IntervalTicker intervals={p.intervals} />}
     </div>
   )
 }
 
 /* ── lista de ranking com animação de ultrapassagem ── */
-export function AnimatedRanking({ items, emptyText = 'Nenhum participante.' }: {
-  items: RankItem[]; emptyText?: string
+export function AnimatedRanking({ items, emptyText = 'Nenhum participante.', timeMode = false }: {
+  items: RankItem[]; emptyText?: string; timeMode?: boolean
 }) {
   const moved = useOvertakes(items)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <style>{OVERTAKE_CSS}</style>
       {items.length === 0 && <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>{emptyText}</p>}
-      {items.map((p, i) => <Row key={p.id} p={p} i={i} moved={moved[p.id]} />)}
+      {items.map((p, i) => <Row key={p.id} p={p} i={i} moved={moved[p.id]} timeMode={timeMode} />)}
     </div>
   )
 }
 
 /* ── Painel da marcação: "Próxima" antes de começar → "Marcação atual" na contagem →
       "Próxima marcação" de novo quando acabar (se houver outra) ── */
-export function MarcacaoPanel({ startAt, durationSecs, activeGroup, divisions, current, next }: {
+export function MarcacaoPanel({ startAt, durationSecs, activeGroup, divisions, current, next, timeMode = false }: {
   startAt: string | null
   durationSecs: number
   activeGroup: number
   divisions: number
   current: RankItem[]
   next: RankItem[]
+  timeMode?: boolean
 }) {
   const now = useNow(1000)
   if (now === null) return null
@@ -303,7 +338,7 @@ export function MarcacaoPanel({ startAt, durationSecs, activeGroup, divisions, c
         {titulo}
         {sub && <span style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#9CA3AF' }}>· {sub}</span>}
       </p>
-      <AnimatedRanking items={lista} emptyText="Aguardando definição das gaiolas." />
+      <AnimatedRanking items={lista} emptyText="Aguardando definição das gaiolas." timeMode={timeMode} />
     </div>
   )
 }

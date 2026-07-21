@@ -13,9 +13,7 @@ const RACAS = [
   'Trinca Ferro', 'Azulão', 'Bigodinho', 'Sanhaço', 'Tiziu',
 ]
 
-const ESTILOS = [
-  'Canto clássico', 'Canto rolado', 'Canto livre', 'Canto regional', 'Canto nativo',
-]
+const ESTILOS = ['Canto clássico', 'Canto Fibra']
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#6B7280',
