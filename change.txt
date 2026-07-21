@@ -1,6 +1,8 @@
-na página inicial, tem "Melhores da temporada" , mas não tem nenhum pássaro registrado ainda, embora estaja mostrando um mock, ou algo do tipo. reveja isso, e bota para mostrar apenas pássaros rankeados em cantos especificos, e tente mostrar por padrão ao invés de Coleiro-canto clássico, Bicudo-canto fibra
->>> [FEITO]
-    - RankingPreview (home) usava ALL_LIGA (mock) hardcoded -> por isso mostrava fake sem ninguem registrado. Agora recebe entries REAIS do servidor (getMergedLiga, que so traz mock com NEXT_PUBLIC_SHOW_LIGA_MOCK=true). Sem passaro rankeado -> "Sem dados para ...". page.tsx + ranking-preview.tsx
-    - Default trocado de Coleiro/Canto classico para Bicudo/Canto Fibra.
-    - Fibra ranqueia por tempo (ms) -> agora renderiza formatDuration (mm:ss) no lugar do numero bruto.
-    - Ordena por count desc.
+na home tem
+Melhores da temporada
+Coleiro · Canto clássico (muda para bicudo canto fibra [só deixa essa parte de raça do passaro/canto opção aparecendo se tiver algum coleiro cadastrado])
+Sem dados para Coleiro · Canto clássico em Nacional. muda para bicudo canto fibra
+>>> [FEITO] RankingPreview: a categoria mostrada agora eh dirigida pelos DADOS REAIS.
+    Ainda aparecia Coleiro/classico por causa de localStorage antigo (liga_tipo/liga_estilo). Agora so respeita o filtro salvo se AQUELA categoria tiver passaro rankeado.
+    Ordem: filtro salvo (se tiver dados) -> estilo do proprio passaro do usuario -> Bicudo·Canto Fibra -> categoria com mais cantos -> default Bicudo·Canto Fibra (quando nada registrado).
+    Resultado: so mostra raça/canto que tem passaro cadastrado; default = Bicudo·Canto Fibra; "Sem dados" so quando realmente nao ha nada. ranking-preview.tsx

@@ -22,16 +22,30 @@ export default function RankingPreview({ userBirdEstilo, entries = [] }: Props) 
   const [cidade, setCidade] = useState('')
 
   useEffect(() => {
+    // só mostra uma categoria (raça · canto) que TENHA pássaro rankeado.
+    // ordem: filtro salvo (se tiver dados) → estilo do próprio pássaro → Bicudo·Fibra
+    // → categoria com mais cantos → default Bicudo·Fibra (quando nada registrado).
+    const has = (t: string, e: string) => entries.some(x => x.tipo_ave === t && x.estilo_canto === e)
     const lsTipo   = ls('liga_tipo')
     const lsEstilo = ls('liga_estilo')
 
-    if (lsTipo)   setTipo(lsTipo)
-    if (lsEstilo) setEstilo(lsEstilo)
-    else if (userBirdEstilo) setEstilo(userBirdEstilo)
+    let t = 'Bicudo', e = 'Canto Fibra'
+    if (lsTipo && lsEstilo && has(lsTipo, lsEstilo)) {
+      t = lsTipo; e = lsEstilo
+    } else if (userBirdEstilo && entries.some(x => x.estilo_canto === userBirdEstilo)) {
+      const m = [...entries].filter(x => x.estilo_canto === userBirdEstilo).sort((a, b) => b.count - a.count)[0]
+      t = m.tipo_ave; e = userBirdEstilo
+    } else if (has('Bicudo', 'Canto Fibra')) {
+      t = 'Bicudo'; e = 'Canto Fibra'
+    } else if (entries.length > 0) {
+      const top = [...entries].sort((a, b) => b.count - a.count)[0]
+      t = top.tipo_ave; e = top.estilo_canto
+    }
+    setTipo(t); setEstilo(e)
 
     setEstado(ls('liga_estado') ?? '')
     setCidade(ls('liga_cidade') ?? '')
-  }, [userBirdEstilo])
+  }, [userBirdEstilo, entries])
 
   const { top5, scopeLabel } = useMemo(() => {
     const base = entries
