@@ -24,7 +24,7 @@ export default async function MestreTorneioPage({ params }: { params: Promise<{ 
 
   const { data: participantes } = await supabase
     .from('participants')
-    .select('id, user_name, bird_name, cage_number, status, user_id, round_group')
+    .select('id, user_name, bird_name, cage_number, status, user_id, round_group, marks_participant_id')
     .eq('tournament_id', id)
     .order('created_at', { ascending: true })
 

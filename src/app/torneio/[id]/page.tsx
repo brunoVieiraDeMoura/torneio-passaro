@@ -4,9 +4,10 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
+import AdBanner from '@/components/ui/ad-banner'
 import LiveChat from './live-chat'
 import { AnimatedRanking, AutoScrollMain, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
-import { formatDuration } from '@/lib/duration'
+import { formatDurationMinSec } from '@/lib/duration'
 
 type Club = { name: string; cidade: string; estado: string } | null
 
@@ -35,7 +36,7 @@ function EliminadoRow({ p, timeMode = false }: { p: Elim; timeMode?: boolean }) 
         <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.85rem', color: '#111827', textDecoration: 'line-through', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.bird_name}</p>
         <p style={{ margin: 0, fontSize: '0.7rem', color: '#9CA3AF' }}>{p.user_name}{p.lastRound ? ` · caiu na rodada ${p.lastRound}` : ''}</p>
       </div>
-      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#DC2626', flexShrink: 0 }}>{timeMode ? formatDuration(p.total) : p.total.toLocaleString('pt-BR')}</span>
+      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#DC2626', flexShrink: 0 }}>{timeMode ? formatDurationMinSec(p.total) : p.total.toLocaleString('pt-BR')}</span>
     </div>
   )
 }
@@ -45,7 +46,7 @@ function HistRow({ e, i, timeMode = false }: { e: HistEntry; i: number; timeMode
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 18px' }}>
       <span style={{ minWidth: 22, fontWeight: 800, fontSize: '0.7rem', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>{String(i + 1).padStart(2, '0')}</span>
       <p style={{ flex: 1, margin: 0, fontWeight: 600, fontSize: '0.82rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.bird_name}</p>
-      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0D8F41', flexShrink: 0 }}>{timeMode ? formatDuration(e.count) : e.count.toLocaleString('pt-BR')}</span>
+      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0D8F41', flexShrink: 0 }}>{timeMode ? formatDurationMinSec(e.count) : e.count.toLocaleString('pt-BR')}</span>
     </div>
   )
 }
@@ -119,7 +120,7 @@ const getTorneioData = async (id: string) => {
   const [{ data: participants }, { data: scores }, { data: history }, { data: fibraRows }] = await Promise.all([
     supabase
       .from('participants')
-      .select('id, user_name, bird_name, cage_number, status, round_group')
+      .select('id, user_name, bird_name, cage_number, status, round_group, marks_participant_id')
       .eq('tournament_id', id)
       .order('cage_number', { ascending: true }),
     supabase
@@ -205,12 +206,14 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
   const divisions = (torneio as Record<string, unknown>).divisions as number ?? 1
   const activeGroup = (torneio as Record<string, unknown>).active_group as number ?? 1
   const groupsAssigned = ranked.some(p => (p as RankItem).round_group != null)
+  // sorteio das gaiolas feito → inscrições encerradas (anti-roubo)
+  const drawDone = ranked.length >= 2 && ranked.every(p => (p as { marks_participant_id?: string | null }).marks_participant_id != null)
   const showPanel = (torneio.status === 'open' || torneio.status === 'running') && divisions > 1 && groupsAssigned
   const competing: RankItem[] = ranked.filter(p => (p as RankItem).round_group === activeGroup)
   const nextGroupItems: RankItem[] = ranked.filter(p => (p as RankItem).round_group === activeGroup + 1)
   const isActive = torneio.status === 'open' || torneio.status === 'running'
   // primeira marcação definida (grupos das gaiolas atribuídos) → inscrições fecham
-  const canJoin = isOpen && !groupsAssigned
+  const canJoin = isOpen && !groupsAssigned && !drawDone
   const time = fmtTime(torneio.start_at)
   const streamUrl = ((torneio as Record<string, unknown>).stream_url as string | null) ?? null
   const embedUrl = streamUrl ? toEmbedUrl(streamUrl) : null
@@ -228,6 +231,8 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         {/* painel de info: hero escuro no mobile, sidebar fixa no desktop */}
         <aside className="sp-side">
           <div className="sp-side-inner">
+            {/* Anúncio no topo da tela do espectador */}
+            <AdBanner inline />
             <Link href="/torneios" className="sp-back">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6"/>

@@ -88,7 +88,7 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
         padding: 16,
       }}
     >
-      <div style={{ background: '#fff', borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 460, boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: '28px 24px', width: '100%', maxWidth: 460, boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: '1rem', color: '#111827' }}>Novo torneio</p>
           <button type="button" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, lineHeight: 0 }}>
@@ -150,10 +150,10 @@ export default function CriarTorneioForm({ clubId, defaultEstado = '', defaultCi
               aria-checked={manualGroups}
               onClick={() => setManualGroups(v => !v)}
               style={{
-                width: 42, height: 24, borderRadius: 24, flexShrink: 0,
-                border: 'none', cursor: 'pointer', padding: 2,
+                width: 42, height: 24, minHeight: 24, borderRadius: 24, flexShrink: 0,
+                border: 'none', cursor: 'pointer', padding: 2, boxSizing: 'border-box',
                 background: manualGroups ? '#0D8F41' : '#D1D5DB',
-                display: 'flex', justifyContent: manualGroups ? 'flex-end' : 'flex-start',
+                display: 'flex', alignItems: 'center', justifyContent: manualGroups ? 'flex-end' : 'flex-start',
                 transition: 'background 0.15s',
               }}
             >

@@ -37,7 +37,17 @@ interface Participante {
   cage_number: number | null
   status: string
   round_group: number | null
+  marks_participant_id?: string | null
   elimination_reason?: string | null
+}
+
+// Anti-roubo: o passarinho (de outra pessoa) que este participante vai marcar.
+interface MarkTarget {
+  id: string
+  bird_name: string
+  cage_number: number | null
+  round_group: number | null
+  status: string
 }
 
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -78,15 +88,21 @@ function RankingList({ ranking, myId, timeMode = false }: { ranking: { id: strin
 export default function ParticipanteClient({
   torneio,
   participante,
+  markTarget = null,
   initialCount,
   initialSuspicious = 0,
 }: {
   torneio: Torneio
   participante: Participante
+  markTarget?: MarkTarget | null
   initialCount: number
   initialSuspicious?: number
 }) {
   const isFibra = torneio.estilo_canto === 'Canto Fibra'
+  // Anti-roubo: o botão marca o passarinho do ALVO (markTarget). Sem sorteio
+  // (fallback), marca o próprio — comportamento antigo. A contagem/placar do
+  // botão é sempre do passarinho marcado (scoreTargetId).
+  const scoreTargetId = markTarget?.id ?? participante.id
   const [count, setCount] = useState(initialCount)
   // avisos de velocidade já contabilizados pro Chefe de Roda (servidor + sessão)
   const [warnCount, setWarnCount] = useState(initialSuspicious)
@@ -100,6 +116,9 @@ export default function ParticipanteClient({
   const [divisions, setDivisions] = useState(torneio.divisions ?? 1)
   const [round, setRound] = useState(torneio.round ?? 1)
   const [roundGroup, setRoundGroup] = useState<number | null>(participante.round_group)
+  // grupo do passarinho MARCADO (alvo) — decide quando é a vez de marcar.
+  // sem sorteio (fallback), acompanha o próprio grupo.
+  const [targetGroup, setTargetGroup] = useState<number | null>(markTarget?.round_group ?? participante.round_group)
   const [participanteStatus, setParticipanteStatus] = useState(participante.status)
   const [eliminationReason, setEliminationReason] = useState<string | null>(participante.elimination_reason ?? null)
   const router = useRouter()
@@ -315,12 +334,18 @@ export default function ParticipanteClient({
     const supabase = createClient()
     let active = true
     const load = async () => {
-      const [{ data: p }, { data: t }] = await Promise.all([
+      const [{ data: p }, { data: t }, { data: tgt }] = await Promise.all([
         supabase.from('participants').select('status, round_group, elimination_reason').eq('id', participante.id).single(),
         supabase.from('tournaments').select('status, start_at, duration_secs, active_group, divisions, round').eq('id', torneio.id).single(),
+        markTarget
+          ? supabase.from('participants').select('round_group, status').eq('id', markTarget.id).single()
+          : Promise.resolve({ data: null }),
       ])
       if (!active) return
       if (p) { setParticipanteStatus(p.status); setRoundGroup(p.round_group); setEliminationReason((p as { elimination_reason?: string | null }).elimination_reason ?? null) }
+      // grupo do alvo decide a vez de marcar; sem sorteio, acompanha o próprio grupo
+      if (markTarget) { if (tgt) setTargetGroup((tgt as { round_group: number | null }).round_group) }
+      else if (p) setTargetGroup(p.round_group)
       if (t) {
         setTorneioStatus(t.status); setStartAt(t.start_at); setDurationSecs(t.duration_secs)
         setActiveGroup(t.active_group ?? 1); setDivisions(t.divisions ?? 1)
@@ -331,13 +356,19 @@ export default function ParticipanteClient({
     load()
     const id = setInterval(load, 2000)
     return () => { active = false; clearInterval(id) }
-  }, [participanteStatus, torneioStatus, participante.id, torneio.id])
+  }, [participanteStatus, torneioStatus, participante.id, torneio.id, markTarget])
 
   const nowMs = now ? now.getTime() : null
   const startAtMs = startAt ? new Date(startAt).getTime() : null
   const msUntilStart = startAtMs !== null && nowMs !== null ? startAtMs - nowMs : null
   const endMs = startAtMs !== null ? startAtMs + durationSecs * 1000 : null
   const msRemaining = endMs !== null && nowMs !== null ? endMs - nowMs : null
+
+  // Canto Fibra: tempo do aperto ATUAL (sobe enquanto segura, zera ao soltar).
+  // O total (count) só recebe este intervalo quando o marcador solta.
+  const pressElapsedMs = pressing && nowMs !== null && pressStartRef.current !== null
+    ? Math.max(0, nowMs - pressStartRef.current)
+    : 0
 
   // contagem é dirigida pelo tempo: quando start_at chega, vira contador sozinho
   // (não depende do mestre estar com a aba aberta p/ virar o status → 'running')
@@ -347,8 +378,8 @@ export default function ParticipanteClient({
   // torneio só "termina" quando o Chefe de Roda finaliza — fim de uma marcação NÃO é fim do torneio
   const isFinished = torneioStatus === 'finished'
   const isCountingDown = isRunning && msRemaining !== null && msRemaining > 0
-  // marcação dividida: só conta quem está no grupo ativo
-  const isMyTurn = divisions <= 1 || roundGroup === activeGroup
+  // marcação dividida: só marca quem tem o passarinho-alvo no grupo ativo
+  const isMyTurn = divisions <= 1 || targetGroup === activeGroup
 
   // telas do participante durante o torneio ativo
   const preStart = isMyTurn && !started               // minha marcação agendada, ainda não começou
@@ -381,7 +412,7 @@ export default function ParticipanteClient({
       const res = await fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: participante.id, tournamentId: torneio.id, increment: delta, suspicious: susp }),
+        body: JSON.stringify({ participantId: scoreTargetId, markerId: participante.id, tournamentId: torneio.id, increment: delta, suspicious: susp }),
       })
       if (res.ok) {
         // sucesso: servidor persistiu. NÃO mexemos no contador (é local) — evita glitch.
@@ -403,7 +434,7 @@ export default function ParticipanteClient({
       flushingRef.current = false
       persistPending()
     }
-  }, [participante.id, torneio.id, persistPending])
+  }, [participante.id, scoreTargetId, torneio.id, persistPending])
 
   // Limitador: envia acumulado a cada 1s (conta todos os cliques, mesmo os rápidos)
   useEffect(() => {
@@ -422,7 +453,7 @@ export default function ParticipanteClient({
       const res = await fetch('/api/score-fibra', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participantId: participante.id, tournamentId: torneio.id, ...interval }),
+        body: JSON.stringify({ participantId: scoreTargetId, markerId: participante.id, tournamentId: torneio.id, ...interval }),
       })
       if (res.ok || res.status < 500) {
         // sucesso OU 4xx (não recuperável, ex.: tempo esgotado) → descarta e segue
@@ -435,7 +466,7 @@ export default function ParticipanteClient({
       flushingFibraRef.current = false
       persistPendingFibra()
     }
-  }, [participante.id, torneio.id, persistPendingFibra])
+  }, [participante.id, scoreTargetId, torneio.id, persistPendingFibra])
 
   useEffect(() => {
     if (!isFibra) return
@@ -813,12 +844,28 @@ export default function ParticipanteClient({
       {/* Minha marcação em contagem */}
       {counting && (
         <>
+          {/* Anti-roubo: você marca o passarinho de OUTRA pessoa (nunca o seu) */}
+          {markTarget && (
+            <div style={{ background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 14, padding: '10px 20px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7C3AED' }}>Você marca</p>
+              <p style={{ margin: '2px 0 0', fontWeight: 800, fontSize: '1.05rem', color: '#5B21B6' }}>
+                {markTarget.bird_name}{markTarget.cage_number != null ? ` · Gaiola ${markTarget.cage_number}` : ''}
+              </p>
+            </div>
+          )}
           {isCountingDown && msRemaining !== null && (
             <div style={{ textAlign: 'center' }}>
               <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '3.5rem', fontWeight: 800, color: msRemaining < 120_000 ? '#DC2626' : '#111827', letterSpacing: '-0.02em', lineHeight: 1 }}>
                 {formatMs(msRemaining)}
               </p>
               <p style={{ margin: '4px 0 0', color: '#9CA3AF', fontSize: '0.75rem' }}>tempo restante</p>
+              {/* Canto Fibra: tempo total já marcado (soma dos apertos concluídos) */}
+              {isFibra && (
+                <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'baseline', gap: 6, background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 10, padding: '6px 14px' }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: '1.35rem', fontWeight: 800, color: '#0D8F41', letterSpacing: '0.02em' }}>{formatDuration(count)}</span>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#0D8F41', textTransform: 'uppercase', letterSpacing: '0.08em' }}>total marcado</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -868,7 +915,23 @@ export default function ParticipanteClient({
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                 <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
               </svg>
-            ) : isFibra ? formatDuration(count) : count}
+            ) : isFibra ? (
+              /* Canto Fibra: cronômetro do aperto atual. Sobe enquanto segura (com
+                 anel girando) e reseta pra 00:00 ao soltar — a soma vai pro total. */
+              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 200, height: 200 }}>
+                <style>{`@keyframes fibra-spin { to { transform: rotate(360deg); } }`}</style>
+                {pressing && (
+                  <span aria-hidden="true" style={{
+                    position: 'absolute', inset: 0, borderRadius: '50%',
+                    border: '6px solid rgba(255,255,255,0.28)', borderTopColor: '#fff',
+                    animation: 'fibra-spin 0.9s linear infinite',
+                  }} />
+                )}
+                <span style={{ fontFamily: 'monospace', fontSize: '2.6rem', fontWeight: 800, letterSpacing: '0.02em' }}>
+                  {formatMs(pressElapsedMs)}
+                </span>
+              </span>
+            ) : count}
           </button>
 
           <p style={{ margin: 0, color: '#9CA3AF', fontSize: '0.8rem' }}>

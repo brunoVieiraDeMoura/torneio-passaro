@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { formatDuration, parseDuration } from '@/lib/duration'
+import { formatDuration, formatDurationMinSec, parseDuration } from '@/lib/duration'
 
 interface Participante {
   id: string
@@ -13,6 +13,7 @@ interface Participante {
   status: string
   user_id: string | null
   round_group: number | null
+  marks_participant_id?: string | null
   elimination_reason?: string | null
 }
 
@@ -57,6 +58,23 @@ function toEmbedUrl(url: string): string {
 function splitGroups(list: Participante[], n: number): Record<string, number> {
   const map: Record<string, number> = {}
   list.forEach((p, i) => { map[p.id] = (i % n) + 1 })
+  return map
+}
+
+// Sorteio das gaiolas (anti-roubo): cada participante marca o passarinho de OUTRO,
+// nunca o seu. Embaralha e liga em um único ciclo (marker → próximo) — assim
+// ninguém cai em si mesmo e todo mundo é marcado por exatamente uma pessoa.
+// Retorna map marker.id → target.id, ou null se houver menos de 2 participantes.
+function derangeMarks(ids: string[]): Record<string, string> | null {
+  if (ids.length < 2) return null
+  const shuffled = [...ids]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  const map: Record<string, string> = {}
+  const n = shuffled.length
+  for (let i = 0; i < n; i++) map[shuffled[i]] = shuffled[(i + 1) % n]
   return map
 }
 
@@ -113,6 +131,28 @@ function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_
       <div className="fibra-ticker-track" style={{ display: 'flex', gap: 6, width: 'max-content' }}>
         {chips}{chips}
       </div>
+    </div>
+  )
+}
+
+// Canto Fibra (tempo cantado sem app): dois campos de 2 dígitos "mm : ss".
+// value/onChange trabalham com a string "mm:ss" (compatível com parseDuration).
+function MMSSInput({ value, placeholder, onChange, inp }: {
+  value: string; placeholder: string; onChange: (v: string) => void; inp: React.CSSProperties
+}) {
+  const [mmRaw, ssRaw] = value.split(':')
+  const mm = mmRaw ?? ''
+  const ss = ssRaw ?? ''
+  const [phMm, phSs] = placeholder.split(':')
+  const box: React.CSSProperties = { ...inp, width: 48, flexShrink: 0, textAlign: 'center', padding: '9px 6px' }
+  const emit = (m: string, s: string) => onChange(m === '' && s === '' ? '' : `${m}:${s}`)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      <input style={box} type="text" inputMode="numeric" maxLength={2} placeholder={phMm ?? 'mm'} aria-label="minutos"
+        value={mm} onChange={e => emit(e.target.value.replace(/\D/g, '').slice(0, 2), ss)} />
+      <span style={{ fontWeight: 800, color: '#9CA3AF' }}>:</span>
+      <input style={box} type="text" inputMode="numeric" maxLength={2} placeholder={phSs ?? 'ss'} aria-label="segundos"
+        value={ss} onChange={e => emit(mm, e.target.value.replace(/\D/g, '').slice(0, 2))} />
     </div>
   )
 }
@@ -294,7 +334,7 @@ export default function MestreClient({
     const supabase = createClient()
     const poll = setInterval(async () => {
       const [{ data: parts }, { data: scs }, fibraRes] = await Promise.all([
-        supabase.from('participants').select('id, user_name, bird_name, cage_number, status, user_id, round_group').eq('tournament_id', torneio.id).order('created_at', { ascending: true }),
+        supabase.from('participants').select('id, user_name, bird_name, cage_number, status, user_id, round_group, marks_participant_id').eq('tournament_id', torneio.id).order('created_at', { ascending: true }),
         supabase.from('scores').select('participant_id, count, suspicious_count').eq('tournament_id', torneio.id),
         isFibra
           ? supabase.from('fibra_intervals').select('participant_id, started_at, ended_at').eq('tournament_id', torneio.id).order('started_at', { ascending: true })
@@ -454,6 +494,28 @@ export default function MestreClient({
     router.refresh()
   }
 
+  // ── Sorteio das gaiolas (anti-roubo) — obrigatório antes de configurar a marcação ──
+  // Sorteia quem marca quem (nunca o próprio passarinho) entre os aprovados.
+  // Fecha as inscrições (o sorteio "trava" o torneio) e some com "adicionar sem app".
+  const [sorteioLoading, setSorteioLoading] = useState(false)
+  async function sortearGaiolas() {
+    const aprovados = participantes.filter(p => p.status === 'approved')
+    if (aprovados.length < 2) {
+      alert('É preciso pelo menos 2 participantes aprovados para sortear as gaiolas.')
+      return
+    }
+    const map = derangeMarks(aprovados.map(p => p.id))
+    if (!map) return
+    setSorteioLoading(true)
+    const supabase = createClient()
+    // grava cada atribuição (valores distintos por linha → não dá pra fazer em 1 update)
+    for (const [markerId, targetId] of Object.entries(map)) {
+      await supabase.from('participants').update({ marks_participant_id: targetId }).eq('id', markerId)
+    }
+    setParticipantes(prev => prev.map(p => map[p.id] ? { ...p, marks_participant_id: map[p.id] } : p))
+    setSorteioLoading(false)
+  }
+
   // ── Modal A: Configuração da Marcação (define nº de marcações do ciclo e distribui grupos) ──
   function openMarcConfig(newCycle: boolean) {
     setMcNewCycle(newCycle)
@@ -566,7 +628,13 @@ export default function MestreClient({
     await insertHistory(supabase, byScore, round)
     if (eliminate.length) {
       await supabase.from('participants').update({ status: 'eliminated', elimination_reason: 'vassourada' }).in('id', eliminate.map(p => p.id))
-      setParticipantes(prev => prev.map(p => eliminate.find(e => e.id === p.id) ? { ...p, status: 'eliminated', elimination_reason: 'vassourada' } : p))
+      // eliminação quebra as duplas do sorteio → zera as marcações dos que ficaram,
+      // obrigando um novo sorteio antes de configurar o próximo ciclo (regra anti-roubo).
+      const keepIds = byScore.slice(0, keep).map(p => p.id)
+      if (keepIds.length) await supabase.from('participants').update({ marks_participant_id: null }).in('id', keepIds)
+      setParticipantes(prev => prev.map(p =>
+        eliminate.find(e => e.id === p.id) ? { ...p, status: 'eliminated', elimination_reason: 'vassourada' }
+        : keepIds.includes(p.id) ? { ...p, marks_participant_id: null } : p))
     }
     setVassouradaDone(true) // esconde o botão até o próximo ciclo terminar
     setShowVassoura(false); setVsLoading(false)
@@ -650,6 +718,10 @@ export default function MestreClient({
 
   // marcações já configuradas neste ciclo (algum aprovado com grupo definido)
   const groupsAssigned = participantes.some(p => p.status === 'approved' && p.round_group != null)
+  // sorteio das gaiolas concluído: >=2 aprovados e todos com alguém pra marcar (anti-roubo)
+  const approvedParts = participantes.filter(p => p.status === 'approved')
+  const drawDone = approvedParts.length >= 2 && approvedParts.every(p => p.marks_participant_id != null)
+  const partById = useMemo(() => Object.fromEntries(participantes.map(p => [p.id, p])), [participantes]) as Record<string, Participante>
   // configurou as marcações mas ainda falta agendar o horário da marcação atual
   const awaitingTiming = (status === 'open' || status === 'running') && !startAt && groupsAssigned
   // marcação agendada mas ainda não começou (contagem regressiva rolando) → pode abortar
@@ -919,14 +991,28 @@ export default function MestreClient({
           </CtrlCard>
         )}
 
+        {/* Sorteio das gaiolas — obrigatório antes de configurar a marcação (anti-roubo) */}
+        {((status === 'open' && !groupsAssigned && !drawDone) ||
+          (allGroupsDone && divisions > 1 && !drawDone)) && (
+          <CtrlCard title="🎲 Sortear Gaiolas" desc="Sorteia quem marca o passarinho de quem — ninguém marca o próprio (evita roubo). Ao sortear, as inscrições fecham e a configuração da marcação é liberada.">
+            <button onClick={() => ask('Sortear as gaiolas agora? As inscrições serão encerradas e ninguém marcará o próprio passarinho.', () => sortearGaiolas())}
+              disabled={sorteioLoading || approvedParts.length < 2}
+              style={ctrlBtn((sorteioLoading || approvedParts.length < 2) ? '#D1D5DB' : '#7C3AED', '#fff')}>
+              {sorteioLoading ? 'Sorteando...'
+                : approvedParts.length < 2 ? 'Mínimo 2 participantes aprovados'
+                : allGroupsDone ? '🎲 Sortear Gaiolas (novo ciclo)' : '🎲 Sortear Gaiolas'}
+            </button>
+          </CtrlCard>
+        )}
+
         {/* Marcações — é aqui que o torneio começa de fato */}
-        {((status === 'open' && !groupsAssigned) ||
+        {((status === 'open' && !groupsAssigned && drawDone) ||
           (awaitingTiming && roundPhase !== 'counting' && roundPhase !== 'waiting') ||
           awaitingStart ||
           (roundPhase === 'done' && !allGroupsDone) ||
-          (allGroupsDone && divisions > 1)) && (
+          (allGroupsDone && divisions > 1 && drawDone)) && (
           <CtrlCard title="▶ Marcações" desc="É aqui que o torneio inicia: defina em quantas marcações (grupos de gaiolas) o ciclo será dividido e agende a duração e o horário de cada uma.">
-            {status === 'open' && !groupsAssigned && (
+            {status === 'open' && !groupsAssigned && drawDone && (
               <button onClick={() => openMarcConfig(false)}
                 style={ctrlBtn('#0D8F41', '#fff')}>
                 Configuração da Marcação
@@ -950,7 +1036,7 @@ export default function MestreClient({
                 ▶ Configurar marcação {round}-{activeGroup + 1}
               </button>
             )}
-            {allGroupsDone && divisions > 1 && (
+            {allGroupsDone && divisions > 1 && drawDone && (
               <button onClick={() => openMarcConfig(true)}
                 style={ctrlBtn('#0D8F41', '#fff')}>
                 Configuração da Marcação (novo ciclo)
@@ -960,10 +1046,10 @@ export default function MestreClient({
         )}
 
         {/* Participantes fora do app */}
-        {(((status === 'draft' || status === 'open') && !groupsAssigned) ||
+        {(((status === 'draft' || status === 'open') && !groupsAssigned && !drawDone) ||
           (roundPhase === 'done' && semAppAtuais.length > 0)) && (
           <CtrlCard title="👤 Participante sem App" desc={isFibra ? 'Adicione quem participa sem celular. O tempo cantado deles é informado por você ao fim de cada marcação.' : 'Adicione quem participa sem celular. Os cantos deles (catraca) são informados por você ao fim de cada marcação.'}>
-            {(status === 'draft' || status === 'open') && !groupsAssigned && (
+            {(status === 'draft' || status === 'open') && !groupsAssigned && !drawDone && (
               <button onClick={() => setAddOpen(true)}
                 style={ctrlBtn('#7C3AED', '#fff')}>
                 Adicionar Participante sem App
@@ -1333,10 +1419,10 @@ export default function MestreClient({
                     </p>
                   </div>
                   {isFibra ? (
-                    <input style={{ ...inp, width: 90, flexShrink: 0 }} type="text" inputMode="numeric"
-                      placeholder={formatDuration(scores[p.id] ?? 0)}
+                    <MMSSInput inp={inp}
+                      placeholder={formatDurationMinSec(scores[p.id] ?? 0)}
                       value={cantosInput[p.id] ?? ''}
-                      onChange={e => setCantosInput(prev => ({ ...prev, [p.id]: e.target.value }))} />
+                      onChange={v => setCantosInput(prev => ({ ...prev, [p.id]: v }))} />
                   ) : (
                     <input style={{ ...inp, width: 90, flexShrink: 0 }} type="number" min={0}
                       placeholder={String(scores[p.id] ?? 0)}
@@ -1590,10 +1676,15 @@ export default function MestreClient({
               </div>
             )}
             {p.status === 'approved' && (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0D8F41', background: '#F0FDF4', borderRadius: 20, padding: '4px 10px' }}>
                   Aprovado{p.cage_number ? ` · G${p.cage_number}` : ''}
                 </span>
+                {p.marks_participant_id && partById[p.marks_participant_id] && (
+                  <span title="Passarinho que este participante vai marcar" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6D28D9', background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 20, padding: '4px 10px' }}>
+                    marca {partById[p.marks_participant_id].cage_number ? `G${partById[p.marks_participant_id].cage_number}` : partById[p.marks_participant_id].bird_name}
+                  </span>
+                )}
                 {status !== 'finished' && (
                   <button onClick={() => ask(`Eliminar ${p.bird_name} do torneio?`, () => eliminarParticipante(p, 'manual'))}
                     style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 7, padding: '5px 10px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>

@@ -9,6 +9,15 @@ export function formatDuration(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
+// tempo acumulado (ms) → SEMPRE "mm:ss" (minutos totais, sem separar horas).
+// Ex.: 1h05m30s → "65:30". Usado onde só interessa minuto/segundo.
+export function formatDurationMinSec(ms: number): string {
+  const totalSecs = Math.max(0, Math.floor(ms / 1000))
+  const m = Math.floor(totalSecs / 60)
+  const s = totalSecs % 60
+  return `${pad(m)}:${pad(s)}`
+}
+
 // "mm:ss", "m:ss" ou "h:mm:ss" digitado pelo chefe → ms. null se inválido/vazio.
 export function parseDuration(input: string): number | null {
   const raw = input.trim()

@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 // somar 1 canto por clique (como /api/score), soma a duração do intervalo
 // (ms) ao scores.count — que passa a representar tempo total cantado.
 export async function POST(req: Request) {
-  const { participantId, tournamentId, startedAt, endedAt } = await req.json()
+  const { participantId, markerId, tournamentId, startedAt, endedAt } = await req.json()
 
   if (!participantId || !tournamentId || !startedAt || !endedAt) {
     return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
@@ -48,6 +48,17 @@ export async function POST(req: Request) {
   }
   if ((torneio.divisions ?? 1) > 1 && participante.round_group !== torneio.active_group) {
     return NextResponse.json({ error: 'Não é a vez do seu grupo' }, { status: 403 })
+  }
+
+  // anti-roubo: só o marcador designado (sorteio das gaiolas) pode pontuar este alvo
+  const { data: assignedMarker } = await supabase
+    .from('participants')
+    .select('id')
+    .eq('marks_participant_id', participantId)
+    .eq('tournament_id', tournamentId)
+    .maybeSingle()
+  if (assignedMarker && assignedMarker.id !== markerId) {
+    return NextResponse.json({ error: 'Você não é o marcador designado desta gaiola' }, { status: 403 })
   }
 
   // clampa o intervalo pra dentro da janela: cobre o toque que começou antes

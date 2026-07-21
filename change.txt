@@ -1,35 +1,5 @@
-ao cadastrar uma ave tem estilos de canto, em modalidade deixa apenas o Canto classico e Canto Fibra
-
-Sendo o funcionamento do canto clássico exatamento o comportamento já existente, 
-
-E o funcionamento da marcação do canto fibra tem um compartamento diferente dentro do campeonato na marcação do usuário, e na pontuação da liga
-
-
-COMPORTAMENTO
-
-Objetivo: contabilizar o tempo total em que o pássaro permaneceu cantando durante a bateria.
-
-Comportamento
-
-Quando o usuário pressionar o botão o sistema começa a contar o tempo.
-Quando o usuário soltar o botão o intervalo é somado ao tempo acumulado.
-O processo pode ser repetido quantas vezes forem necessárias durante a bateria.
-Caso a bateria termine enquanto a marcação estiver ativa, o sistema deve encerrar automaticamente o intervalo e somar o tempo restante.
-Dados registrados
-Hora de início de cada intervalo.
-Hora de término de cada intervalo.
-Tempo acumulado.
-Resultado
-Tempo total cantado.
-Exemplo:
-Tempo da bateria: 15:00
-Tempo cantado: 09:30
-
-observações :
-
-no canto fibra, remover a penalidade existente do canto clássico !
-
-tempo cantado fica no lugar do numero de cantos
-e em baixo, deixar pequeninho o inicio e termino de cada intervalo, passando (provavelmente nao vai ter espaço, então deixa passando em baixo de cada usuário como se fosse um looping horizontal, mostrando)
-tanto para o chefe quanto para quem está assistindo no link do torneio ex: https://torneio-passaro.vercel.app/torneio/abb4623f-e15b-419d-a3bd-8d2805b59a36
-
+em C:\Users\Bruno\Desktop\passarinho-torneio\propaganda , tem os anuncios para você colocar nas esperas do usuários participantes dos torneios
+e em https://torneio-passaro.vercel.app/torneio/d96d305e-8838-45bb-b801-de31ed3a4d50 ( no topo )
+>>> [FEITO] Imagens copiadas pra public/propaganda/ (desktop.png 1000x182, mobile.png 380x123). AdBanner reescrito: usa o criativo real, responsivo (mobile.png <768px, desktop.png >=768px) via <picture>.
+    - Espera do participante: AdBanner (barra fixa no topo) ja aparecia em preStart + tela de ranking entre marcacoes — agora mostra a imagem real.
+    - Espectador /torneio/[id]: <AdBanner inline /> adicionado no topo do painel de info (sp-side-inner), antes do "Torneios".

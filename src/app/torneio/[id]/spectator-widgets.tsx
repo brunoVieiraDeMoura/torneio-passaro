@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { formatDuration } from '@/lib/duration'
+import { formatDurationMinSec } from '@/lib/duration'
 
 export type RankItem = {
   id: string; bird_name: string; user_name: string; cage_number: number | null
@@ -261,7 +261,7 @@ function Row({ p, i, moved, timeMode = false }: { p: RankItem; i: number; moved?
         </div>
         <WarnBadge n={p.warns} />
         <span style={{ fontWeight: 800, fontSize: 'var(--rk-score-fs, 1rem)', letterSpacing: '-0.04em', color: i === 0 ? '#B45309' : '#374151', flexShrink: 0 }}>
-          {timeMode ? formatDuration(p.score) : p.score.toLocaleString('pt-BR')}
+          {timeMode ? formatDurationMinSec(p.score) : p.score.toLocaleString('pt-BR')}
         </span>
       </div>
       {timeMode && p.intervals && p.intervals.length > 0 && <IntervalTicker intervals={p.intervals} />}

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 const MAX_INCREMENT = 30 // teto anti-abuso por envio (client agrupa cliques a cada 1s)
 
 export async function POST(req: Request) {
-  const { participantId, tournamentId, increment, suspicious } = await req.json()
+  const { participantId, markerId, tournamentId, increment, suspicious } = await req.json()
 
   if (!participantId || !tournamentId) {
     return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
@@ -59,6 +59,18 @@ export async function POST(req: Request) {
   // rodada dividida: só o grupo ativo pode contar agora
   if ((torneio.divisions ?? 1) > 1 && participante.round_group !== torneio.active_group) {
     return NextResponse.json({ error: 'Não é a vez do seu grupo' }, { status: 403 })
+  }
+
+  // anti-roubo: se este passarinho tem um marcador designado (sorteio das gaiolas),
+  // só ELE pode pontuar — nem o dono, nem terceiros. Sem sorteio, mantém o antigo.
+  const { data: assignedMarker } = await supabase
+    .from('participants')
+    .select('id')
+    .eq('marks_participant_id', participantId)
+    .eq('tournament_id', tournamentId)
+    .maybeSingle()
+  if (assignedMarker && assignedMarker.id !== markerId) {
+    return NextResponse.json({ error: 'Você não é o marcador designado desta gaiola' }, { status: 403 })
   }
 
   const { data: existing } = await supabase
