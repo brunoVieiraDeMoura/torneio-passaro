@@ -1,7 +1,45 @@
-13:18:34.275 128:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
-13:18:34.276 270:6  Warning: React Hook useEffect has a missing dependency: 'updateStatus'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
-13:18:34.276 167:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
-13:18:34.277 186:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
-13:18:34.277 789:278  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
-13:18:34.277 9:6  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
-13:18:34.278 3:1  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+14:16:15.903 Running build in Washington, D.C., USA (East) – iad1
+14:16:15.904 Build machine configuration: 2 cores, 8 GB
+14:16:16.025 Cloning github.com/brunoVieiraDeMoura/torneio-passaro (Branch: main, Commit: b6305f4)
+14:16:17.092 Cloning completed: 1.067s
+14:16:18.570 Restored build cache from previous deployment (EsXhqihxyMTuMo1FD3haEzJS5tLF)
+14:16:18.770 Running "vercel build"
+14:16:18.789 Vercel CLI 56.4.0
+14:16:19.168 Installing dependencies...
+14:16:20.364 
+14:16:20.365 up to date in 1s
+14:16:20.365 
+14:16:20.366 190 packages are looking for funding
+14:16:20.366   run `npm fund` for details
+14:16:20.394 Detected Next.js version: 15.3.9
+14:16:20.399 Running "npm run build"
+14:16:20.492 
+14:16:20.492 > passarinho-torneio@0.1.0 build
+14:16:20.492 > next build
+14:16:20.493 
+14:16:21.307    ▲ Next.js 15.3.9
+14:16:21.308 
+14:16:21.325    Creating an optimized production build ...
+14:16:33.102  ✓ Compiled successfully in 7.0s
+14:16:33.105    Linting and checking validity of types ...
+14:16:43.609 
+14:16:43.615 Failed to compile.
+14:16:43.616 
+14:16:43.616 ./src/app/(public)/liga/passarinho/[id]/liga-bird-profile.tsx
+14:16:43.616 128:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+14:16:43.620 
+14:16:43.620 ./src/app/(torneio)/mestre/torneio/[id]/mestre-client.tsx
+14:16:43.620 270:6  Warning: React Hook useEffect has a missing dependency: 'updateStatus'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+14:16:43.620 
+14:16:43.620 ./src/app/(user)/meus-passarinhos/[id]/bird-report.tsx
+14:16:43.620 167:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+14:16:43.620 
+14:16:43.620 ./src/app/(user)/meus-passarinhos/bird-card.tsx
+14:16:43.621 186:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+14:16:43.621 
+14:16:43.621 ./src/app/torneio/[id]/participante/participante-client.tsx
+14:16:43.621 118:10  Error: 'roundGroup' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+14:16:43.621 789:278  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+14:16:43.621 
+14:16:43.622 info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+14:16:43.671 Error: Command "npm run build" exited with 1

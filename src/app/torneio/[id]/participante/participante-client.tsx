@@ -115,7 +115,6 @@ export default function ParticipanteClient({
   const [activeGroup, setActiveGroup] = useState(torneio.active_group ?? 1)
   const [divisions, setDivisions] = useState(torneio.divisions ?? 1)
   const [round, setRound] = useState(torneio.round ?? 1)
-  const [roundGroup, setRoundGroup] = useState<number | null>(participante.round_group)
   // grupo do passarinho MARCADO (alvo) — decide quando é a vez de marcar.
   // sem sorteio (fallback), acompanha o próprio grupo.
   const [targetGroup, setTargetGroup] = useState<number | null>(markTarget?.round_group ?? participante.round_group)
@@ -319,12 +318,13 @@ export default function ParticipanteClient({
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'participants', filter: `id=eq.${participante.id}` },
         payload => {
           if (payload.new.status !== undefined) setParticipanteStatus(payload.new.status)
-          if (payload.new.round_group !== undefined) setRoundGroup(payload.new.round_group)
+          // sem sorteio, a vez segue o próprio grupo; com sorteio, é o grupo do alvo (via poll)
+          if (payload.new.round_group !== undefined && !markTarget) setTargetGroup(payload.new.round_group)
           if (payload.new.elimination_reason !== undefined) setEliminationReason(payload.new.elimination_reason)
         })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [torneio.id, participante.id])
+  }, [torneio.id, participante.id, markTarget])
 
   // Fallback (caso o realtime falhe): reflete QUALQUER mudança do Chefe de Roda em ≤2s
   // — início de marcação, pausa, mudança de grupo/duração, aprovação, finalização, etc.
@@ -342,7 +342,7 @@ export default function ParticipanteClient({
           : Promise.resolve({ data: null }),
       ])
       if (!active) return
-      if (p) { setParticipanteStatus(p.status); setRoundGroup(p.round_group); setEliminationReason((p as { elimination_reason?: string | null }).elimination_reason ?? null) }
+      if (p) { setParticipanteStatus(p.status); setEliminationReason((p as { elimination_reason?: string | null }).elimination_reason ?? null) }
       // grupo do alvo decide a vez de marcar; sem sorteio, acompanha o próprio grupo
       if (markTarget) { if (tgt) setTargetGroup((tgt as { round_group: number | null }).round_group) }
       else if (p) setTargetGroup(p.round_group)
