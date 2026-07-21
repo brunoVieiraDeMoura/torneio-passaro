@@ -40,11 +40,15 @@ function LoginForm() {
       setLoading(false)
       return
     }
-    const { data: profile } = await supabase
-      .from('profiles').select('role').eq('id', data.user.id).single()
-    const dest = profile?.role === 'club'
-      ? '/clube/dashboard'
-      : (redirect ?? '/torneios')
+    // Detecta clube de forma robusta: role='club' OU posse de um clube (a role pode
+    // não ter sido gravada em contas criadas por outro caminho). Se for clube, vai
+    // pro dashboard do clube — nunca pro fluxo de participante.
+    const [{ data: profile }, { data: ownsClub }] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', data.user.id).single(),
+      supabase.from('clubs').select('id').eq('user_id', data.user.id).maybeSingle(),
+    ])
+    const isClub = profile?.role === 'club' || !!ownsClub
+    const dest = isClub ? '/clube/dashboard' : (redirect ?? '/torneios')
     router.push(dest)
     router.refresh()
   }

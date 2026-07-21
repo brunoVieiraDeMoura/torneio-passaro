@@ -1,5 +1,3 @@
-em https://torneio-passaro.vercel.app/cadastro?tipo=clube , 327 Participantes 48 Torneios 12 Clubes, não condizem com numeros rais, corrija.
->>> [FEITO] Eram hardcoded no (auth)/layout.tsx. Agora usam contagens REAIS (getPublicStats extraido pra src/lib/public-stats.ts, cache 60s), compartilhado com a home. Mostra participants/tournaments/clubs count exato do banco.
-
-cria um clube pra mim teste@teste.com | senha : teste
->>> [NAO EXECUTAVEL DAQUI] Nao tenho acesso admin ao seu Supabase pra criar conta de auth. Alem disso a senha "teste" (5 chars) e menor que o minimo do Supabase (6). Crie por: /cadastro?tipo=clube -> email teste@teste.com -> senha com 6+ chars (ex: teste123). Se quiser, te passo comando de admin API pra rodar localmente com a service_role key.
+o login por https://torneio-passaro.vercel.app/login?from=clube , está direcionando para como se fosse um usuário normal, e não um clube que leva para dashboard do clube.
+>>> [FEITO] O login decidia o destino so por profiles.role === 'club'. Se a role nao estivesse 'club' (conta criada por outro caminho), caia no fluxo de participante (/torneios). Agora detecta clube por role='club' OU posse de clube (clubs.user_id = usuario) — sinal mais confiavel. Sendo clube -> /clube/dashboard. login/page.tsx
+    obs: cadastro de clube JA seta role='club' no metadata (trigger grava). O reforco cobre contas antigas/criadas manualmente. O param from=clube nao e usado pra rotear de proposito (inseguro — participante poderia forjar). Roteamento e por role/posse.
