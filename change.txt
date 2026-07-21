@@ -1,8 +1,5 @@
-na home tem
-Melhores da temporada
-Coleiro · Canto clássico (muda para bicudo canto fibra [só deixa essa parte de raça do passaro/canto opção aparecendo se tiver algum coleiro cadastrado])
-Sem dados para Coleiro · Canto clássico em Nacional. muda para bicudo canto fibra
->>> [FEITO] RankingPreview: a categoria mostrada agora eh dirigida pelos DADOS REAIS.
-    Ainda aparecia Coleiro/classico por causa de localStorage antigo (liga_tipo/liga_estilo). Agora so respeita o filtro salvo se AQUELA categoria tiver passaro rankeado.
-    Ordem: filtro salvo (se tiver dados) -> estilo do proprio passaro do usuario -> Bicudo·Canto Fibra -> categoria com mais cantos -> default Bicudo·Canto Fibra (quando nada registrado).
-    Resultado: so mostra raça/canto que tem passaro cadastrado; default = Bicudo·Canto Fibra; "Sem dados" so quando realmente nao ha nada. ranking-preview.tsx
+em https://torneio-passaro.vercel.app/cadastro?tipo=clube , 327 Participantes 48 Torneios 12 Clubes, não condizem com numeros rais, corrija.
+>>> [FEITO] Eram hardcoded no (auth)/layout.tsx. Agora usam contagens REAIS (getPublicStats extraido pra src/lib/public-stats.ts, cache 60s), compartilhado com a home. Mostra participants/tournaments/clubs count exato do banco.
+
+cria um clube pra mim teste@teste.com | senha : teste
+>>> [NAO EXECUTAVEL DAQUI] Nao tenho acesso admin ao seu Supabase pra criar conta de auth. Alem disso a senha "teste" (5 chars) e menor que o minimo do Supabase (6). Crie por: /cadastro?tipo=clube -> email teste@teste.com -> senha com 6+ chars (ex: teste123). Se quiser, te passo comando de admin API pra rodar localmente com a service_role key.

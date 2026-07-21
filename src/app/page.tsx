@@ -13,6 +13,7 @@ import { createPublicClient } from '@/lib/supabase/public'
 import { unstable_cache } from 'next/cache'
 import type { Item } from '@/app/(public)/torneios/_utils'
 import { getMergedLiga } from '@/lib/liga'
+import { getPublicStats } from '@/lib/public-stats'
 
 const steps = [
   { n: '01', title: 'Clube cria o torneio',   desc: 'Configura nome, duração e gera o código QR de entrada.' },
@@ -21,20 +22,6 @@ const steps = [
 ]
 
 type Club = { name: string; cidade: string; estado: string } | null
-
-const getPublicStats = unstable_cache(
-  async () => {
-    const supabase = createPublicClient()
-    const [{ count: totalParticipantes }, { count: totalTorneios }, { count: totalClubes }] = await Promise.all([
-      supabase.from('participants').select('*', { count: 'exact', head: true }),
-      supabase.from('tournaments').select('*', { count: 'exact', head: true }),
-      supabase.from('clubs').select('*', { count: 'exact', head: true }),
-    ])
-    return { totalParticipantes: totalParticipantes ?? 0, totalTorneios: totalTorneios ?? 0, totalClubes: totalClubes ?? 0 }
-  },
-  ['public-stats'],
-  { revalidate: 60, tags: ['stats', 'torneios'] },
-)
 
 const getActiveTorneios = unstable_cache(
   async (): Promise<Item[]> => {

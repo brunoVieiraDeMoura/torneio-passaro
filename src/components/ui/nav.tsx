@@ -83,7 +83,7 @@ const clubLinks = [
     ),
   },
   {
-    href: '/configuracoes', label: 'Config',
+    href: '/clube/configuracoes', label: 'Config',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#0D8F41' : '#9CA3AF'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3"/>

@@ -246,15 +246,17 @@ export default function BirdForm({ userId }: { userId: string }) {
           style={{
             position: 'fixed', inset: 0, zIndex: 400,
             background: 'rgba(0,0,0,0.45)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '16px',
+            // scroll container: com o teclado aberto (viewport encolhe) o modal continua
+            // acessível — centraliza quando cabe (margin auto no filho), rola quando não.
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '16px', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
           }}
         >
           <div
             ref={boxRef}
             style={{
               background: '#fff', borderRadius: 16, padding: '28px 24px',
-              width: '100%', maxWidth: 420,
+              width: '100%', maxWidth: 420, margin: 'auto',
               boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
               boxSizing: 'border-box',
             }}

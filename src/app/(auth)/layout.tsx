@@ -2,12 +2,7 @@ import Link from 'next/link'
 import Header from '@/components/ui/header'
 import { createClient } from '@/lib/supabase/server'
 import { BirdMark, AveumWordmark } from '@/components/ui/bird-mark'
-
-const stats = [
-  { v: '327', l: 'Participantes' },
-  { v: '48',  l: 'Torneios' },
-  { v: '12',  l: 'Clubes' },
-]
+import { getPublicStats } from '@/lib/public-stats'
 
 const features = [
   { icon: '⏱', text: 'Placar em tempo real durante o torneio' },
@@ -18,6 +13,14 @@ const features = [
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // números reais (participantes / torneios / clubes) — antes eram hardcoded (327/48/12)
+  const { totalParticipantes, totalTorneios, totalClubes } = await getPublicStats()
+  const stats = [
+    { v: totalParticipantes.toLocaleString('pt-BR'), l: 'Participantes' },
+    { v: totalTorneios.toLocaleString('pt-BR'),      l: 'Torneios' },
+    { v: totalClubes.toLocaleString('pt-BR'),        l: 'Clubes' },
+  ]
   return (
     <div style={{ height: '100dvh', display: 'flex' }}>
 
