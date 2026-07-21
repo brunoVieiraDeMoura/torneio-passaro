@@ -724,11 +724,18 @@ export default function ParticipanteClient({
     )
   }
 
-  // o AdBanner é fixed no topo (~64px): nas telas em que ele aparece, o conteúdo
-  // desce pra não ficar escondido embaixo dele
+  // O AdBanner agora fica NO FLUXO (inline) no topo — a imagem real varia de altura,
+  // então banner fixo escondia o conteúdo embaixo. Banner primeiro, resto abaixo.
   const temBanner = preStart || showRankingScreen
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '84px 20px 76px' : temBanner ? '84px 24px 76px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '20px 20px 76px' : temBanner ? '20px 24px 76px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+
+      {/* Anúncio no topo (em fluxo) — telas de espera do participante */}
+      {temBanner && (
+        <div style={{ width: '100%', maxWidth: 460 }}>
+          <AdBanner inline />
+        </div>
+      )}
 
       {/* ── Aviso de fraude (toast fixo no topo — NÃO afeta o layout/botão) ── */}
       {fraudWarning && (
@@ -825,15 +832,13 @@ export default function ParticipanteClient({
         </div>
       )}
 
-      {/* Banner no topo — aguardando início E tela de ranking entre marcações */}
-      {(preStart || showRankingScreen) && <AdBanner />}
       {preStart && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%' }}>
           {/* Anti-roubo: você marca a gaiola de OUTRA pessoa — só o número, bem grande */}
           {markTarget && (
-            <div style={{ background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 16, padding: '16px 26px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#6D28D9', lineHeight: 1.35 }}>Você vai marcar a gaiola de número</p>
-              <p style={{ margin: '6px 0 0', fontFamily: 'monospace', fontSize: '4rem', fontWeight: 900, color: '#5B21B6', lineHeight: 1 }}>
+            <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 16, padding: '16px 26px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#0D8F41', lineHeight: 1.35 }}>Você vai marcar a gaiola de número</p>
+              <p style={{ margin: '6px 0 0', fontFamily: 'monospace', fontSize: '4rem', fontWeight: 900, color: '#065F46', lineHeight: 1 }}>
                 {markTarget.cage_number ?? '—'}
               </p>
             </div>
@@ -862,9 +867,9 @@ export default function ParticipanteClient({
         <>
           {/* Anti-roubo: você marca a gaiola de OUTRA pessoa (nunca a sua) — só o número */}
           {markTarget && (
-            <div style={{ background: '#F3E8FF', border: '1px solid #E9D5FF', borderRadius: 14, padding: '10px 22px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: '#6D28D9' }}>Você marca a gaiola de número</p>
-              <p style={{ margin: '2px 0 0', fontFamily: 'monospace', fontWeight: 900, fontSize: '2rem', color: '#5B21B6', lineHeight: 1.1 }}>
+            <div style={{ background: '#F0FDF4', border: '1px solid #D1FAE5', borderRadius: 14, padding: '10px 22px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, color: '#0D8F41' }}>Você marca a gaiola de número</p>
+              <p style={{ margin: '2px 0 0', fontFamily: 'monospace', fontWeight: 900, fontSize: '2rem', color: '#065F46', lineHeight: 1.1 }}>
                 {markTarget.cage_number ?? '—'}
               </p>
             </div>

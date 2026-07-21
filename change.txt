@@ -1,12 +1,4 @@
-em https://torneio-passaro.vercel.app/torneio/d96d305e-8838-45bb-b801-de31ed3a4d50 , o anuncio deve ficar ao lado direito do container.
->>> [FEITO] AdBanner movido do topo do painel (esquerda) pro topo do sp-main-inner (coluna do placar = lado direito no desktop). page.tsx
-
-em https://torneio-passaro.vercel.app/torneio/d96d305e-8838-45bb-b801-de31ed3a4d50, o registro das marcações que ficam passando em slider, devem mostrar apenas o minuto e segundo, sem milesimos.
->>> [FEITO] fmtClock do IntervalTicker (slider) agora mm:ss (sem hora). spectator-widgets.tsx
-
-em https://torneio-passaro.vercel.app/torneio/202360ca-d3ce-4e72-8a4f-7887025df1ca/participante?pid=87366667-5140-4552-8238-0a481ed10bd4 , remover o nome do passarinho/gaiola que aparece enquanto o participante espera,
-e mostrar para ele apenas "Você vai marcar a gaiola de numero [e em baixo o numero bem grande, da gaiola que ele vai marcar] "
->>> [FEITO] com sorteio, bloco do proprio passaro escondido; preStart mostra "Você vai marcar a gaiola de número" + numero gigante (4rem). Banner da contagem tambem so o numero. participante-client.tsx
-
-em https://torneio-passaro.vercel.app/torneio/202360ca-d3ce-4e72-8a4f-7887025df1ca/participante?pid=87366667-5140-4552-8238-0a481ed10bd4, enquanto o participante estiver esperando a outra marcação mostrar a marcação do próprio passarinho destacado (passaro remetente ao próprio usuário, não o que ele está marcando)
->>> [FEITO] tela de espera (entre marcações) mostra card destacado "Seu passarinho": nome + gaiola + marcação (grupo) + placar/posição do PROPRIO passaro (remetente). Corrigido myScore pra vir do ranking (nao do count, que agora eh do alvo). participante-client.tsx
+em https://torneio-passaro.vercel.app/torneio/202360ca-d3ce-4e72-8a4f-7887025df1ca/participante?pid=87366667-5140-4552-8238-0a481ed10bd4
+a responsividade do aplicativo para o usuário no Internet explore está quebrada, o container está em baixo do banner, corrija o comportamento (deveria estar baner, em baixo do baner começar o resto do container.
+>>> [FEITO] Causa: banner era position:fixed com padding-top fixo (84px), mas a imagem real do anuncio eh mais alta (~150px no mobile) -> conteudo passava por baixo. Fix: AdBanner agora fica EM FLUXO (inline) no topo do <main>, conteudo comeca abaixo dele. Removido o hack de padding-top. participante-client.tsx
+    obs: a stack (Next 15 + React 19) nao suporta IE11 de verdade; o overlap foi corrigido pra todos os navegadores.
