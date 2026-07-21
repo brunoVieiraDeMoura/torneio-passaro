@@ -1,15 +1,8 @@
-1) /clube/tutorial estava desatualizado (feito antes de sortear participante etc). Revisar torneio/verificacao/funcionamentos faltantes e adicionar.
->>> [FEITO] Adicionados 3 cards + ajuste da Marcacao:
-    - "Sortear as gaiolas (anti-roubo)": obrigatorio antes da Config da Marcacao, ninguem marca o proprio, min 2, fecha inscricoes/some sem-app, badge "marca G123", re-sorteio apos vassourada.
-    - "Canto Fibra (marcacao por tempo)": pressionar/segurar, ranking em tempo mm:ss, sem alerta de fraude, tempo cantado sem app.
-    - "Verificacao do clube (selo)": solicitar no Dashboard (Selos), so verificados contam na Liga, aprovacao pela equipe.
-    - Marcacao passo 1 agora diz que so libera apos o sorteio + nota da posicao manual das gaiolas.
+1) "Primeira Marcação encerrada Aguarde a segunda.." aparecia mesmo sem a marcacao ter ocorrido.
+>>> [FEITO] O texto usava so isCountingDown -> o "else" dizia "encerrada" tanto pra terminada quanto pra NAO iniciada. Agora distingue: em andamento / encerrada (so se marcacaoEnded = comecou e passou do fim) / "Aguarde o inicio da X" (agendada ou sem horario). participante-client.tsx
 
-2) (mid-turn) /clube botao Sair vermelho (texto + icone)
->>> [FEITO] color #DC2626 + weight 600 no botao; icone usa currentColor -> fica vermelho. club-sidebar.tsx
+2) Mensagem de vassourada deve aparecer so ao final da qtd de marcacoes definida ja executada (2 marcacoes -> ao fim da 2a; 1 marcacao -> nunca).
+>>> [FEITO] Gate trocado de divisions>1 para cicloEncerrado = divisions>1 && activeGroup>=divisions && marcacaoEnded. So aparece quando a ultima marcacao definida terminou.
 
-3) (mid-turn) conta registrada como clube nao conseguia logar como participante (era jogada pro dashboard mesmo entrando por /login/participante)
->>> [FEITO] Middleware forcava TODO usuario role=club pro /clube/dashboard em qualquer pagina nao-clube. Removido esse redirect forcado -> 1 email pode ser clube E participante; painel do clube segue em /clube/*, modo decidido pelo login. middleware.ts
-
-4) (mid-turn) centralizar o anuncio no espectador /torneio/[id]
->>> [FEITO] Anuncio agora em wrapper flex centralizado (max 720) no topo da coluna do placar. page.tsx
+3) Apos sortear as gaiolas no mestre, renderizar em tempo real qual gaiola a pessoa vai marcar na tela do participante.
+>>> [FEITO] markTarget virou STATE (era prop fixa do server). Poll (2s) + realtime detectam mudanca de marks_participant_id e buscam o passarinho-alvo -> atualiza "Voce vai marcar a gaiola X" na hora, sem reload. Re-sorteio (marks zerado) limpa. participante-client.tsx

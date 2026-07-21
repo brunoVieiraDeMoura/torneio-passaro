@@ -88,7 +88,7 @@ function RankingList({ ranking, myId, timeMode = false }: { ranking: { id: strin
 export default function ParticipanteClient({
   torneio,
   participante,
-  markTarget = null,
+  markTarget: markTargetInitial = null,
   initialCount,
   initialSuspicious = 0,
 }: {
@@ -100,8 +100,9 @@ export default function ParticipanteClient({
 }) {
   const isFibra = torneio.estilo_canto === 'Canto Fibra'
   // Anti-roubo: o botão marca o passarinho do ALVO (markTarget). Sem sorteio
-  // (fallback), marca o próprio — comportamento antigo. A contagem/placar do
-  // botão é sempre do passarinho marcado (scoreTargetId).
+  // (fallback), marca o próprio — comportamento antigo. É STATE porque o sorteio
+  // pode acontecer com o participante já na tela → atualiza em tempo real (poll).
+  const [markTarget, setMarkTarget] = useState<MarkTarget | null>(markTargetInitial)
   const scoreTargetId = markTarget?.id ?? participante.id
   const [count, setCount] = useState(initialCount)
   // avisos de velocidade já contabilizados pro Chefe de Roda (servidor + sessão)
@@ -343,9 +344,19 @@ export default function ParticipanteClient({
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'participants', filter: `id=eq.${participante.id}` },
         payload => {
           if (payload.new.status !== undefined) setParticipanteStatus(payload.new.status)
-          // sem sorteio, a vez segue o próprio grupo; com sorteio, é o grupo do alvo (via poll)
+          // sem sorteio, a vez segue o próprio grupo; com sorteio, é o grupo do alvo
           if (payload.new.round_group !== undefined && !markTarget) setTargetGroup(payload.new.round_group)
           if (payload.new.elimination_reason !== undefined) setEliminationReason(payload.new.elimination_reason)
+          // Sorteio em tempo real: alvo mudou → busca o passarinho e atualiza a gaiola a marcar
+          if (payload.new.marks_participant_id !== undefined) {
+            const newTid = payload.new.marks_participant_id as string | null
+            if (newTid && newTid !== markTarget?.id) {
+              supabase.from('participants').select('id, bird_name, cage_number, round_group, status').eq('id', newTid).single()
+                .then(({ data }) => { if (data) { setMarkTarget(data as MarkTarget); setTargetGroup(data.round_group) } })
+            } else if (!newTid) {
+              setMarkTarget(null)
+            }
+          }
         })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -359,18 +370,34 @@ export default function ParticipanteClient({
     const supabase = createClient()
     let active = true
     const load = async () => {
-      const [{ data: p }, { data: t }, { data: tgt }] = await Promise.all([
-        supabase.from('participants').select('status, round_group, elimination_reason').eq('id', participante.id).single(),
+      const [{ data: p }, { data: t }] = await Promise.all([
+        supabase.from('participants').select('status, round_group, elimination_reason, marks_participant_id').eq('id', participante.id).single(),
         supabase.from('tournaments').select('status, start_at, duration_secs, active_group, divisions, round').eq('id', torneio.id).single(),
-        markTarget
-          ? supabase.from('participants').select('round_group, status').eq('id', markTarget.id).single()
-          : Promise.resolve({ data: null }),
       ])
       if (!active) return
       if (p) { setParticipanteStatus(p.status); setEliminationReason((p as { elimination_reason?: string | null }).elimination_reason ?? null) }
-      // grupo do alvo decide a vez de marcar; sem sorteio, acompanha o próprio grupo
-      if (markTarget) { if (tgt) setTargetGroup((tgt as { round_group: number | null }).round_group) }
-      else if (p) setTargetGroup(p.round_group)
+
+      // Sorteio em TEMPO REAL: se o alvo (marks_participant_id) mudou, busca o novo
+      // passarinho e atualiza qual gaiola marcar; se zerou (re-sorteio), limpa.
+      const newTargetId = (p as { marks_participant_id?: string | null } | null)?.marks_participant_id ?? null
+      const curTargetId = markTarget?.id ?? null
+      if (newTargetId !== curTargetId) {
+        if (newTargetId) {
+          const { data: alvo } = await supabase
+            .from('participants').select('id, bird_name, cage_number, round_group, status').eq('id', newTargetId).single()
+          if (active && alvo) { setMarkTarget(alvo as MarkTarget); setTargetGroup(alvo.round_group) }
+        } else {
+          setMarkTarget(null)
+          if (p) setTargetGroup(p.round_group)
+        }
+      } else if (markTarget) {
+        // mesmo alvo: mantém o grupo do alvo sincronizado (decide a vez de marcar)
+        const { data: tgt } = await supabase.from('participants').select('round_group').eq('id', markTarget.id).single()
+        if (active && tgt) setTargetGroup((tgt as { round_group: number | null }).round_group)
+      } else if (p) {
+        setTargetGroup(p.round_group)
+      }
+
       if (t) {
         setTorneioStatus(t.status); setStartAt(t.start_at); setDurationSecs(t.duration_secs)
         setActiveGroup(t.active_group ?? 1); setDivisions(t.divisions ?? 1)
@@ -410,6 +437,11 @@ export default function ParticipanteClient({
   const preStart = isMyTurn && !started               // minha marcação agendada, ainda não começou
   const counting = isMyTurn && started && isCountingDown // minha marcação em contagem → botão
   const showRankingScreen = !isFinished && !preStart && !counting // entre marcações / aguardando vez → ranking
+
+  // a marcação ATIVA já terminou (começou e passou do fim)? vs ainda não começou
+  const marcacaoEnded = started && msRemaining !== null && msRemaining <= 0
+  // ciclo inteiro encerrado = última marcação definida já executada (só faz sentido com 2+)
+  const cicloEncerrado = divisions > 1 && activeGroup >= divisions && marcacaoEnded
 
   // próprio pássaro (remetente) no ranking — placar dele vem de QUEM o marca (não é count,
   // que com sorteio é do ALVO). Sem sorteio, count é o próprio → fallback antigo.
@@ -763,11 +795,12 @@ export default function ParticipanteClient({
   // então banner fixo escondia o conteúdo embaixo. Banner primeiro, resto abaixo.
   const temBanner = preStart || showRankingScreen
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '20px 20px 76px' : temBanner ? '20px 24px 76px' : '0 24px', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', userSelect: 'none', background: '#fff', overflowY: 'auto' }}>
 
-      {/* Anúncio no topo (em fluxo) — telas de espera do participante */}
+      {/* Anúncio no TOPO, em fluxo (sem position) — não sobrepõe nada; o resto do
+          conteúdo é centralizado no espaço restante pelo wrapper flex:1 abaixo */}
       {temBanner && (
-        <div style={{ width: '100%', maxWidth: 460 }}>
+        <div style={{ width: '100%', padding: '12px 16px 0', boxSizing: 'border-box' }}>
           <AdBanner inline />
         </div>
       )}
@@ -855,6 +888,9 @@ export default function ParticipanteClient({
           </div>
         </div>
       )}
+
+      {/* Conteúdo (abaixo do anúncio) centralizado no espaço restante — flex:1 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'safe center', gap: showRankingScreen ? 16 : 32, padding: showRankingScreen ? '16px 20px 76px' : temBanner ? '16px 24px 76px' : '0 24px', width: '100%', boxSizing: 'border-box' }}>
 
       {/* Info do próprio pássaro — só sem sorteio (fallback). Com sorteio, o
           participante marca a gaiola de OUTRO, então o próprio pássaro some daqui. */}
@@ -1006,16 +1042,19 @@ export default function ParticipanteClient({
             <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#9CA3AF' }}>
               {divisions > 1
                 ? isCountingDown
-                  ? `Em andamento: ${nomeMarcacao(activeGroup, round)}. `
-                  : `${nomeMarcacao(activeGroup, round)} encerrada. ${activeGroup < divisions ? `Aguarde a ${nomeMarcacao(activeGroup + 1, round)} e a` : 'A'}companhe o ranking abaixo.`
+                  ? `Em andamento: ${nomeMarcacao(activeGroup, round)}. Acompanhe o ranking abaixo.`
+                  : marcacaoEnded
+                    // a marcação ativa REALMENTE terminou (começou e passou do fim)
+                    ? `${nomeMarcacao(activeGroup, round)} encerrada. ${activeGroup < divisions ? `Aguarde a ${nomeMarcacao(activeGroup + 1, round)}. ` : ''}Acompanhe o ranking abaixo.`
+                    // ainda não começou (agendada/sem horário) → não dizer "encerrada"
+                    : `Aguarde o início da ${nomeMarcacao(activeGroup, round)}. Acompanhe o ranking abaixo.`
                 : 'Acompanhe o ranking abaixo.'}
-              {divisions > 1 && isCountingDown ? 'Acompanhe o ranking abaixo.' : ''}
             </p>
           </div>
 
-          {/* aviso da vassourada — só quando há mais de uma marcação (com 1 só não há
-              próximas marcações nem vassourada) */}
-          {divisions > 1 && (
+          {/* aviso da vassourada — só ao ENCERRAR o ciclo (todas as marcações definidas
+              já executadas). Com 1 marcação, nunca aparece. */}
+          {cicloEncerrado && (
             <div style={{ width: '100%', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: '10px 14px' }}>
               <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#92400E', textAlign: 'center', lineHeight: 1.5 }}>
                 🧹 Aguarde as próximas marcações. Se você passar na vassourada, sua vez volta automaticamente.
@@ -1071,6 +1110,8 @@ export default function ParticipanteClient({
 
         </div>
       )}
+
+      </div>
 
       {/* saída disponível — some faltando 1min pro início da minha marcação e durante a contagem */}
       {!(counting || (isMyTurn && isActive && msUntilStart !== null && msUntilStart > 0 && msUntilStart <= 60_000)) && sairBtn}

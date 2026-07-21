@@ -9,6 +9,11 @@ import LiveChat from './live-chat'
 import { AnimatedRanking, AutoScrollMain, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
 import { formatDurationMinSec } from '@/lib/duration'
 
+// sempre renderiza fresco: o SpectatorRealtime dá router.refresh() ao vivo (scores,
+// fibra_intervals, etc.) — sem isso o RSC podia vir de cache e o placar (inclusive os
+// tempos do Canto Fibra) não atualizava em tempo real.
+export const dynamic = 'force-dynamic'
+
 type Club = { name: string; cidade: string; estado: string } | null
 
 const RANK_COLORS = ['#B45309', '#6B7280', '#92400E']
@@ -295,11 +300,9 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
         {/* placar — no desktop rola sozinho em loop (telão) */}
         <AutoScrollMain className="sp-main">
           <div className="sp-main-inner">
-            {/* Anúncio — centralizado no topo da coluna do placar */}
-            <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
-              <div style={{ width: '100%', maxWidth: 720 }}>
-                <AdBanner inline />
-              </div>
+            {/* Anúncio — 100% da largura no topo da coluna do placar */}
+            <div style={{ marginBottom: 20 }}>
+              <AdBanner inline />
             </div>
             <div style={{ marginBottom: 20 }}>
               <p style={eyebrowStyle('#0D8F41')}>

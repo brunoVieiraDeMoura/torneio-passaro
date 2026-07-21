@@ -20,7 +20,7 @@ export default function AdBanner({ inline = false }: { inline?: boolean }) {
   if (inline) {
     return (
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: 1000, borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+        <div style={{ position: 'relative', width: '100%', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
           {PIC}
           <span style={badgeStyle}>Anúncio</span>
         </div>
