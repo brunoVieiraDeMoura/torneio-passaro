@@ -52,15 +52,13 @@ export async function GET(request: Request) {
     //  • login de clube  → next = /clube/dashboard
     //  • login de participante → next = /torneios
     // 1 email pode ser user E clube: quem entra como participante segue no fluxo de
-    // user (mesmo tendo clube). Guard: se `next` aponta pra área do clube mas a conta
-    // não é clube, cai no fluxo de participante (evita bounce no guard do dashboard).
+    // user (mesmo tendo clube). Se entrou como clube mas ainda NÃO tem clube nesta
+    // conta, vai criar o clube (/clube/setup) — não cai no fluxo de participante.
     if (user && next.startsWith('/clube')) {
-      const [{ data: prof }, { data: ownsClub }] = await Promise.all([
-        supabase.from('profiles').select('role').eq('id', user.id).maybeSingle(),
-        supabase.from('clubs').select('id').eq('user_id', user.id).maybeSingle(),
-      ])
-      if (!(prof?.role === 'club' || ownsClub)) {
-        return NextResponse.redirect(`${origin}/torneios`)
+      const { data: ownsClub } = await supabase
+        .from('clubs').select('id').eq('user_id', user.id).maybeSingle()
+      if (!ownsClub) {
+        return NextResponse.redirect(`${origin}/clube/setup`)
       }
     }
   }

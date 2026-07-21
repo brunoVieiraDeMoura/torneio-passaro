@@ -76,6 +76,13 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // /clube/setup: qualquer usuário logado (não banido) pode criar seu clube —
+  // não pode ser barrado pelas regras de role/clube abaixo (a própria página decide
+  // se já tem clube → dashboard). 1 email pode virar clube por aqui.
+  if (pathname === '/clube/setup') {
+    return supabaseResponse
+  }
+
   const isClub   = profile?.role === 'club'
   const isClubPath   = CLUB_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isAuthPath   = AUTH_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
@@ -98,8 +105,12 @@ export async function middleware(request: NextRequest) {
     }
 
     if (clube && clube.status !== 'approved') {
-      // pendente/recusado: só a tela de aprovação + páginas de auth
-      if (pathname !== '/aprovacao-pendente' && !isAuthPath) {
+      // pendente/recusado: tela de aprovação + CONFIGURAÇÕES (pra preencher o nome/dados
+      // do clube recém-criado) + páginas de auth
+      const allowedPending = pathname === '/aprovacao-pendente'
+        || pathname === '/clube/configuracoes'
+        || isAuthPath
+      if (!allowedPending) {
         const url = request.nextUrl.clone()
         url.pathname = '/aprovacao-pendente'
         return NextResponse.redirect(url)

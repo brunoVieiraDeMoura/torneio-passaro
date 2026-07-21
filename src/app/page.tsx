@@ -167,7 +167,7 @@ export default async function LandingPage() {
               </Button>
               <Typography
                 component={Link}
-                href="/login"
+                href="/login/participante"
                 sx={{
                   display: 'block',
                   textAlign: 'center',
@@ -212,7 +212,7 @@ export default async function LandingPage() {
               </Button>
               <Typography
                 component={Link}
-                href="/login?from=clube"
+                href="/login/clubes"
                 sx={{
                   display: 'block',
                   textAlign: 'center',
