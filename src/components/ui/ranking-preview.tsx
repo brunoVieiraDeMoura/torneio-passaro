@@ -100,7 +100,14 @@ export default function RankingPreview({ userBirdEstilo, entries = [] }: Props) 
           </Box>
         ) : top5.map((item, i) => (
           <Box key={item.id}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.75 }}>
+            <Box
+              component={Link}
+              href={`/liga/passarinho/${encodeURIComponent(item.id)}`}
+              sx={{
+                display: 'flex', alignItems: 'center', gap: 2, px: 2, py: 1.75,
+                textDecoration: 'none', color: 'inherit', transition: 'background 0.12s',
+                '&:hover': { bgcolor: '#F9FAFB' },
+              }}>
               <Typography sx={{ minWidth: 24, fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.05em', color: i < 3 ? RANK_COLORS[i] : '#D1D5DB' }}>
                 {String(i + 1).padStart(2, '0')}
               </Typography>
