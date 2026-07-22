@@ -3,13 +3,6 @@ import { redirect } from 'next/navigation'
 import BirdForm from './bird-form'
 import BirdCard from './bird-card'
 
-const RACAS = [
-  'Coleiro','Canário belga','Canário da terra','Curió','Bicudo',
-  'Patativa','Galo campina','Sabiá laranjeira','Pintassilgo',
-  'Trinca Ferro','Azulão','Bigodinho','Pássaro Preto','Sanhaço',
-]
-const ESTILOS = ['Canto clássico','Canto rolado','Canto livre','Canto regional','Canto nativo']
-
 export default async function MeusPassarinhos() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -129,8 +122,6 @@ export default async function MeusPassarinhos() {
                 key={b.id}
                 bird={b}
                 history={historyForBird(b.name)}
-                RACAS={RACAS}
-                ESTILOS={ESTILOS}
               />
             ))}
           </div>

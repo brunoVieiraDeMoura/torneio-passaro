@@ -76,8 +76,6 @@ interface Props {
     photo_url?: string | null
   }
   history: HistoryItem[]
-  RACAS: string[]
-  ESTILOS: string[]
 }
 
 function totalFor(history: HistoryItem[], period: Period): number {
@@ -96,7 +94,7 @@ function totalFor(history: HistoryItem[], period: Period): number {
   }, 0)
 }
 
-export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
+export default function BirdCard({ bird, history }: Props) {
   const router = useRouter()
   const bs = BREED_STYLE[bird.raca ?? ''] ?? DEFAULT_STYLE
   const [imgError, setImgError] = useState(false)
@@ -136,8 +134,6 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]   = useState(false)
   const [name, setName]           = useState(bird.name)
-  const [raca, setRaca]           = useState(bird.raca ?? '')
-  const [estilo, setEstilo]       = useState(bird.estilo_canto ?? '')
   const [saving, setSaving]       = useState(false)
 
   async function handleDelete() {
@@ -150,7 +146,7 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
   async function handleSave() {
     setSaving(true)
     const supabase = createClient()
-    await supabase.from('birds').update({ name, raca, estilo_canto: estilo }).eq('id', bird.id)
+    await supabase.from('birds').update({ name }).eq('id', bird.id)
     setSaving(false)
     setEditing(false)
     router.refresh()
@@ -255,21 +251,14 @@ export default function BirdCard({ bird, history, RACAS, ESTILOS }: Props) {
         )}
       </div>
 
-      {/* ── edit form ── */}
+      {/* ── edit form — só nome (input acima) e foto (botão da foto). Raça/estilo não editam. ── */}
       {editing && (
-        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <select value={raca} onChange={e => setRaca(e.target.value)} style={fieldSt}>
-              <option value="">Raça...</option>
-              {RACAS.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <select value={estilo} onChange={e => setEstilo(e.target.value)} style={fieldSt}>
-              <option value="">Estilo...</option>
-              {ESTILOS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+        <div style={{ padding: '0 18px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ margin: 0, fontSize: '0.72rem', color: '#9CA3AF' }}>
+            Edite o nome acima ou toque na foto para trocar a imagem.
+          </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button onClick={() => { setEditing(false); setName(bird.name); setRaca(bird.raca ?? ''); setEstilo(bird.estilo_canto ?? '') }} style={{
+            <button onClick={() => { setEditing(false); setName(bird.name) }} style={{
               background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8,
               padding: '8px 16px', cursor: 'pointer', color: '#6B7280',
               fontSize: '0.8rem', fontWeight: 600, fontFamily: 'inherit',

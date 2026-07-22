@@ -28,19 +28,22 @@ const getActiveTorneios = unstable_cache(
     const supabase = createPublicClient()
     const { data } = await supabase
       .from('tournaments')
-      .select('id, name, status, tipo_ave, estilo_canto, clubs(name, cidade, estado), participants(count)')
+      .select('id, name, status, start_at, duration_secs, qr_token, tipo_ave, estilo_canto, clubs(name, cidade, estado), participants(round_group, marks_participant_id)')
       .in('status', ['open', 'running'])
       .order('status', { ascending: false })
     return (data ?? []).map(t => {
       const c = t.clubs as unknown as Club
+      const parts = (t.participants as unknown as { round_group: number | null; marks_participant_id: string | null }[] | null) ?? []
       return {
         id: t.id, name: t.name, status: t.status,
         qr_token: (t as Record<string, unknown>).qr_token as string | null ?? null,
         clube: c?.name ?? null, cidade: c?.cidade ?? null, estado: c?.estado ?? null,
-        n: (t.participants as unknown as { count: number }[] | null)?.[0]?.count ?? null,
+        n: parts.length,
         start_at: (t as Record<string, unknown>).start_at as string | null ?? null,
         tipo_ave: (t as Record<string, unknown>).tipo_ave as string | null ?? null,
         estilo_canto: (t as Record<string, unknown>).estilo_canto as string | null ?? null,
+        duration_secs: (t as Record<string, unknown>).duration_secs as number | null ?? null,
+        started: parts.some(p => p.round_group != null || p.marks_participant_id != null),
       }
     })
   },

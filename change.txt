@@ -1,8 +1,13 @@
-na home e no path /torneios , o torneio quando ele começa, no caso faz o sorteio, ele já começou, e deve ir para categoria ao vivo de torneio, mas  continua em "Abertos agora" e nao ao vivo
+1) home Ranking·RJ mostra aves reais mas /liga nao mostra nenhuma
+>>> [FEITO] Mesma fonte (getMergedLiga). O /liga tinha default de categoria Coleiro·Canto classico, mas as aves reais sao Bicudo/Curio·Canto Fibra (Niteroi/RJ, clube verificado) -> filtradas fora. Agora a categoria inicial do /liga eh data-driven (filtro salvo se tiver aves -> Bicudo·Canto Fibra -> categoria com mais aves), igual ranking-preview. liga-client.tsx (feito no batch anterior; confirmado com o banco).
 
+2) /mestre/torneio e /torneio: slider de tempos (IntervalTicker) renderizando duplicado
+>>> [FEITO] O marquee sempre renderizava 2 copias ({chips}{chips}); com poucos chips as duas apareciam juntas = duplicado. Agora mede a largura: so duplica + anima quando transborda; senao mostra 1 copia estatica. spectator-widgets.tsx + mestre-client.tsx
 
-fazer um "x" para fechar a dica do "Que tal ativar o modo avião?" em https://torneio-passaro.vercel.app/torneio/078ec798-54b9-4f68-9532-13be66896536/participante?pid=b0454811-ec7b-4cce-8b49-9043aef02ecb
+3) /meus-passarinhos: deixar so editar nome ou foto; remover edicao de raca e estilo
+>>> [FEITO] Removidos os selects de raca/estilo do form de edicao (e das props RACAS/ESTILOS). Edicao agora = input do nome + trocar a foto. handleSave salva so { name }. bird-card.tsx + page.tsx (meus-passarinhos)
 
-temporada do path de /torneio tem que ser vinculada ao ano atual (ex: 2026)
-
-em https://torneio-passaro.vercel.app/liga nao esta renderizando as aves reais
+--- batch anterior (change.txt tinha sido sobrescrito antes de salvar) ---
+- Torneio que comecou (sorteio/grupos) agora aparece em "Ao vivo" e nao "Abertos": funcao isLive() = running OU marcacao contando na janela OU inscricoes fechadas (started). Aplicado em home + /torneios (page, geo-list, [categoria], preview). _utils/_fetch/page.tsx/geo-list/[categoria]/torneios-preview.
+- X pra fechar a dica "modo aviao" (reaparece na proxima marcacao). participante-client.
+- "Temporada 2025" -> ano atual dinamico. liga-client + liga-bird-profile.

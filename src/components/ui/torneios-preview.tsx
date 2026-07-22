@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { sortByProximityAndStatus, type Item } from '@/app/(public)/torneios/_utils'
+import { sortByProximityAndStatus, isLive, type Item } from '@/app/(public)/torneios/_utils'
 
 type ClubRel = { name: string; cidade: string; estado: string } | null
 
@@ -28,20 +28,23 @@ export default function TorneiosPreview({ torneios }: { torneios: Item[] }) {
     const supabase = createClient()
     const { data } = await supabase
       .from('tournaments')
-      .select('id, name, status, tipo_ave, estilo_canto, start_at, qr_token, clubs(name, cidade, estado), participants(count)')
+      .select('id, name, status, tipo_ave, estilo_canto, start_at, duration_secs, qr_token, clubs(name, cidade, estado), participants(round_group, marks_participant_id)')
       .in('status', ['open', 'running'])
       .order('status', { ascending: false })
     if (!data) return
     setItems(data.map(t => {
       const c = t.clubs as unknown as ClubRel
+      const parts = (t.participants as unknown as { round_group: number | null; marks_participant_id: string | null }[] | null) ?? []
       return {
         id: t.id, name: t.name, status: t.status,
         qr_token: (t as Record<string, unknown>).qr_token as string | null ?? null,
         clube: c?.name ?? null, cidade: c?.cidade ?? null, estado: c?.estado ?? null,
-        n: (t.participants as unknown as { count: number }[] | null)?.[0]?.count ?? null,
+        n: parts.length,
         start_at: (t as Record<string, unknown>).start_at as string | null ?? null,
         tipo_ave: (t as Record<string, unknown>).tipo_ave as string | null ?? null,
         estilo_canto: (t as Record<string, unknown>).estilo_canto as string | null ?? null,
+        duration_secs: (t as Record<string, unknown>).duration_secs as number | null ?? null,
+        started: parts.some(p => p.round_group != null || p.marks_participant_id != null),
       } as Item
     }))
   }, [])
@@ -109,7 +112,7 @@ export default function TorneiosPreview({ torneios }: { torneios: Item[] }) {
               '&:hover': { borderColor: t.id ? '#0D8F41' : '#E5E7EB' },
             }}
           >
-            <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: t.status === 'running' ? '#0D8F41' : '#D1D5DB', flexShrink: 0 }} />
+            <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: isLive(t) ? '#0D8F41' : '#D1D5DB', flexShrink: 0 }} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.3, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t.name}
@@ -127,11 +130,11 @@ export default function TorneiosPreview({ torneios }: { torneios: Item[] }) {
             </Box>
             <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, justifyContent: 'flex-end' }}>
-                {t.status === 'running' && (
+                {isLive(t) && (
                   <Box className="live-dot" sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#EF4444', flexShrink: 0 }} />
                 )}
-                <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: t.status === 'running' ? '#0D8F41' : '#9CA3AF' }}>
-                  {t.status === 'running' ? 'Ao vivo' : 'Aberto'}
+                <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: isLive(t) ? '#0D8F41' : '#9CA3AF' }}>
+                  {isLive(t) ? 'Ao vivo' : 'Aberto'}
                 </Typography>
               </Box>
               {t.n != null && (

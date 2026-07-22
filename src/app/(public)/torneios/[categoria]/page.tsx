@@ -5,26 +5,26 @@ import Typography from '@mui/material/Typography'
 import Link from 'next/link'
 import { fetchTorneios } from '../_fetch'
 import { LiveCard, OpenCard, UpcomingCard, FinishedCard } from '../_cards'
-import { isFutureDay, type Item } from '../_utils'
+import { isFutureDay, isLive, type Item } from '../_utils'
 
 const CAT_CONFIG = {
   'ao-vivo': {
     label: 'Torneios ao vivo',
     eyebrow: 'Agora',
     eyebrowColor: '#EF4444',
-    filter: (all: Item[]) => all.filter(t => t.status === 'running'),
+    filter: (all: Item[]) => all.filter(isLive),
   },
   abertos: {
     label: 'Abertos agora',
     eyebrow: 'Hoje',
     eyebrowColor: '#0D8F41',
-    filter: (all: Item[]) => all.filter(t => t.status === 'open' && !isFutureDay(t.start_at)),
+    filter: (all: Item[]) => all.filter(t => t.status === 'open' && !isLive(t) && !isFutureDay(t.start_at)),
   },
   proximos: {
     label: 'Próximos campeonatos',
     eyebrow: 'Em breve',
     eyebrowColor: '#9CA3AF',
-    filter: (all: Item[]) => all.filter(t => t.status !== 'finished' && isFutureDay(t.start_at)),
+    filter: (all: Item[]) => all.filter(t => !isLive(t) && t.status !== 'finished' && isFutureDay(t.start_at)),
   },
   encerrados: {
     label: 'Encerrados',

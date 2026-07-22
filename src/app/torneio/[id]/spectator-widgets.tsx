@@ -213,6 +213,18 @@ function fmtClock(iso: string) {
 }
 
 function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_at: string }[] }) {
+  // só anima/duplica (marquee) quando os chips transbordam a largura — senão apareciam
+  // 2 cópias lado a lado (parecia duplicado)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [scroll, setScroll] = useState(false)
+  useEffect(() => {
+    const w = wrapRef.current, t = trackRef.current
+    if (!w || !t) return
+    const oneWidth = scroll ? t.scrollWidth / 2 : t.scrollWidth
+    const over = oneWidth > w.clientWidth + 4
+    if (over !== scroll) setScroll(over)
+  }, [intervals, scroll])
   if (intervals.length === 0) return null
   const chips = intervals.map((iv, i) => (
     <span key={i} style={{
@@ -223,13 +235,14 @@ function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_
     </span>
   ))
   return (
-    <div style={{ overflow: 'hidden', width: '100%', marginTop: 4 }}>
+    <div ref={wrapRef} style={{ overflow: 'hidden', width: '100%', marginTop: 4 }}>
       <style>{`
         @keyframes fibra-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .fibra-ticker-track { animation: fibra-ticker 18s linear infinite; }
       `}</style>
-      <div className="fibra-ticker-track" style={{ display: 'flex', gap: 6, width: 'max-content' }}>
-        {chips}{chips}
+      <div ref={trackRef} className={scroll ? 'fibra-ticker-track' : undefined}
+        style={{ display: 'flex', gap: 6, width: scroll ? 'max-content' : 'auto', flexWrap: 'nowrap' }}>
+        {chips}{scroll && chips}
       </div>
     </div>
   )
