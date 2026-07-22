@@ -289,8 +289,8 @@ export function AnimatedRanking({ items, emptyText = 'Nenhum participante.', tim
       (realtime + poll 5s), sem depender de router.refresh/RSC (que podia vir de cache).
       Garante que o resultado das marcações — inclusive os tempos do Canto Fibra —
       apareça e atualize. Começa com os dados do servidor e vai atualizando. ── */
-export function SpectatorLiveRanking({ tournamentId, initial, timeMode = false, emptyText }: {
-  tournamentId: string; initial: RankItem[]; timeMode?: boolean; emptyText?: string
+export function SpectatorLiveRanking({ tournamentId, initial, timeMode = false, finished = false, emptyText }: {
+  tournamentId: string; initial: RankItem[]; timeMode?: boolean; finished?: boolean; emptyText?: string
 }) {
   const [items, setItems] = useState<RankItem[]>(initial)
 
@@ -299,12 +299,16 @@ export function SpectatorLiveRanking({ tournamentId, initial, timeMode = false, 
     let active = true
 
     const load = async () => {
-      const [{ data: parts }, { data: scores }, ivRes] = await Promise.all([
+      const [{ data: parts }, { data: scores }, { data: hist }, ivRes] = await Promise.all([
         supabase.from('participants')
           .select('id, user_name, bird_name, cage_number, round_group, status')
           .eq('tournament_id', tournamentId).eq('status', 'approved'),
         supabase.from('scores')
           .select('participant_id, count, suspicious_count')
+          .eq('tournament_id', tournamentId),
+        // histórico das marcações já encerradas (ciclos anteriores) — soma no total
+        supabase.from('round_scores')
+          .select('participant_id, count')
           .eq('tournament_id', tournamentId),
         timeMode
           ? supabase.from('fibra_intervals')
@@ -315,10 +319,19 @@ export function SpectatorLiveRanking({ tournamentId, initial, timeMode = false, 
       if (!active || !parts) return
       const sMap = new Map((scores ?? []).map(s => [s.participant_id, s.count]))
       const wMap = new Map((scores ?? []).map(s => [s.participant_id, (s as { suspicious_count?: number }).suspicious_count ?? 0]))
+      const hMap = new Map<string, number>()
+      for (const h of hist ?? []) hMap.set(h.participant_id, (hMap.get(h.participant_id) ?? 0) + (h.count ?? 0))
       const ivMap: Record<string, { started_at: string; ended_at: string }[]> = {}
       for (const iv of ivRes.data ?? []) (ivMap[iv.participant_id] ??= []).push({ started_at: iv.started_at, ended_at: iv.ended_at })
+      // TEMPO/CANTOS TOTAL = histórico (ciclos anteriores) + marcação atual ao vivo.
+      // Finalizado: a marcação final já foi pro histórico → não soma o ao vivo (evita dobrar).
       const next = parts
-        .map(p => ({ ...p, score: sMap.get(p.id) ?? 0, warns: wMap.get(p.id) ?? 0, intervals: ivMap[p.id] }))
+        .map(p => ({
+          ...p,
+          score: (hMap.get(p.id) ?? 0) + (finished ? 0 : (sMap.get(p.id) ?? 0)),
+          warns: wMap.get(p.id) ?? 0,
+          intervals: ivMap[p.id],
+        }))
         .sort((a, b) => b.score - a.score)
       setItems(next as RankItem[])
     }
@@ -329,11 +342,12 @@ export function SpectatorLiveRanking({ tournamentId, initial, timeMode = false, 
       .channel(`sprank:${tournamentId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `tournament_id=eq.${tournamentId}` }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${tournamentId}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'round_scores', filter: `tournament_id=eq.${tournamentId}` }, load)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fibra_intervals', filter: `tournament_id=eq.${tournamentId}` }, load)
       .subscribe()
 
     return () => { active = false; clearInterval(poll); supabase.removeChannel(channel) }
-  }, [tournamentId, timeMode])
+  }, [tournamentId, timeMode, finished])
 
   return <AnimatedRanking items={items} timeMode={timeMode} emptyText={emptyText} />
 }

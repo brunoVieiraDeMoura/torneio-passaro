@@ -1,4 +1,2 @@
-botão de Tempo cantado sem app · marcação 
-tem que mudar o comportamento dele, ele tem que virar remetente a gaiola na qual a pessoa "fora do app" pegou no sorteio para marcar, 
-ele vai contar a gaiola de alguém fora do app, e vai ser inserido a minutagem dessa pessoa, pela marcação da pessoa que estava fora do app, ex: a pessoa do app cadastrou a gaiola 111,mas ela foi sorteada
-para marcar a gaiola 222 ,botão de Tempo cantado sem app , tem que registrar o tempo da gaiola 222 marcada pelo fora do app
+em ranking de https://torneio-passaro.vercel.app/torneio/078ec798-54b9-4f68-9532-13be66896536
+o tempo total na direita não está renderizando corretamente, todos estão 00:00 , mas eles já foram marcados

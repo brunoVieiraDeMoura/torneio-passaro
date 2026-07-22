@@ -731,15 +731,27 @@ export default function MestreClient({
   // rótulo "Marcação {ciclo}-{grupo}"
   const marcLabel = divisions > 1 ? `${round}-${activeGroup}` : `${round}`
 
-  // "Tempo cantado sem app": participantes FORA DO APP cuja marcação ainda está ZERADA
-  // na marcação atual. Motivo: com o sorteio, quem foi sorteado pra marcar o passarinho
-  // deles também é sem app (não pôde marcar pelo celular) → só o mestre insere o tempo.
-  // Quem já tem tempo/canto (>0) some da lista. O tempo é salvo no próprio passarinho.
-  const semAppAtuais = participantes.filter(p =>
-    p.status === 'approved' && !p.user_id &&
-    (scores[p.id] ?? 0) === 0 &&
-    (divisions <= 1 || p.round_group === activeGroup)
-  )
+  // "Tempo cantado sem app": um participante FORA DO APP foi sorteado pra marcar a gaiola
+  // de OUTRO, mas não tem celular → o mestre insere o tempo dessa GAIOLA MARCADA (o alvo).
+  // Cada item = { alvo (gaiola marcada, onde o tempo entra), marcador (o fora-do-app) }.
+  // Só entra se o alvo ainda está ZERADO (ninguém marcou) e está na marcação atual.
+  // ex.: fora-do-app dono da 111, sorteado pra marcar a 222 → registra o tempo da 222.
+  const semAppAtuais = (() => {
+    const approved = participantes.filter(p => p.status === 'approved')
+    if (drawDone) {
+      return approved
+        .filter(p => !p.user_id && p.marks_participant_id) // marcadores sem app
+        .map(p => ({ marker: p, target: partById[p.marks_participant_id!] as Participante | undefined }))
+        .filter((x): x is { marker: Participante; target: Participante } =>
+          x.target != null && x.target.status === 'approved' &&
+          (scores[x.target.id] ?? 0) === 0 &&
+          (divisions <= 1 || x.target.round_group === activeGroup))
+    }
+    // sem sorteio (fallback): o próprio sem-app pontua a si (alvo = ele mesmo)
+    return approved
+      .filter(p => !p.user_id && (scores[p.id] ?? 0) === 0 && (divisions <= 1 || p.round_group === activeGroup))
+      .map(p => ({ marker: p, target: p }))
+  })()
 
   // preview da vassourada
   const approvedByScore = useMemo(() =>
@@ -1415,25 +1427,27 @@ export default function MestreClient({
               {semAppAtuais.length === 0 && (
                 <p style={{ margin: 0, fontSize: '0.82rem', color: '#9CA3AF' }}>Nenhum participante sem app nesta marcação.</p>
               )}
-              {semAppAtuais.map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {semAppAtuais.map(({ marker, target }) => (
+                <div key={target.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', color: '#111827' }}>{p.bird_name}</p>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', color: '#111827' }}>
+                      {target.cage_number ? `Gaiola ${target.cage_number} · ` : ''}{target.bird_name}
+                    </p>
                     <p style={{ margin: 0, fontSize: '0.7rem', color: '#9CA3AF' }}>
-                      {p.user_name}{p.cage_number ? ` · Gaiola ${p.cage_number}` : ''}
-                      {divisions > 1 && p.round_group ? ` · marcação ${round}-${p.round_group}` : ''}
+                      {divisions > 1 && target.round_group ? `marcação ${round}-${target.round_group} · ` : ''}
+                      {marker.id !== target.id ? `marcada por ${marker.user_name} (sem app)` : marker.user_name}
                     </p>
                   </div>
                   {isFibra ? (
                     <MMSSInput inp={inp}
-                      placeholder={formatDurationMinSec(scores[p.id] ?? 0)}
-                      value={cantosInput[p.id] ?? ''}
-                      onChange={v => setCantosInput(prev => ({ ...prev, [p.id]: v }))} />
+                      placeholder={formatDurationMinSec(scores[target.id] ?? 0)}
+                      value={cantosInput[target.id] ?? ''}
+                      onChange={v => setCantosInput(prev => ({ ...prev, [target.id]: v }))} />
                   ) : (
                     <input style={{ ...inp, width: 90, flexShrink: 0 }} type="number" min={0}
-                      placeholder={String(scores[p.id] ?? 0)}
-                      value={cantosInput[p.id] ?? ''}
-                      onChange={e => setCantosInput(prev => ({ ...prev, [p.id]: e.target.value }))} />
+                      placeholder={String(scores[target.id] ?? 0)}
+                      value={cantosInput[target.id] ?? ''}
+                      onChange={e => setCantosInput(prev => ({ ...prev, [target.id]: e.target.value }))} />
                   )}
                 </div>
               ))}

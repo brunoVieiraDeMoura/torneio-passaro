@@ -322,11 +322,11 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
                 />
                 <div>
                   <p style={eyebrowStyle('#0D8F41')}>Ranking geral</p>
-                  <SpectatorLiveRanking tournamentId={id} initial={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." timeMode={isFibra} />
+                  <SpectatorLiveRanking tournamentId={id} initial={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." timeMode={isFibra} finished={torneio.status === 'finished'} />
                 </div>
               </div>
             ) : ranked.length > 0 ? (
-              <SpectatorLiveRanking tournamentId={id} initial={ranked as RankItem[]} timeMode={isFibra} />
+              <SpectatorLiveRanking tournamentId={id} initial={ranked as RankItem[]} timeMode={isFibra} finished={torneio.status === 'finished'} />
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
                 <p style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>
