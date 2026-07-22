@@ -6,7 +6,7 @@ import SpectatorRealtime from '@/components/ui/spectator-realtime'
 import ParticiparCta from './participar-cta'
 import AdBanner from '@/components/ui/ad-banner'
 import LiveChat from './live-chat'
-import { AnimatedRanking, AutoScrollMain, MarcacaoPanel, SpectatorClock, type RankItem } from './spectator-widgets'
+import { AutoScrollMain, MarcacaoPanel, SpectatorClock, SpectatorLiveRanking, type RankItem } from './spectator-widgets'
 import { formatDurationMinSec } from '@/lib/duration'
 
 // sempre renderiza fresco: o SpectatorRealtime dá router.refresh() ao vivo (scores,
@@ -322,11 +322,11 @@ export default async function TorneioEspectadorPage({ params }: { params: Promis
                 />
                 <div>
                   <p style={eyebrowStyle('#0D8F41')}>Ranking geral</p>
-                  <AnimatedRanking items={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." timeMode={isFibra} />
+                  <SpectatorLiveRanking tournamentId={id} initial={ranked as RankItem[]} emptyText="Nenhum participante aprovado ainda." timeMode={isFibra} />
                 </div>
               </div>
             ) : ranked.length > 0 ? (
-              <AnimatedRanking items={ranked as RankItem[]} timeMode={isFibra} />
+              <SpectatorLiveRanking tournamentId={id} initial={ranked as RankItem[]} timeMode={isFibra} />
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9CA3AF' }}>
                 <p style={{ margin: '0 0 4px', fontSize: '0.85rem' }}>Nenhum participante aprovado ainda.</p>

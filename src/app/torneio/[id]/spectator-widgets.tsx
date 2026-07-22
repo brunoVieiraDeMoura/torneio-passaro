@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { formatDurationMinSec } from '@/lib/duration'
+import { createClient } from '@/lib/supabase/client'
 
 export type RankItem = {
   id: string; bird_name: string; user_name: string; cage_number: number | null
@@ -282,6 +283,59 @@ export function AnimatedRanking({ items, emptyText = 'Nenhum participante.', tim
       {items.map((p, i) => <Row key={p.id} p={p} i={i} moved={moved[p.id]} timeMode={timeMode} />)}
     </div>
   )
+}
+
+/* ── Ranking ao vivo do espectador: busca scores/participants direto no cliente
+      (realtime + poll 5s), sem depender de router.refresh/RSC (que podia vir de cache).
+      Garante que o resultado das marcações — inclusive os tempos do Canto Fibra —
+      apareça e atualize. Começa com os dados do servidor e vai atualizando. ── */
+export function SpectatorLiveRanking({ tournamentId, initial, timeMode = false, emptyText }: {
+  tournamentId: string; initial: RankItem[]; timeMode?: boolean; emptyText?: string
+}) {
+  const [items, setItems] = useState<RankItem[]>(initial)
+
+  useEffect(() => {
+    const supabase = createClient()
+    let active = true
+
+    const load = async () => {
+      const [{ data: parts }, { data: scores }, ivRes] = await Promise.all([
+        supabase.from('participants')
+          .select('id, user_name, bird_name, cage_number, round_group, status')
+          .eq('tournament_id', tournamentId).eq('status', 'approved'),
+        supabase.from('scores')
+          .select('participant_id, count, suspicious_count')
+          .eq('tournament_id', tournamentId),
+        timeMode
+          ? supabase.from('fibra_intervals')
+              .select('participant_id, started_at, ended_at')
+              .eq('tournament_id', tournamentId).order('started_at', { ascending: true })
+          : Promise.resolve({ data: null as { participant_id: string; started_at: string; ended_at: string }[] | null }),
+      ])
+      if (!active || !parts) return
+      const sMap = new Map((scores ?? []).map(s => [s.participant_id, s.count]))
+      const wMap = new Map((scores ?? []).map(s => [s.participant_id, (s as { suspicious_count?: number }).suspicious_count ?? 0]))
+      const ivMap: Record<string, { started_at: string; ended_at: string }[]> = {}
+      for (const iv of ivRes.data ?? []) (ivMap[iv.participant_id] ??= []).push({ started_at: iv.started_at, ended_at: iv.ended_at })
+      const next = parts
+        .map(p => ({ ...p, score: sMap.get(p.id) ?? 0, warns: wMap.get(p.id) ?? 0, intervals: ivMap[p.id] }))
+        .sort((a, b) => b.score - a.score)
+      setItems(next as RankItem[])
+    }
+
+    load()
+    const poll = setInterval(load, 5000)
+    const channel = supabase
+      .channel(`sprank:${tournamentId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `tournament_id=eq.${tournamentId}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'participants', filter: `tournament_id=eq.${tournamentId}` }, load)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'fibra_intervals', filter: `tournament_id=eq.${tournamentId}` }, load)
+      .subscribe()
+
+    return () => { active = false; clearInterval(poll); supabase.removeChannel(channel) }
+  }, [tournamentId, timeMode])
+
+  return <AnimatedRanking items={items} timeMode={timeMode} emptyText={emptyText} />
 }
 
 /* ── Painel da marcação: "Próxima" antes de começar → "Marcação atual" na contagem →
