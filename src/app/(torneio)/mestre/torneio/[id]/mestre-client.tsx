@@ -114,18 +114,10 @@ function fmtClock(iso: string) {
 
 // Canto Fibra: carrossel horizontal (loop contínuo, puro CSS) com o início–fim de cada intervalo
 function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_at: string }[] }) {
-  // só duplica/anima (marquee) quando transborda — senão as 2 cópias apareciam juntas (duplicado)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
-  const [scroll, setScroll] = useState(false)
-  useEffect(() => {
-    const w = wrapRef.current, t = trackRef.current
-    if (!w || !t) return
-    const oneWidth = scroll ? t.scrollWidth / 2 : t.scrollWidth
-    const over = oneWidth > w.clientWidth + 4
-    if (over !== scroll) setScroll(over)
-  }, [intervals, scroll])
   if (intervals.length === 0) return null
+  // slide infinito (marquee) a partir de 4 contagens; abaixo disso, estático numa linha.
+  // Sempre nowrap + overflow hidden → nunca quebra o container em várias linhas.
+  const slide = intervals.length >= 4
   const chips = intervals.map((iv, i) => (
     <span key={i} style={{
       flexShrink: 0, background: '#F3F4F6', borderRadius: 20, padding: '2px 8px',
@@ -135,14 +127,14 @@ function IntervalTicker({ intervals }: { intervals: { started_at: string; ended_
     </span>
   ))
   return (
-    <div ref={wrapRef} style={{ overflow: 'hidden', width: '100%' }}>
+    <div style={{ overflow: 'hidden', width: '100%' }}>
       <style>{`
         @keyframes fibra-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .fibra-ticker-track { animation: fibra-ticker 18s linear infinite; }
       `}</style>
-      <div ref={trackRef} className={scroll ? 'fibra-ticker-track' : undefined}
-        style={{ display: 'flex', gap: 6, width: scroll ? 'max-content' : 'auto', flexWrap: 'nowrap' }}>
-        {chips}{scroll && chips}
+      <div className={slide ? 'fibra-ticker-track' : undefined}
+        style={{ display: 'flex', flexWrap: 'nowrap', gap: 6, width: slide ? 'max-content' : 'auto' }}>
+        {chips}{slide && chips}
       </div>
     </div>
   )

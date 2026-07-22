@@ -1,13 +1,6 @@
-1) home Ranking·RJ mostra aves reais mas /liga nao mostra nenhuma
->>> [FEITO] Mesma fonte (getMergedLiga). O /liga tinha default de categoria Coleiro·Canto classico, mas as aves reais sao Bicudo/Curio·Canto Fibra (Niteroi/RJ, clube verificado) -> filtradas fora. Agora a categoria inicial do /liga eh data-driven (filtro salvo se tiver aves -> Bicudo·Canto Fibra -> categoria com mais aves), igual ranking-preview. liga-client.tsx (feito no batch anterior; confirmado com o banco).
-
-2) /mestre/torneio e /torneio: slider de tempos (IntervalTicker) renderizando duplicado
->>> [FEITO] O marquee sempre renderizava 2 copias ({chips}{chips}); com poucos chips as duas apareciam juntas = duplicado. Agora mede a largura: so duplica + anima quando transborda; senao mostra 1 copia estatica. spectator-widgets.tsx + mestre-client.tsx
-
-3) /meus-passarinhos: deixar so editar nome ou foto; remover edicao de raca e estilo
->>> [FEITO] Removidos os selects de raca/estilo do form de edicao (e das props RACAS/ESTILOS). Edicao agora = input do nome + trocar a foto. handleSave salva so { name }. bird-card.tsx + page.tsx (meus-passarinhos)
-
---- batch anterior (change.txt tinha sido sobrescrito antes de salvar) ---
-- Torneio que comecou (sorteio/grupos) agora aparece em "Ao vivo" e nao "Abertos": funcao isLive() = running OU marcacao contando na janela OU inscricoes fechadas (started). Aplicado em home + /torneios (page, geo-list, [categoria], preview). _utils/_fetch/page.tsx/geo-list/[categoria]/torneios-preview.
-- X pra fechar a dica "modo aviao" (reaparece na proxima marcacao). participante-client.
-- "Temporada 2025" -> ano atual dinamico. liga-client + liga-bird-profile.
+/torneio e /mestre/torneio: no Ranking geral, as marcacoes (intervalos de tempo) quebravam o container (empilhavam em varias linhas). Fazer slide infinito a partir de 4 contagens.
+>>> [FEITO] IntervalTicker (espectador + mestre): agora `slide = intervals.length >= 4`.
+    - >= 4 intervalos -> marquee (slide infinito, 2 copias animadas).
+    - < 4 -> estatico numa linha.
+    - Sempre flexWrap:nowrap + overflow:hidden -> nunca quebra em varias linhas (some o empilhamento).
+    spectator-widgets.tsx + mestre-client.tsx
