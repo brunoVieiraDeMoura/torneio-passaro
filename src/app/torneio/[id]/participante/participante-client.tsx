@@ -132,6 +132,7 @@ export default function ParticipanteClient({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fraudWarning, setFraudWarning] = useState(false)
   const [fraudFlash, setFraudFlash] = useState(false)   // troca o nº do botão por ⚠ por 0.5s
+  const [airplaneDismissed, setAirplaneDismissed] = useState(false) // dica do modo avião fechada no X
 
   // ── Canto Fibra: marcação por tempo (pressionar/soltar), sem penalidade ──
   const [pressing, setPressing] = useState(false)
@@ -247,6 +248,7 @@ export default function ParticipanteClient({
         setPressing(false)
         setCount(0)
         setWarnCount(0) // nova marcação: o mestre zera as suspeitas no servidor
+        setAirplaneDismissed(false) // nova marcação → a dica do modo avião pode reaparecer
         try { localStorage.removeItem(storageKey); localStorage.removeItem(fibraStorageKey) } catch {}
       }
     }
@@ -452,8 +454,10 @@ export default function ParticipanteClient({
   // quem está competindo agora (marcação/grupo ativo) — já vem ordenado por score
   const competingNow = ranking.filter(r => divisions <= 1 || r.round_group === activeGroup)
 
-  // Airplane warning: 5min a 2min antes do start_at — SÓ p/ quem vai participar da marcação atual
+  // Airplane warning: 5min a 2min antes do start_at — SÓ p/ quem vai participar da marcação atual.
+  // Pode ser fechado no X (airplaneDismissed) — reaparece só na próxima marcação (reset no start_at).
   const showAirplane =
+    !airplaneDismissed &&
     isMyTurn &&
     (torneioStatus === 'open' || (isRunning && msUntilStart !== null && msUntilStart > 0)) &&
     msUntilStart !== null && msUntilStart <= 300_000 && msUntilStart > 120_000
@@ -834,12 +838,20 @@ export default function ParticipanteClient({
           padding: 24,
         }}>
           <div style={{
+            position: 'relative',
             background: '#fff', borderRadius: 20,
             border: '1px solid #E5E7EB',
             padding: '28px 26px', width: '100%', maxWidth: 420,
             boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
             display: 'flex', flexDirection: 'column', gap: 18, textAlign: 'center',
           }}>
+            {/* fechar a dica */}
+            <button type="button" onClick={() => setAirplaneDismissed(true)} aria-label="Fechar dica"
+              style={{ position: 'absolute', top: 12, right: 12, background: '#F3F4F6', border: 'none', borderRadius: '50%', width: 30, height: 30, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7280', padding: 0, lineHeight: 0 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
             <div>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
                 <div style={{

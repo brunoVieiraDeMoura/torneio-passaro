@@ -1,2 +1,8 @@
-em ranking de https://torneio-passaro.vercel.app/torneio/078ec798-54b9-4f68-9532-13be66896536
-o tempo total na direita não está renderizando corretamente, todos estão 00:00 , mas eles já foram marcados
+na home e no path /torneios , o torneio quando ele começa, no caso faz o sorteio, ele já começou, e deve ir para categoria ao vivo de torneio, mas  continua em "Abertos agora" e nao ao vivo
+
+
+fazer um "x" para fechar a dica do "Que tal ativar o modo avião?" em https://torneio-passaro.vercel.app/torneio/078ec798-54b9-4f68-9532-13be66896536/participante?pid=b0454811-ec7b-4cce-8b49-9043aef02ecb
+
+temporada do path de /torneio tem que ser vinculada ao ano atual (ex: 2026)
+
+em https://torneio-passaro.vercel.app/liga nao esta renderizando as aves reais

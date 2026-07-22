@@ -3,6 +3,24 @@ export type Item = {
   status: string; n: number | null; start_at: string | null
   clube: string | null; cidade: string | null; estado: string | null
   tipo_ave: string | null; estilo_canto: string | null
+  duration_secs: number | null
+  // inscrições já fechadas (sorteio das gaiolas OU grupos definidos) → torneio começou
+  started?: boolean
+}
+
+// "Ao vivo / em andamento": rodando, OU aberto mas com a marcação contando agora
+// (janela start_at→fim), OU aberto já começado (sorteio/grupos feitos = inscrições
+// fechadas). Um torneio que já sorteou as gaiolas não é mais "aberto".
+export function isLive(t: Item): boolean {
+  if (t.status === 'running') return true
+  if (t.status !== 'open') return false
+  if (t.start_at && t.duration_secs != null) {
+    const start = new Date(t.start_at).getTime()
+    const end = start + t.duration_secs * 1000
+    const now = Date.now()
+    if (now >= start && now <= end) return true
+  }
+  return !!t.started
 }
 
 export function fmtTime(iso: string | null): string | null {
@@ -29,7 +47,7 @@ export function isFutureDay(iso: string | null): boolean {
 }
 
 export function statusScore(t: Item): number {
-  if (t.status === 'running') return 0
+  if (isLive(t)) return 0
   if (t.status === 'open' && !isFutureDay(t.start_at)) return 1
   if (t.status !== 'finished') return 2
   return 3

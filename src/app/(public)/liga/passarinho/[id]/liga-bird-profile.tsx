@@ -176,7 +176,7 @@ export default function LigaBirdProfile({ entry, position, total, photoUrl = nul
           {/* temporada */}
           <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '20px' }}>
             <p style={{ margin: '0 0 14px', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#0D8F41' }}>
-              Temporada 2025
+              Temporada {new Date().getFullYear()}
             </p>
             {[
               { label: isFibra ? 'Tempo cantado na temporada' : 'Cantos na temporada', value: isFibra ? formatDuration(entry.count) : entry.count.toLocaleString('pt-BR') },
@@ -218,7 +218,7 @@ export default function LigaBirdProfile({ entry, position, total, photoUrl = nul
 
         <div style={{ marginTop: 32, textAlign: 'center' }}>
           <p style={{ margin: 0, fontSize: '0.68rem', color: '#D1D5DB' }}>
-            aveum · Temporada 2025
+            aveum · Temporada {new Date().getFullYear()}
           </p>
         </div>
       </div>

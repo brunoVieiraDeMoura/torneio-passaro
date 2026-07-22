@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography'
 import Link from 'next/link'
 import GeoList from './geo-list'
 import { fetchTorneios } from './_fetch'
-import { isFutureDay } from './_utils'
+import { isFutureDay, isLive } from './_utils'
 
 const PILLS = [
   { label: 'Todos',                slug: undefined,    accent: '#6B7280' },
@@ -22,9 +22,9 @@ export default async function TorneiosPage({
   const { q, estado } = await searchParams
   const { all } = await fetchTorneios(q, estado)
 
-  const live     = all.filter(t => t.status === 'running').length
-  const open     = all.filter(t => t.status === 'open' && !isFutureDay(t.start_at)).length
-  const upcoming = all.filter(t => t.status !== 'finished' && t.status !== 'running' && isFutureDay(t.start_at)).length
+  const live     = all.filter(isLive).length
+  const open     = all.filter(t => t.status === 'open' && !isLive(t) && !isFutureDay(t.start_at)).length
+  const upcoming = all.filter(t => !isLive(t) && t.status !== 'finished' && isFutureDay(t.start_at)).length
   const finished = all.filter(t => t.status === 'finished').length
 
   const counts: Record<string, number> = {

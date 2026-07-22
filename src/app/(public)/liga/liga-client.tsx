@@ -54,8 +54,8 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
   const [limit,   setLimit]   = useState<Limit>(10)
   const [estado,  setEstado]  = useState('')
   const [cidade,  setCidade]  = useState('')
-  const [tipoAve, setTipoAve] = useState('Coleiro')
-  const [estilo,  setEstilo]  = useState('Canto clássico')
+  const [tipoAve, setTipoAve] = useState('Bicudo')
+  const [estilo,  setEstilo]  = useState('Canto Fibra')
   const isFibra = estilo === 'Canto Fibra'
   const [geoStatus, setGeoStatus] = useState<'idle'|'loading'|'done'|'denied'>('idle')
   const [hydrated, setHydrated] = useState(false)
@@ -66,7 +66,9 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
   const TIPOS   = useMemo(() => [...new Set(entries.map(e => e.tipo_ave).filter(Boolean))].sort(), [entries])
   const ESTILOS = useMemo(() => [...new Set(entries.map(e => e.estilo_canto).filter(Boolean))].sort(), [entries])
 
-  /* restore from localStorage after mount (avoid SSR mismatch) */
+  /* restore from localStorage after mount (avoid SSR mismatch). A categoria (raça·canto)
+     é dirigida pelos DADOS: só mostra uma categoria que tenha aves. Ordem: filtro salvo
+     (se tiver aves) → Bicudo·Canto Fibra → categoria com mais aves → default Bicudo·Fibra. */
   useEffect(() => {
     const scope_ = ls('liga_scope') as Scope | null
     const limit_ = Number(ls('liga_limit')) as Limit
@@ -74,10 +76,19 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
     if (limit_)  setLimit(limit_)
     setEstado(ls('liga_estado') ?? '')
     setCidade(ls('liga_cidade') ?? '')
-    setTipoAve(ls('liga_tipo')   ?? 'Coleiro')
-    setEstilo(ls('liga_estilo')  ?? 'Canto clássico')
+
+    const has = (t: string, e: string) => entries.some(x => x.tipo_ave === t && x.estilo_canto === e)
+    const lsTipo = ls('liga_tipo'), lsEstilo = ls('liga_estilo')
+    let t = 'Bicudo', e = 'Canto Fibra'
+    if (lsTipo && lsEstilo && has(lsTipo, lsEstilo)) { t = lsTipo; e = lsEstilo }
+    else if (has('Bicudo', 'Canto Fibra')) { t = 'Bicudo'; e = 'Canto Fibra' }
+    else if (entries.length > 0) {
+      const top = [...entries].sort((a, b) => b.count - a.count)[0]
+      t = top.tipo_ave; e = top.estilo_canto
+    }
+    setTipoAve(t); setEstilo(e)
     setHydrated(true)
-  }, [])
+  }, [entries])
 
   /* persist to localStorage on every change (only after hydrated) */
   useEffect(() => { if (hydrated) lsSet('liga_scope',  scope)         }, [scope,   hydrated])
@@ -156,7 +167,7 @@ export default function LigaClient({ entries, currentUserId }: { entries: LigaEn
       <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #F3F4F6', pt: { xs: 2.5, sm: 5 }, pb: 0 }}>
         <Container maxWidth={false} sx={{ maxWidth: 1000 }}>
           <Typography sx={{ color: '#0D8F41', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', mb: 0.75 }}>
-            Temporada 2025
+            Temporada {new Date().getFullYear()}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
             <Typography sx={{ color: '#111827', fontSize: { xs: '1.3rem', sm: '1.7rem' }, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.1 }}>

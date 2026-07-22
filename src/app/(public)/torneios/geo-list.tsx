@@ -5,7 +5,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Link from 'next/link'
 import { LiveCard, OpenCard, UpcomingCard, FinishedCard } from './_cards'
-import { isFutureDay, proximityScore, type Item } from './_utils'
+import { isFutureDay, isLive, proximityScore, type Item } from './_utils'
 
 const PREVIEW = 3
 
@@ -73,9 +73,9 @@ export default function GeoList({ all }: { all: Item[] }) {
   const { live, open, upcoming, finished } = useMemo(() => {
     const sorted = sortByProx(all, cidade, estado)
     return {
-      live:     sorted.filter(t => t.status === 'running'),
-      open:     sorted.filter(t => t.status === 'open' && !isFutureDay(t.start_at)),
-      upcoming: sorted.filter(t => t.status !== 'finished' && t.status !== 'running' && isFutureDay(t.start_at)),
+      live:     sorted.filter(isLive),
+      open:     sorted.filter(t => t.status === 'open' && !isLive(t) && !isFutureDay(t.start_at)),
+      upcoming: sorted.filter(t => !isLive(t) && t.status !== 'finished' && isFutureDay(t.start_at)),
       // encerrados: do finalizado mais recente para o mais antigo
       finished: sorted.filter(t => t.status === 'finished').sort((a, b) => {
         const da = a.start_at ? new Date(a.start_at).getTime() : -Infinity

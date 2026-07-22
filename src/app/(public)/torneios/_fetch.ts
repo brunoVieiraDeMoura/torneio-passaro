@@ -8,7 +8,7 @@ async function _fetchTorneios(q?: string, estado?: string): Promise<{ all: Item[
   const supabase = createPublicClient()
   let query = supabase
     .from('tournaments')
-    .select('*, clubs(name, cidade, estado), participants(count)')
+    .select('*, clubs(name, cidade, estado), participants(round_group, marks_participant_id)')
     .in('status', ['open', 'running', 'finished'])
     .order('start_at', { ascending: true, nullsFirst: true })
   if (estado) query = query.eq('estado', estado)
@@ -17,14 +17,19 @@ async function _fetchTorneios(q?: string, estado?: string): Promise<{ all: Item[
   if (error) console.error('[torneios]', error)
   const all: Item[] = (torneios ?? []).map(t => {
     const c = t.clubs as unknown as Club
+    const parts = (t.participants as unknown as { round_group: number | null; marks_participant_id: string | null }[] | null) ?? []
+    // inscrições fechadas = já teve sorteio (marks) OU grupos definidos (round_group)
+    const started = parts.some(p => p.round_group != null || p.marks_participant_id != null)
     return {
       id: t.id, name: t.name, qr_token: t.qr_token ?? null,
       status: t.status,
-      n: (t.participants as unknown as { count: number }[] | null)?.[0]?.count ?? null,
+      n: parts.length,
       start_at: t.start_at ?? null,
       clube: c?.name ?? null, cidade: c?.cidade ?? null, estado: c?.estado ?? null,
       tipo_ave: (t as Record<string, unknown>).tipo_ave as string | null ?? null,
       estilo_canto: (t as Record<string, unknown>).estilo_canto as string | null ?? null,
+      duration_secs: (t as Record<string, unknown>).duration_secs as number | null ?? null,
+      started,
     }
   })
   return { all }
